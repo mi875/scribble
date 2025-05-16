@@ -1,3 +1,6 @@
+import 'dart:ui' as ui;
+
+import 'package:flutter/foundation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:scribble/src/domain/model/point/point.dart';
 
@@ -19,6 +22,9 @@ class SketchLine with _$SketchLine {
 
     /// The width of the line
     required double width,
+
+    /// A cached image of the rendered line
+    @JsonKey(ignore: true) ui.Image? cachedImage,
   }) = _SketchLine;
 
   /// Constructs a sketch line from a JSON object.

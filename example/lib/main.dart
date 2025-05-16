@@ -34,12 +34,10 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late ScribbleNotifier notifier;
-
   bool _simulatePressure = true;
-
   @override
   void initState() {
-    notifier = ScribbleNotifier();
+    notifier = ScribbleNotifier(widths: [1, 2, 4, 8, 16, 32]);
     super.initState();
   }
 
@@ -134,6 +132,19 @@ class _HomePageState extends State<HomePage> {
                         child: const Text("Simplify"),
                       ),
                     ],
+                  ),
+                  const Divider(
+                    height: 16,
+                  ),
+                  // High-quality strokes are now automatically created based on device pixel ratio
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: Text(
+                        "High-quality strokes automatically optimized for your device",
+                        style: TextStyle(fontStyle: FontStyle.italic),
+                      ),
+                    ),
                   ),
                 ],
               ),

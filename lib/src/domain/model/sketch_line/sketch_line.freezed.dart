@@ -29,8 +29,16 @@ mixin _$SketchLine {
   /// The width of the line
   double get width => throw _privateConstructorUsedError;
 
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  /// A cached image of the rendered line
   @JsonKey(ignore: true)
+  ui.Image? get cachedImage => throw _privateConstructorUsedError;
+
+  /// Serializes this SketchLine to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of SketchLine
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   $SketchLineCopyWith<SketchLine> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -41,7 +49,11 @@ abstract class $SketchLineCopyWith<$Res> {
           SketchLine value, $Res Function(SketchLine) then) =
       _$SketchLineCopyWithImpl<$Res, SketchLine>;
   @useResult
-  $Res call({List<Point> points, int color, double width});
+  $Res call(
+      {List<Point> points,
+      int color,
+      double width,
+      @JsonKey(ignore: true) ui.Image? cachedImage});
 }
 
 /// @nodoc
@@ -54,12 +66,15 @@ class _$SketchLineCopyWithImpl<$Res, $Val extends SketchLine>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
+  /// Create a copy of SketchLine
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
     Object? points = null,
     Object? color = null,
     Object? width = null,
+    Object? cachedImage = freezed,
   }) {
     return _then(_value.copyWith(
       points: null == points
@@ -74,6 +89,10 @@ class _$SketchLineCopyWithImpl<$Res, $Val extends SketchLine>
           ? _value.width
           : width // ignore: cast_nullable_to_non_nullable
               as double,
+      cachedImage: freezed == cachedImage
+          ? _value.cachedImage
+          : cachedImage // ignore: cast_nullable_to_non_nullable
+              as ui.Image?,
     ) as $Val);
   }
 }
@@ -86,7 +105,11 @@ abstract class _$$SketchLineImplCopyWith<$Res>
       __$$SketchLineImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({List<Point> points, int color, double width});
+  $Res call(
+      {List<Point> points,
+      int color,
+      double width,
+      @JsonKey(ignore: true) ui.Image? cachedImage});
 }
 
 /// @nodoc
@@ -97,12 +120,15 @@ class __$$SketchLineImplCopyWithImpl<$Res>
       _$SketchLineImpl _value, $Res Function(_$SketchLineImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of SketchLine
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
     Object? points = null,
     Object? color = null,
     Object? width = null,
+    Object? cachedImage = freezed,
   }) {
     return _then(_$SketchLineImpl(
       points: null == points
@@ -117,17 +143,22 @@ class __$$SketchLineImplCopyWithImpl<$Res>
           ? _value.width
           : width // ignore: cast_nullable_to_non_nullable
               as double,
+      cachedImage: freezed == cachedImage
+          ? _value.cachedImage
+          : cachedImage // ignore: cast_nullable_to_non_nullable
+              as ui.Image?,
     ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
-class _$SketchLineImpl implements _SketchLine {
+class _$SketchLineImpl with DiagnosticableTreeMixin implements _SketchLine {
   const _$SketchLineImpl(
       {required final List<Point> points,
       required this.color,
-      required this.width})
+      required this.width,
+      @JsonKey(ignore: true) this.cachedImage})
       : _points = points;
 
   factory _$SketchLineImpl.fromJson(Map<String, dynamic> json) =>
@@ -152,9 +183,25 @@ class _$SketchLineImpl implements _SketchLine {
   @override
   final double width;
 
+  /// A cached image of the rendered line
   @override
-  String toString() {
-    return 'SketchLine(points: $points, color: $color, width: $width)';
+  @JsonKey(ignore: true)
+  final ui.Image? cachedImage;
+
+  @override
+  String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
+    return 'SketchLine(points: $points, color: $color, width: $width, cachedImage: $cachedImage)';
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties
+      ..add(DiagnosticsProperty('type', 'SketchLine'))
+      ..add(DiagnosticsProperty('points', points))
+      ..add(DiagnosticsProperty('color', color))
+      ..add(DiagnosticsProperty('width', width))
+      ..add(DiagnosticsProperty('cachedImage', cachedImage));
   }
 
   @override
@@ -164,15 +211,19 @@ class _$SketchLineImpl implements _SketchLine {
             other is _$SketchLineImpl &&
             const DeepCollectionEquality().equals(other._points, _points) &&
             (identical(other.color, color) || other.color == color) &&
-            (identical(other.width, width) || other.width == width));
+            (identical(other.width, width) || other.width == width) &&
+            (identical(other.cachedImage, cachedImage) ||
+                other.cachedImage == cachedImage));
   }
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
-      runtimeType, const DeepCollectionEquality().hash(_points), color, width);
+  int get hashCode => Object.hash(runtimeType,
+      const DeepCollectionEquality().hash(_points), color, width, cachedImage);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of SketchLine
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$SketchLineImplCopyWith<_$SketchLineImpl> get copyWith =>
@@ -190,25 +241,33 @@ abstract class _SketchLine implements SketchLine {
   const factory _SketchLine(
       {required final List<Point> points,
       required final int color,
-      required final double width}) = _$SketchLineImpl;
+      required final double width,
+      @JsonKey(ignore: true) final ui.Image? cachedImage}) = _$SketchLineImpl;
 
   factory _SketchLine.fromJson(Map<String, dynamic> json) =
       _$SketchLineImpl.fromJson;
 
-  @override
-
   /// The points that make up the line
-  List<Point> get points;
   @override
+  List<Point> get points;
 
   /// The color of the line in hexadecimal format (ARGB)
-  int get color;
   @override
+  int get color;
 
   /// The width of the line
+  @override
   double get width;
+
+  /// A cached image of the rendered line
   @override
   @JsonKey(ignore: true)
+  ui.Image? get cachedImage;
+
+  /// Create a copy of SketchLine
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$SketchLineImplCopyWith<_$SketchLineImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
