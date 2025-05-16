@@ -4,11 +4,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
-import 'package:scribble/scribble.dart';
+import 'package:scribble/src/domain/model/sketch/sketch.dart';
 import 'package:scribble/src/view/painting/point_to_offset_x.dart';
 import 'package:scribble/src/view/painting/sketch_line_cache_mixin.dart';
 import 'package:scribble/src/view/painting/sketch_line_path_mixin.dart';
 import 'package:scribble/src/view/simplification/sketch_simplifier.dart';
+import 'package:scribble/src/view/state/scribble.state.dart';
 import 'package:value_notifier_tools/value_notifier_tools.dart';
 
 /// {@template scribble_notifier_base}
@@ -147,25 +148,6 @@ class ScribbleNotifier extends ScribbleNotifierBase
   ///
   /// Defaults to [VisvalingamSimplifier], but you can implement your own.
   final SketchSimplifier simplifier;
-
-  /// Gets the effective resolution multiplier to use for caching based on the device's pixel ratio.
-  /// This method provides automatic optimization for different screen densities.
-  double _getEffectiveResolutionMultiplier() {
-    // Get the device pixel ratio
-    final devicePixelRatio = WidgetsBinding.instance.window.devicePixelRatio;
-
-    // Optimize based on device pixel ratio:
-    // - For low DPR devices (≤ 1.5): use 1.5x multiplier
-    // - For medium DPR devices (1.5-3.0): use the device pixel ratio
-    // - For high DPR devices (> 3.0): cap at 3.0 to avoid excessive memory usage
-    if (devicePixelRatio <= 1.5) {
-      return 1.5; // Minimum quality for low-res screens
-    } else if (devicePixelRatio > 3.0) {
-      return 3.0; // Cap for very high-res screens to save memory
-    } else {
-      return devicePixelRatio; // Use exact pixel ratio for mid-range screens
-    }
-  }
 
   /// Only apply the sketch from the undo history, otherwise keep current state
   @override
@@ -349,32 +331,66 @@ class ScribbleNotifier extends ScribbleNotifierBase
     // Use a delayed frame to avoid blocking UI
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!_isMounted) return;
+
       final scaleFactor = value.scaleFactor;
-      final lines = List<SketchLine>.from(value.sketch.lines);
-      final updatedLines = <SketchLine>[];
 
-      for (final line in lines) {
-        if (line.cachedImage == null && line.points.length > 1) {
-          final cachedImage = await cacheGenerator.createCacheForLine(
-            line,
-            scaleFactor: scaleFactor,
-            simulatePressure: true,
-          );
+      // Get lines that need caching (no cached image and at least 2 points)
+      final linesToCache = value.sketch.lines
+          .where((line) => line.cachedImage == null && line.points.length > 1)
+          .toList();
 
-          if (cachedImage != null) {
-            updatedLines.add(line.copyWith(cachedImage: cachedImage));
-          } else {
-            updatedLines.add(line);
+      // Sort by complexity (more points = more complex)
+      linesToCache.sort((a, b) => b.points.length.compareTo(a.points.length));
+
+      // Limit number of lines to cache in one batch to avoid freezing
+      const maxLinesPerBatch = 5;
+      final batch = linesToCache.take(maxLinesPerBatch).toList();
+
+      // Keep track of updated lines
+      final allLines = List<SketchLine>.from(value.sketch.lines);
+      var updatedAny = false;
+
+      // Process lines with small delays between each
+      for (final line in batch) {
+        // Skip if we're no longer mounted
+        if (!_isMounted) return;
+
+        // Cache the line
+        final cachedImage = await cacheGenerator.createCacheForLine(
+          line,
+          scaleFactor: scaleFactor,
+          simulatePressure: true,
+        );
+
+        if (cachedImage != null) {
+          // Find the line index in our list
+          final index = allLines.indexWhere((l) =>
+              l.points == line.points &&
+              l.color == line.color &&
+              l.width == line.width);
+
+          if (index >= 0) {
+            // Replace with cached version
+            allLines[index] = line.copyWith(cachedImage: cachedImage);
+            updatedAny = true;
           }
-        } else {
-          updatedLines.add(line);
+          // Small delay to let UI breathe
+          await Future<void>.delayed(const Duration(milliseconds: 5));
         }
       }
 
-      if (_isMounted) {
+      // Update state only if we cached something
+      if (_isMounted && updatedAny) {
         temporaryValue = value.copyWith(
-          sketch: value.sketch.copyWith(lines: updatedLines),
+          sketch: value.sketch.copyWith(lines: allLines),
         );
+
+        // Schedule the next batch if there are more lines
+        if (linesToCache.length > maxLinesPerBatch) {
+          // Wait a bit before starting next batch
+          Future<void>.delayed(
+              const Duration(milliseconds: 100), _cacheAllStrokes);
+        }
       }
     });
   }
