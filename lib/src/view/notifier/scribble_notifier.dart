@@ -94,12 +94,14 @@ class ScribbleNotifier extends ScribbleNotifierBase
 
     /// How many states you want stored in the undo history, 30 by default.
     int maxHistoryLength = 30,
-    this.widths = const [5, 10, 15],
-    this.pressureCurve = Curves.linear,
     this.simplifier = const VisvalingamSimplifier(),
 
     /// {@macro view.state.scribble_state.simplification_tolerance}
     double simplificationTolerance = 0,
+    
+    /// Fixed stroke width for all drawing. When specified, all strokes will
+    /// use this width regardless of pressure or other factors.
+    this.fixedStrokeWidth,
   }) : super(
           ScribbleState.drawing(
             sketch: switch (sketch) {
@@ -109,7 +111,7 @@ class ScribbleNotifier extends ScribbleNotifierBase
                 ),
               null => const Sketch(lines: []),
             },
-            selectedWidth: widths[0],
+            selectedWidth: fixedStrokeWidth ?? 5.0,
             allowedPointersMode: allowedPointersMode,
             simplificationTolerance: simplificationTolerance,
           ),
@@ -117,15 +119,7 @@ class ScribbleNotifier extends ScribbleNotifierBase
     this.maxHistoryLength = maxHistoryLength;
   }
 
-  /// The supported widths, mainly useful for rendering UI, you can still set
-  /// the width to any arbitrary value from code.
-  ///
-  /// The first entry in this list will be the starting width.
-  final List<double> widths;
 
-  /// The curve that's used to map pen pressure to the pressure value when
-  /// recording, by default it's linear.
-  final Curve pressureCurve;
 
   /// The state of the sketch at this moment.
   ///
@@ -148,6 +142,10 @@ class ScribbleNotifier extends ScribbleNotifierBase
   ///
   /// Defaults to [VisvalingamSimplifier], but you can implement your own.
   final SketchSimplifier simplifier;
+
+  /// Fixed stroke width for all drawing. When specified, all strokes will
+  /// use this width regardless of pressure or other factors.
+  final double? fixedStrokeWidth;
 
   /// Only apply the sketch from the undo history, otherwise keep current state
   @override
@@ -265,13 +263,13 @@ class ScribbleNotifier extends ScribbleNotifierBase
     temporaryValue = value.map(
       drawing: (s) => ScribbleState.drawing(
         sketch: s.sketch,
-        selectedColor: color.value,
+        selectedColor: color.value, // ignore: deprecated_member_use
         selectedWidth: s.selectedWidth,
         allowedPointersMode: s.allowedPointersMode,
       ),
       erasing: (s) => ScribbleState.drawing(
         sketch: s.sketch,
-        selectedColor: color.value,
+        selectedColor: color.value, // ignore: deprecated_member_use
         selectedWidth: s.selectedWidth,
         allowedPointersMode: s.allowedPointersMode,
         scaleFactor: value.scaleFactor,
@@ -326,7 +324,7 @@ class ScribbleNotifier extends ScribbleNotifierBase
     // Skip caching in tests or if the binding is not available
     if (!_canUseWidgetsBinding) return;
 
-    final cacheGenerator = _StrokePathAndCacheGenerator(simulatePressure: true);
+    final cacheGenerator = _StrokePathAndCacheGenerator();
 
     // Use a delayed frame to avoid blocking UI
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -359,19 +357,24 @@ class ScribbleNotifier extends ScribbleNotifierBase
         final cachedImage = await cacheGenerator.createCacheForLine(
           line,
           scaleFactor: scaleFactor,
-          simulatePressure: true,
+          simulatePressure: false,
+          devicePixelRatio: 1,
         );
 
         if (cachedImage != null) {
           // Find the line index in our list
-          final index = allLines.indexWhere((l) =>
-              l.points == line.points &&
-              l.color == line.color &&
-              l.width == line.width);
+          final index = allLines.indexWhere(
+            (l) =>
+                l.points == line.points &&
+                l.color == line.color &&
+                l.width == line.width,
+          );
 
           if (index >= 0) {
             // Replace with cached version
-            allLines[index] = line.copyWith(cachedImage: cachedImage);
+            allLines[index] = line.copyWith(
+              cachedImage: cachedImage,
+            );
             updatedAny = true;
           }
           // Small delay to let UI breathe
@@ -389,7 +392,9 @@ class ScribbleNotifier extends ScribbleNotifierBase
         if (linesToCache.length > maxLinesPerBatch) {
           // Wait a bit before starting next batch
           Future<void>.delayed(
-              const Duration(milliseconds: 100), _cacheAllStrokes);
+            const Duration(milliseconds: 100),
+            _cacheAllStrokes,
+          );
         }
       }
     });
@@ -440,7 +445,7 @@ class ScribbleNotifier extends ScribbleNotifierBase
         activeLine: SketchLine(
           points: [_getPointFromEvent(event)],
           color: (value as Drawing).selectedColor,
-          width: value.selectedWidth / value.scaleFactor,
+          width: (fixedStrokeWidth ?? value.selectedWidth) / value.scaleFactor,
         ),
       );
     }
@@ -527,7 +532,13 @@ class ScribbleNotifier extends ScribbleNotifierBase
     final distanceToLast = currentLine.points.isEmpty
         ? double.infinity
         : (currentLine.points.last.asOffset - event.localPosition).distance;
-    if (distanceToLast <= kPrecisePointerPanSlop / s.scaleFactor) return s;
+    
+    // Adaptive filtering: use smaller threshold for better detail preservation
+    // Scale based on line width and device pixel ratio for consistent quality
+    final adaptiveThreshold = (kPrecisePointerPanSlop * 0.5) / 
+        (s.scaleFactor * (currentLine.width / 10.0).clamp(0.5, 2.0));
+    
+    if (distanceToLast <= adaptiveThreshold) return s;
     return s.copyWith(
       activeLine: currentLine.copyWith(
         points: [
@@ -554,14 +565,10 @@ class ScribbleNotifier extends ScribbleNotifierBase
 
   /// Converts a pointer event to the [Point] on the canvas.
   Point _getPointFromEvent(PointerEvent event) {
-    final p = kIsWeb || event.pressureMin == event.pressureMax
-        ? 0.5
-        : (event.pressure - event.pressureMin) /
-            (event.pressureMax - event.pressureMin);
     return Point(
       event.localPosition.dx,
       event.localPosition.dy,
-      pressure: pressureCurve.transform(p),
+      pressure: 0.5, // Fixed pressure since we're using fixed width
     );
   }
 
@@ -600,13 +607,13 @@ class ScribbleNotifier extends ScribbleNotifierBase
     if (line.cachedImage != null) return;
 
     // Create a path generator with cache support
-    final cacheGenerator = _StrokePathAndCacheGenerator(simulatePressure: true);
+    final cacheGenerator = _StrokePathAndCacheGenerator();
 
     // Generate the cached image using device-specific resolution
     final cachedImage = await cacheGenerator.createCacheForLine(
       line,
       scaleFactor: scaleFactor,
-      simulatePressure: true,
+      simulatePressure: false,
     );
 
     if (cachedImage != null) {
@@ -635,7 +642,7 @@ class ScribbleNotifier extends ScribbleNotifierBase
 /// Helper class for path generation and caching
 class _StrokePathAndCacheGenerator
     with SketchLinePathMixin, SketchLineCacheMixin {
-  _StrokePathAndCacheGenerator({required this.simulatePressure});
+  _StrokePathAndCacheGenerator();
   @override
-  final bool simulatePressure;
+  final bool simulatePressure = false; // Always false since we use fixed width
 }

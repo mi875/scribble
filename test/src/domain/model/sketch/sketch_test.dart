@@ -11,14 +11,14 @@ void main() {
       final sketch = Sketch.fromJson(json);
       expect(sketch.lines.length, 14);
       expect(sketch.lines.where((l) => l.color == 0xFF000000).length, 10);
-      expect(sketch.lines.where((l) => l.color == Colors.red.value).length, 1);
+      expect(sketch.lines.where((l) => l.color == Colors.red.value).length, 1); // ignore: deprecated_member_use
       expect(
-        sketch.lines.where((l) => l.color == Colors.green.value).length,
+        sketch.lines.where((l) => l.color == Colors.green.value).length, // ignore: deprecated_member_use
         1,
       );
-      expect(sketch.lines.where((l) => l.color == Colors.blue.value).length, 1);
+      expect(sketch.lines.where((l) => l.color == Colors.blue.value).length, 1); // ignore: deprecated_member_use
       expect(
-        sketch.lines.where((l) => l.color == Colors.yellow.value).length,
+        sketch.lines.where((l) => l.color == Colors.yellow.value).length, // ignore: deprecated_member_use
         1,
       );
     });

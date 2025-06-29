@@ -34,10 +34,12 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late ScribbleNotifier notifier;
-  bool _simulatePressure = true;
+  double _fixedStrokeWidth = 1.0;
   @override
   void initState() {
-    notifier = ScribbleNotifier(widths: [1, 2, 4, 8, 16, 32]);
+    notifier = ScribbleNotifier(
+      fixedStrokeWidth: _fixedStrokeWidth,
+    );
     super.initState();
   }
 
@@ -46,7 +48,7 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: Text(widget.title),
+        title: Text("UNKO"),
         actions: _buildActions(context),
       ),
       body: Padding(
@@ -62,7 +64,7 @@ class _HomePageState extends State<HomePage> {
                 child: Scribble(
                   notifier: notifier,
                   drawPen: true,
-                  simulatePressure: _simulatePressure,
+                  fixedStrokeWidth: _fixedStrokeWidth,
                 ),
               ),
             ),
@@ -83,27 +85,38 @@ class _HomePageState extends State<HomePage> {
                           children: [
                             _buildColorToolbar(context),
                             const VerticalDivider(width: 32),
-                            _buildStrokeToolbar(context),
+                            // _buildStrokeToolbar(context),
                           ],
                         ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Switch.adaptive(
-                              value: _simulatePressure,
-                              onChanged: (v) =>
-                                  setState(() => _simulatePressure = v),
-                            ),
-                            const SizedBox(width: 8),
-                            const Text("Simulate Pressure")
-                          ],
-                        ),
+                        const Text("Fixed Stroke Width Drawing"),
                         _buildPointerModeSwitcher(context),
                       ],
                     ),
                   ),
                   const Divider(
                     height: 32,
+                  ),
+                  Row(
+                    children: [
+                      const Text("Stroke Width:"),
+                      Expanded(
+                        child: Slider(
+                          value: _fixedStrokeWidth,
+                          min: 1,
+                          max: 20,
+                          onChanged: (value) => setState(() {
+                            _fixedStrokeWidth = value;
+                            // Update the notifier with new fixed width
+                            notifier = ScribbleNotifier(
+                              sketch: notifier.currentSketch,
+                              fixedStrokeWidth: _fixedStrokeWidth,
+                            );
+                          }),
+                          label: "${_fixedStrokeWidth.toStringAsFixed(1)} px",
+                          divisions: 19,
+                        ),
+                      ),
+                    ],
                   ),
                   Row(
                     children: [
@@ -141,7 +154,7 @@ class _HomePageState extends State<HomePage> {
                     child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 8.0),
                       child: Text(
-                        "High-quality strokes automatically optimized for your device",
+                        "All strokes use fixed width - no pressure simulation",
                         style: TextStyle(fontStyle: FontStyle.italic),
                       ),
                     ),
@@ -238,57 +251,23 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildStrokeToolbar(BuildContext context) {
-    return ValueListenableBuilder<ScribbleState>(
-      valueListenable: notifier,
-      builder: (context, state, _) => Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          for (final w in notifier.widths)
-            _buildStrokeButton(
-              context,
-              strokeWidth: w,
-              state: state,
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStrokeButton(
-    BuildContext context, {
-    required double strokeWidth,
-    required ScribbleState state,
-  }) {
-    final selected = state.selectedWidth == strokeWidth;
-    return Padding(
-      padding: const EdgeInsets.all(4),
-      child: Material(
-        elevation: selected ? 4 : 0,
-        shape: const CircleBorder(),
-        child: InkWell(
-          onTap: () => notifier.setStrokeWidth(strokeWidth),
-          customBorder: const CircleBorder(),
-          child: AnimatedContainer(
-            duration: kThemeAnimationDuration,
-            width: strokeWidth * 2,
-            height: strokeWidth * 2,
-            decoration: BoxDecoration(
-                color: state.map(
-                  drawing: (s) => Color(s.selectedColor),
-                  erasing: (_) => Colors.transparent,
-                ),
-                border: state.map(
-                  drawing: (_) => null,
-                  erasing: (_) => Border.all(width: 1),
-                ),
-                borderRadius: BorderRadius.circular(50.0)),
-          ),
-        ),
-      ),
-    );
-  }
+  // Widget _buildStrokeToolbar(BuildContext context) {
+  //   return ValueListenableBuilder<ScribbleState>(
+  //     valueListenable: notifier,
+  //     builder: (context, state, _) => Row(
+  //       crossAxisAlignment: CrossAxisAlignment.center,
+  //       mainAxisAlignment: MainAxisAlignment.start,
+  //       children: [
+  //         for (final w in notifier.widths)
+  //           _buildStrokeButton(
+  //             context,
+  //             strokeWidth: w,
+  //             state: state,
+  //           ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildColorToolbar(BuildContext context) {
     return Row(
@@ -350,8 +329,9 @@ class _HomePageState extends State<HomePage> {
     required Color color,
   }) {
     return ValueListenableBuilder(
-      valueListenable: notifier.select(
-          (value) => value is Drawing && value.selectedColor == color.value),
+      valueListenable: notifier.select((value) =>
+          value is Drawing &&
+          value.selectedColor == color.value), // ignore: deprecated_member_use
       builder: (context, value, child) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: ColorButton(

@@ -13,7 +13,7 @@ class ScribbleSketch extends StatelessWidget {
   const ScribbleSketch({
     required this.sketch,
     this.scaleFactor = 1,
-    this.simulatePressure = true,
+    this.fixedStrokeWidth,
     super.key,
   });
 
@@ -26,8 +26,9 @@ class ScribbleSketch extends StatelessWidget {
   /// (e.g. through InteractiveViewer) so that the pen width remains the same.
   final double scaleFactor;
 
-  /// {@macro scribble.simulate_pressure}
-  final bool simulatePressure;
+  /// Fixed stroke width for all lines. When specified, all strokes will
+  /// use this width regardless of their original width.
+  final double? fixedStrokeWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +36,7 @@ class ScribbleSketch extends StatelessWidget {
       painter: ScribblePainter(
         sketch: sketch,
         scaleFactor: scaleFactor,
-        simulatePressure: simulatePressure,
+        fixedStrokeWidth: fixedStrokeWidth,
       ),
     );
   }

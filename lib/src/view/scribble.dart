@@ -25,7 +25,10 @@ class Scribble extends StatelessWidget {
 
     /// Whether to draw the pointer when in erasing mode
     this.drawEraser = true,
-    this.simulatePressure = true,
+
+    /// Fixed stroke width for all drawing. When specified, all strokes will
+    /// use this width regardless of pressure or other factors.
+    this.fixedStrokeWidth,
     super.key,
   });
 
@@ -38,13 +41,9 @@ class Scribble extends StatelessWidget {
   /// Whether to draw the pointer when in erasing mode
   final bool drawEraser;
 
-  /// {@template scribble.simulate_pressure}
-  /// Whether to simulate pressure when drawing lines that don't have pressure
-  /// information (all points have the same pressure).
-  ///
-  /// Defaults to `true`.
-  /// {@endtemplate}
-  final bool simulatePressure;
+  /// Fixed stroke width for all drawing. When specified, all strokes will
+  /// use this width regardless of pressure or other factors.
+  final double? fixedStrokeWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +58,7 @@ class Scribble extends StatelessWidget {
               state: state,
               drawPointer: drawPen,
               drawEraser: drawEraser,
-              simulatePressure: simulatePressure,
+              fixedStrokeWidth: fixedStrokeWidth,
             ),
             child: RepaintBoundary(
               key: notifier.repaintBoundaryKey,
@@ -67,7 +66,7 @@ class Scribble extends StatelessWidget {
                 painter: ScribblePainter(
                   sketch: state.sketch,
                   scaleFactor: state.scaleFactor,
-                  simulatePressure: simulatePressure,
+                  fixedStrokeWidth: fixedStrokeWidth,
                 ),
               ),
             ),

@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart';
 import 'package:scribble/scribble.dart';
 import 'package:scribble/src/view/painting/sketch_line_path_mixin.dart';
 
@@ -13,35 +14,43 @@ mixin SketchLineCacheMixin {
   /// This ensures optimal quality across different screens.
   Future<ui.Image?> createCacheForLine(
     SketchLine line, {
-    required double
-        scaleFactor, // This is the device pixel ratio, not used directly for logical path
+    required double scaleFactor,
     required bool simulatePressure,
+    double? devicePixelRatio,
   }) async {
     if (line.points.length < 2) return null;
 
     final pathGenerator = LinePathGenerator(
-        simulatePressure: simulatePressure); // Changed to LinePathGenerator
+      simulatePressure: simulatePressure,
+    );
 
-    // Generate the logical path for the line (scaleFactor: 1.0 for logical coordinates)
-    final logicalPath = pathGenerator.getPathForLine(line, scaleFactor: 1.0);
+    // Generate the logical path using the same scaleFactor as live drawing
+    // This ensures stroke width consistency between live and cached rendering
+    final logicalPath = pathGenerator.getPathForLine(line, scaleFactor: scaleFactor);
     if (logicalPath == null) {
       return null;
     }
     final strokeBounds = logicalPath.getBounds();
 
-    // Padding in logical pixels, assuming line.width is the logical diameter
-    final padding = line.width / 2;
-    const resolution = 1.25; // Fixed resolution factor for cache image quality
+    // Padding calculation using actual stroke width scaled properly
+    final padding = (line.width * scaleFactor) / 2;
+    // Use device pixel ratio for cache resolution, not the scaleFactor
+    const baseResolution = 1.5; // Increased from 1.25
+    final actualDevicePixelRatio = (devicePixelRatio ?? 1.0).clamp(1.0, 3.0);
+    final resolution = baseResolution * actualDevicePixelRatio;
 
-    // Calculate the dimensions of the cache image itself (in physical pixels for toImage)
-    final double cacheImageWidthUnclamped =
+    // Calculate the dimensions of the cache image itself
+    final cacheImageWidthUnclamped =
         (strokeBounds.width + padding * 2) * resolution;
-    final double cacheImageHeightUnclamped =
+    final cacheImageHeightUnclamped =
         (strokeBounds.height + padding * 2) * resolution;
 
-    // Ensure dimensions are valid and clamp to a max size (in cache image pixels)
-    final double clampedWidth = cacheImageWidthUnclamped.clamp(1.0, 3000.0);
-    final double clampedHeight = cacheImageHeightUnclamped.clamp(1.0, 3000.0);
+    // Ensure dimensions are valid and clamp to a max size
+    // Increased max size for better quality on high-DPI displays
+    final clampedWidth =
+        cacheImageWidthUnclamped.clamp(1.0, 4096.0);
+    final clampedHeight =
+        cacheImageHeightUnclamped.clamp(1.0, 4096.0);
 
     // If the clamped size is too small, don't bother caching.
     if (clampedWidth <= 1.0 || clampedHeight <= 1.0) {
@@ -49,24 +58,22 @@ mixin SketchLineCacheMixin {
     }
 
     final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder,
-        Rect.fromLTWH(0, 0, clampedWidth.toDouble(), clampedHeight.toDouble()));
+    final canvas = Canvas(
+      recorder,
+      Rect.fromLTWH(0, 0, clampedWidth, clampedHeight),
+    );
 
-    // Scale the canvas for the desired resolution.
-    // All drawing operations after this are in a coordinate system scaled by 'resolution'.
-    canvas.scale(resolution, resolution);
+    // Scale the canvas for the desired resolution only
+    // The path was generated with scaleFactor, so we only need resolution scaling
+    canvas
+      ..scale(resolution, resolution)
+      ..translate(-strokeBounds.left + padding, -strokeBounds.top + padding);
 
-    // Translate so the logical (0,0) of the padded strokeBounds is at (0,0) of this scaled canvas.
-    // We are drawing in a space that is (strokeBounds.width + padding*2) wide logically.
-    canvas.translate(-strokeBounds.left + padding, -strokeBounds.top + padding);
-
-    // Draw the logical path. The canvas scaling will make it sharp.
-    // Paint should use logical line.width, which is handled by getPathForLine.
+    // Draw the logical path with enhanced quality
     final paint = Paint()
       ..color = Color(line.color)
-      ..style =
-          PaintingStyle.fill // SketchLinePathMixin generates a fillable path
-      ..isAntiAlias = true; // Enable anti-aliasing for smoother edges
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
     canvas.drawPath(logicalPath, paint);
 
     // End the recording
@@ -76,8 +83,9 @@ mixin SketchLineCacheMixin {
     try {
       return await picture.toImage(clampedWidth.toInt(), clampedHeight.toInt());
     } catch (e) {
-      // If there's an error (e.g., out of memory for very large lines), return null
-      print("Failed to create image for line: $e");
+      // If there's an error (e.g., out of memory), return null
+      // In production, use proper logging instead of print
+      debugPrint('Failed to create image for line: $e');
       return null;
     }
   }
@@ -89,7 +97,7 @@ mixin SketchLineCacheMixin {
     final cachedImage = line.cachedImage!;
     final paint = Paint()
       ..isAntiAlias = true
-      ..filterQuality = FilterQuality.medium; // Balance quality and performance
+      ..filterQuality = FilterQuality.high;
 
     // Create a rectangle for the source (entire cached image)
     final src = Rect.fromLTWH(
@@ -104,8 +112,15 @@ mixin SketchLineCacheMixin {
   }
 }
 
-/// Helper class to access the path generation
+/// Helper class to access the path generation functionality.
+/// 
+/// This class provides access to the [SketchLinePathMixin] methods
+/// for generating smooth paths from sketch lines.
 class LinePathGenerator with SketchLinePathMixin {
+  /// Creates a new [LinePathGenerator] instance.
+  /// 
+  /// The [simulatePressure] parameter determines whether pressure
+  /// simulation should be applied to lines without pressure data.
   LinePathGenerator({required this.simulatePressure});
 
   @override

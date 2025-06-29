@@ -33,9 +33,9 @@ mixin SketchLinePathMixin {
       options: pf.StrokeOptions(
         size: line.width * 2 * scaleFactor,
         simulatePressure: needSimulate,
-        thinning: 0.6, // Improved line thinning effect for pressure
-        smoothing: 0.5, // Increased smoothing for more natural curves
-        streamline: 0.5, // Higher streamline for smoother lines
+        thinning: 0.7, // Enhanced thinning for better pressure response
+        smoothing: 0.4, // Reduced smoothing to preserve more detail
+        streamline: 0.3, // Reduced streamline to maintain input precision
       ),
     );
     if (outlinePoints.isEmpty) {

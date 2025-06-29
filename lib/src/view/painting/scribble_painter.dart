@@ -10,7 +10,7 @@ class ScribblePainter extends CustomPainter
   ScribblePainter({
     required this.sketch,
     required this.scaleFactor,
-    required this.simulatePressure,
+    this.fixedStrokeWidth,
   });
 
   /// The [Sketch] to draw.
@@ -20,7 +20,11 @@ class ScribblePainter extends CustomPainter
   final double scaleFactor;
 
   @override
-  final bool simulatePressure;
+  final bool simulatePressure = false; // Always false for fixed width strokes
+
+  /// Fixed stroke width for all lines. When specified, all strokes will
+  /// use this width regardless of their original width.
+  final double? fixedStrokeWidth;
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..style = PaintingStyle.fill;
@@ -28,21 +32,26 @@ class ScribblePainter extends CustomPainter
 
     for (var i = 0; i < sketch.lines.length; ++i) {
       final line = sketch.lines[i];
+      
+      // Use fixed width if specified, otherwise use line's original width
+      final effectiveLine = fixedStrokeWidth != null
+          ? line.copyWith(width: fixedStrokeWidth!)
+          : line;
 
-      if (line.cachedImage != null) {
-        // If we have a cached image, use it
-        final bounds = _getBoundsForLine(line);
-        drawCachedLine(canvas, line, bounds);
+      if (effectiveLine.cachedImage != null && fixedStrokeWidth == null) {
+        // If we have a cached image and no fixed width override, use it
+        final bounds = _getBoundsForLine(effectiveLine);
+        drawCachedLine(canvas, effectiveLine, bounds);
       } else {
         // Otherwise generate the path and draw it
         final path = getPathForLine(
-          line,
+          effectiveLine,
           scaleFactor: scaleFactor,
         );
         if (path == null) {
           continue;
         }
-        paint.color = Color(line.color);
+        paint.color = Color(effectiveLine.color);
         paint.isAntiAlias = true; // Enable anti-aliasing for smoother lines
         paint.filterQuality = FilterQuality.high; // Use high quality filtering
         canvas.drawPath(path, paint);
@@ -63,20 +72,16 @@ class ScribblePainter extends CustomPainter
   Rect _getBoundsForLine(SketchLine line) {
     if (line.points.isEmpty) return Rect.zero;
 
-    // Calculate bounds from the logical points of the line
-    // This should match the `strokeBounds` used in `createCacheForLine`
-    // before padding was applied there.
-    // Use the SketchLinePathMixin directly available in ScribblePainter
-    final logicalPath = getPathForLine(line, scaleFactor: 1.0);
+    // Calculate bounds using the same scaleFactor as cache generation
+    // This ensures consistency between cache creation and display bounds
+    final logicalPath = getPathForLine(line, scaleFactor: scaleFactor);
     if (logicalPath == null) return Rect.zero;
     final strokeBounds = logicalPath.getBounds();
 
-    // The padding should be the same logical padding used in `createCacheForLine`
-    final padding = line.width / 2;
+    // Use the same padding calculation as cache generation
+    final padding = (line.width * scaleFactor) / 2;
 
-    // The destination rectangle for drawImageRect should be in logical pixels.
-    // Flutter's canvas will handle scaling this to physical pixels using the
-    // device pixel ratio (which is `this.scaleFactor` in the painter).
+    // The destination rectangle for drawImageRect should match the cached area
     return Rect.fromLTRB(
       strokeBounds.left - padding,
       strokeBounds.top - padding,
@@ -88,7 +93,7 @@ class ScribblePainter extends CustomPainter
   @override
   bool shouldRepaint(ScribblePainter oldDelegate) {
     return oldDelegate.sketch != sketch ||
-        oldDelegate.simulatePressure != simulatePressure ||
-        oldDelegate.scaleFactor != scaleFactor;
+        oldDelegate.scaleFactor != scaleFactor ||
+        oldDelegate.fixedStrokeWidth != fixedStrokeWidth;
   }
 }

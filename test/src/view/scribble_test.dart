@@ -8,39 +8,39 @@ void main() {
   setUp(() {});
 
   group('Scribble', () {
-    group('simulatePressure', () {
-      Widget build({required bool simulatePressure}) {
+    group('fixedStrokeWidth', () {
+      Widget build({double? fixedStrokeWidth}) {
         return MaterialApp(
           home: Scribble(
             notifier: ScribbleNotifier(),
-            simulatePressure: simulatePressure,
+            fixedStrokeWidth: fixedStrokeWidth,
           ),
         );
       }
 
       testWidgets(
-        'sets simulatePressure on ScribbleEditingPainter',
+        'sets fixedStrokeWidth on ScribbleEditingPainter',
         (WidgetTester tester) async {
-          await tester.pumpWidget(build(simulatePressure: true));
+          await tester.pumpWidget(build(fixedStrokeWidth: 10));
           final finder = find.byType(CustomPaint);
           final widgets =
               finder.evaluate().map((e) => e.widget).cast<CustomPaint>();
           final painters = widgets.map((e) => e.foregroundPainter).toList();
           final painter = painters.whereType<ScribbleEditingPainter>().first;
-          expect(painter.simulatePressure, isTrue);
+          expect(painter.fixedStrokeWidth, equals(10));
         },
       );
 
       testWidgets(
-        'sets simulatePressure on ScribblePainter',
+        'sets fixedStrokeWidth on ScribblePainter',
         (WidgetTester tester) async {
-          await tester.pumpWidget(build(simulatePressure: true));
+          await tester.pumpWidget(build(fixedStrokeWidth: 10));
           final finder = find.byType(CustomPaint);
           final widgets =
               finder.evaluate().map((e) => e.widget).cast<CustomPaint>();
           final painters = widgets.map((e) => e.painter).toList();
           final painter = painters.whereType<ScribblePainter>().first;
-          expect(painter.simulatePressure, isTrue);
+          expect(painter.fixedStrokeWidth, equals(10));
         },
       );
     });

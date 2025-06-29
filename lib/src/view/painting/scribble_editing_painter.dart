@@ -13,7 +13,7 @@ class ScribbleEditingPainter extends CustomPainter with SketchLinePathMixin {
     required this.state,
     required this.drawPointer,
     required this.drawEraser,
-    required this.simulatePressure,
+    this.fixedStrokeWidth,
   });
 
   /// The current state of the scribble sketch
@@ -31,7 +31,11 @@ class ScribbleEditingPainter extends CustomPainter with SketchLinePathMixin {
   final bool drawEraser;
 
   @override
-  final bool simulatePressure;
+  final bool simulatePressure = false; // Always false for fixed width strokes
+
+  /// Fixed stroke width for all lines. When specified, all strokes will
+  /// use this width regardless of their original width.
+  final double? fixedStrokeWidth;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -42,12 +46,17 @@ class ScribbleEditingPainter extends CustomPainter with SketchLinePathMixin {
       erasing: (_) => null,
     );
     if (activeLine != null) {
+      // Use fixed width if specified, otherwise use line's original width
+      final effectiveLine = fixedStrokeWidth != null
+          ? activeLine.copyWith(width: fixedStrokeWidth!)
+          : activeLine;
+      
       final path = getPathForLine(
-        activeLine,
+        effectiveLine,
         scaleFactor: state.scaleFactor,
       );
       if (path != null) {
-        paint.color = Color(activeLine.color);
+        paint.color = Color(effectiveLine.color);
         canvas.drawPath(path, paint);
       }
     }
@@ -66,7 +75,7 @@ class ScribbleEditingPainter extends CustomPainter with SketchLinePathMixin {
         ..strokeWidth = 1;
       canvas.drawCircle(
         state.pointerPosition!.asOffset,
-        state.selectedWidth / state.scaleFactor,
+        (fixedStrokeWidth ?? state.selectedWidth) / state.scaleFactor,
         paint,
       );
     }
@@ -75,6 +84,6 @@ class ScribbleEditingPainter extends CustomPainter with SketchLinePathMixin {
   @override
   bool shouldRepaint(ScribbleEditingPainter oldDelegate) {
     return oldDelegate.state != state ||
-        oldDelegate.simulatePressure != simulatePressure;
+        oldDelegate.fixedStrokeWidth != fixedStrokeWidth;
   }
 }
