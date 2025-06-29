@@ -1,4 +1,4 @@
-import 'package:flutter/rendering.dart';
+import 'package:flutter/material.dart';
 import 'package:scribble/scribble.dart';
 import 'package:scribble/src/view/painting/sketch_line_cache_mixin.dart';
 import 'package:scribble/src/view/painting/sketch_line_path_mixin.dart';
@@ -10,7 +10,9 @@ class ScribblePainter extends CustomPainter
   ScribblePainter({
     required this.sketch,
     required this.scaleFactor,
+    required this.panOffset,
     this.fixedStrokeWidth,
+    this.canvasSize,
   });
 
   /// The [Sketch] to draw.
@@ -19,34 +21,54 @@ class ScribblePainter extends CustomPainter
   /// {@macro view.state.scribble_state.scale_factor}
   final double scaleFactor;
 
+  /// {@macro view.state.scribble_state.pan_offset}
+  final Offset panOffset;
+
   @override
   final bool simulatePressure = false; // Always false for fixed width strokes
 
   /// Fixed stroke width for all lines. When specified, all strokes will
   /// use this width regardless of their original width.
   final double? fixedStrokeWidth;
+
+  /// The size of the canvas for clipping. If null, no clipping is applied.
+  final Size? canvasSize;
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..style = PaintingStyle.fill;
     final startTime = DateTime.now();
 
+    // Clip to canvas bounds if canvas size is specified
+    if (canvasSize != null) {
+      canvas
+          .clipRect(Rect.fromLTWH(0, 0, canvasSize!.width, canvasSize!.height));
+    }
+
+    // Apply zoom and pan transformations
+    canvas.save();
+    canvas.translate(panOffset.dx, panOffset.dy);
+    canvas.scale(scaleFactor);
+
     for (var i = 0; i < sketch.lines.length; ++i) {
       final line = sketch.lines[i];
-      
-      // Use fixed width if specified, otherwise use line's original width
-      final effectiveLine = fixedStrokeWidth != null
-          ? line.copyWith(width: fixedStrokeWidth!)
-          : line;
 
-      if (effectiveLine.cachedImage != null && fixedStrokeWidth == null) {
+      // Use fixed width if specified, but don't adjust for scale factor
+      // The scale factor is already applied to the canvas, so we need to
+      // counteract it to maintain consistent visual stroke width
+      final effectiveLine = fixedStrokeWidth != null
+          ? line.copyWith(width: fixedStrokeWidth! / scaleFactor)
+          : line.copyWith(width: line.width / scaleFactor);
+
+      if (line.cachedImage != null && fixedStrokeWidth == null) {
         // If we have a cached image and no fixed width override, use it
-        final bounds = _getBoundsForLine(effectiveLine);
-        drawCachedLine(canvas, effectiveLine, bounds);
+        final bounds = _getBoundsForLine(line);
+        drawCachedLine(canvas, line, bounds);
       } else {
         // Otherwise generate the path and draw it
         final path = getPathForLine(
           effectiveLine,
-          scaleFactor: scaleFactor,
+          scaleFactor:
+              1.0, // Don't apply scale factor again since canvas is already scaled
         );
         if (path == null) {
           continue;
@@ -57,6 +79,8 @@ class ScribblePainter extends CustomPainter
         canvas.drawPath(path, paint);
       }
     }
+
+    canvas.restore();
 
     final endTime = DateTime.now();
     final renderTime = endTime.difference(startTime).inMilliseconds;
@@ -72,16 +96,15 @@ class ScribblePainter extends CustomPainter
   Rect _getBoundsForLine(SketchLine line) {
     if (line.points.isEmpty) return Rect.zero;
 
-    // Calculate bounds using the same scaleFactor as cache generation
-    // This ensures consistency between cache creation and display bounds
-    final logicalPath = getPathForLine(line, scaleFactor: scaleFactor);
+    // Calculate bounds using scale factor 1.0 since canvas is already scaled
+    final logicalPath = getPathForLine(line, scaleFactor: 1.0);
     if (logicalPath == null) return Rect.zero;
     final strokeBounds = logicalPath.getBounds();
 
-    // Use the same padding calculation as cache generation
-    final padding = (line.width * scaleFactor) / 2;
+    // Use the line's actual width for padding calculation
+    final padding = line.width / 2;
 
-    // The destination rectangle for drawImageRect should match the cached area
+    // The destination rectangle for drawImageRect
     return Rect.fromLTRB(
       strokeBounds.left - padding,
       strokeBounds.top - padding,
@@ -94,6 +117,8 @@ class ScribblePainter extends CustomPainter
   bool shouldRepaint(ScribblePainter oldDelegate) {
     return oldDelegate.sketch != sketch ||
         oldDelegate.scaleFactor != scaleFactor ||
-        oldDelegate.fixedStrokeWidth != fixedStrokeWidth;
+        oldDelegate.panOffset != panOffset ||
+        oldDelegate.fixedStrokeWidth != fixedStrokeWidth ||
+        oldDelegate.canvasSize != canvasSize;
   }
 }

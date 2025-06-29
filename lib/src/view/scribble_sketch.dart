@@ -13,7 +13,9 @@ class ScribbleSketch extends StatelessWidget {
   const ScribbleSketch({
     required this.sketch,
     this.scaleFactor = 1,
+    this.panOffset = Offset.zero,
     this.fixedStrokeWidth,
+    this.canvasSize,
     super.key,
   });
 
@@ -26,9 +28,15 @@ class ScribbleSketch extends StatelessWidget {
   /// (e.g. through InteractiveViewer) so that the pen width remains the same.
   final double scaleFactor;
 
+  /// The pan offset for the canvas.
+  final Offset panOffset;
+
   /// Fixed stroke width for all lines. When specified, all strokes will
   /// use this width regardless of their original width.
   final double? fixedStrokeWidth;
+
+  /// The size of the canvas for clipping. If null, no clipping is applied.
+  final Size? canvasSize;
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +44,9 @@ class ScribbleSketch extends StatelessWidget {
       painter: ScribblePainter(
         sketch: sketch,
         scaleFactor: scaleFactor,
+        panOffset: panOffset,
         fixedStrokeWidth: fixedStrokeWidth,
+        canvasSize: canvasSize,
       ),
     );
   }

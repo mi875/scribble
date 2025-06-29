@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:scribble/src/view/notifier/scribble_notifier.dart';
+import 'package:scribble/src/view/painting/dot_grid_painter.dart';
 import 'package:scribble/src/view/painting/scribble_editing_painter.dart';
 import 'package:scribble/src/view/painting/scribble_painter.dart';
 import 'package:scribble/src/view/pan_gesture_catcher.dart';
@@ -29,6 +30,22 @@ class Scribble extends StatelessWidget {
     /// Fixed stroke width for all drawing. When specified, all strokes will
     /// use this width regardless of pressure or other factors.
     this.fixedStrokeWidth,
+
+    /// The size of the canvas. If null, the canvas will expand to fill
+    /// all available space.
+    this.canvasSize,
+
+    /// Whether to show the dot grid background. Defaults to true.
+    this.showDotGrid = true,
+
+    /// The spacing between dots in the grid (in logical pixels at 100% zoom).
+    this.dotSpacing = 20.0,
+
+    /// The color of the dots in the grid.
+    this.dotColor = const Color(0x1A000000), // 10% opacity black
+
+    /// The radius of each dot in the grid.
+    this.dotRadius = 1.0,
     super.key,
   });
 
@@ -45,6 +62,22 @@ class Scribble extends StatelessWidget {
   /// use this width regardless of pressure or other factors.
   final double? fixedStrokeWidth;
 
+  /// The size of the canvas. If null, the canvas will expand to fill
+  /// all available space.
+  final Size? canvasSize;
+
+  /// Whether to show the dot grid background.
+  final bool showDotGrid;
+
+  /// The spacing between dots in the grid (in logical pixels at 100% zoom).
+  final double dotSpacing;
+
+  /// The color of the dots in the grid.
+  final Color dotColor;
+
+  /// The radius of each dot in the grid.
+  final double dotRadius;
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ScribbleState>(
@@ -52,13 +85,29 @@ class Scribble extends StatelessWidget {
       builder: (context, state, _) {
         final drawCurrentTool =
             drawPen && state is Drawing || drawEraser && state is Erasing;
-        final child = SizedBox.expand(
-          child: CustomPaint(
+
+        Widget buildScribbleCanvas() {
+          return CustomPaint(
+            painter: showDotGrid
+                ? DotGridPainter(
+                    scaleFactor: state.scaleFactor,
+                    panOffset: state.panOffset,
+                    canvasSize: (notifier is ScribbleNotifier)
+                        ? (notifier as ScribbleNotifier).canvasSize
+                        : null,
+                    dotSpacing: dotSpacing,
+                    dotColor: dotColor,
+                    dotRadius: dotRadius,
+                  )
+                : null,
             foregroundPainter: ScribbleEditingPainter(
               state: state,
               drawPointer: drawPen,
               drawEraser: drawEraser,
               fixedStrokeWidth: fixedStrokeWidth,
+              canvasSize: (notifier is ScribbleNotifier)
+                  ? (notifier as ScribbleNotifier).canvasSize
+                  : null,
             ),
             child: RepaintBoundary(
               key: notifier.repaintBoundaryKey,
@@ -66,12 +115,26 @@ class Scribble extends StatelessWidget {
                 painter: ScribblePainter(
                   sketch: state.sketch,
                   scaleFactor: state.scaleFactor,
+                  panOffset: state.panOffset,
                   fixedStrokeWidth: fixedStrokeWidth,
+                  canvasSize: (notifier is ScribbleNotifier)
+                      ? (notifier as ScribbleNotifier).canvasSize
+                      : null,
                 ),
               ),
             ),
-          ),
-        );
+          );
+        }
+
+        final child = canvasSize != null
+            ? SizedBox(
+                width: canvasSize!.width,
+                height: canvasSize!.height,
+                child: buildScribbleCanvas(),
+              )
+            : SizedBox.expand(
+                child: buildScribbleCanvas(),
+              );
         return !state.active
             ? child
             : GestureCatcher(

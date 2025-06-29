@@ -1,6 +1,5 @@
 import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:scribble/src/domain/model/point/point.dart';
 
@@ -10,8 +9,8 @@ part 'sketch_line.g.dart';
 /// {@template sketch_line}
 /// Represents a line in a sketch.
 /// {@endtemplate}
-@freezed
-class SketchLine with _$SketchLine {
+@Freezed()
+abstract class SketchLine with _$SketchLine {
   /// {@macro sketch_line}
   const factory SketchLine({
     /// The points that make up the line
@@ -24,7 +23,8 @@ class SketchLine with _$SketchLine {
     required double width,
 
     /// A cached image of the rendered line
-    @JsonKey(ignore: true) ui.Image? cachedImage,
+    @JsonKey(includeFromJson: false, includeToJson: false)
+    ui.Image? cachedImage,
   }) = _SketchLine;
 
   /// Constructs a sketch line from a JSON object.

@@ -8,8 +8,8 @@ part 'sketch.freezed.dart';
 part 'sketch.g.dart';
 
 /// Represents a sketch with a list of [SketchLine]s.
-@freezed
-class Sketch with _$Sketch {
+@Freezed()
+abstract class Sketch with _$Sketch {
   /// Represents a sketch with a list of [SketchLine]s.
   const factory Sketch({
     required List<SketchLine> lines,

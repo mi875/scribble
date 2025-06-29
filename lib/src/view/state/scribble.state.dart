@@ -5,7 +5,7 @@ import 'package:scribble/src/domain/model/sketch/sketch.dart';
 
 part 'scribble.state.freezed.dart';
 
-part 'scribble.state.g.dart';
+// part 'scribble.state.g.dart';
 
 /// Which pointers are allowed for drawing and will be captured by the scribble
 /// widget.
@@ -63,6 +63,13 @@ sealed class ScribbleState with _$ScribbleState {
     /// {@endtemplate}
     @Default(1) double scaleFactor,
 
+    /// {@template view.state.scribble_state.pan_offset}
+    /// The current pan offset for the canvas.
+    ///
+    /// Used for panning functionality when combined with zoom.
+    /// {@endtemplate}
+    @Default(Offset.zero) Offset panOffset,
+
     /// {@template view.state.scribble_state.simplification_tolerance}
     /// The current tolerance of simplification, in pixels.
     ///
@@ -97,6 +104,12 @@ sealed class ScribbleState with _$ScribbleState {
     /// (e.g. through InteractiveViewer) so that the pen width remains the same.
     @Default(1) double scaleFactor,
 
+    /// The current pan offset for the canvas.
+    ///
+    /// Used for panning functionality when combined with zoom.
+    @JsonKey(includeFromJson: false, includeToJson: false)
+    @Default(Offset.zero) Offset panOffset,
+
     /// The current tolerance of simplification, in pixels.
     ///
     /// Lines will be simplified when they are finished. A value of 0 (default)
@@ -104,9 +117,9 @@ sealed class ScribbleState with _$ScribbleState {
     @Default(0) double simplificationTolerance,
   }) = Erasing;
 
-  /// Constructs a [ScribbleState] from a JSON object.
-  factory ScribbleState.fromJson(Map<String, dynamic> json) =>
-      _$ScribbleStateFromJson(json);
+  // /// Constructs a [ScribbleState] from a JSON object.
+  // factory ScribbleState.fromJson(Map<String, dynamic> json) =>
+  //     _$ScribbleStateFromJson(json);
   const ScribbleState._();
 
   /// Returns whether the widget is currently active, meaning that only one
@@ -115,12 +128,12 @@ sealed class ScribbleState with _$ScribbleState {
 
   /// Returns the list of lines that should be drawn on the canvas by
   /// combining the sketches lines with the current active line if it exists.
-  List<SketchLine> get lines => map(
-        drawing: (d) => d.activeLine == null
+  List<SketchLine> get lines => switch (this) {
+        Drawing(:final activeLine) => activeLine == null
             ? sketch.lines
-            : [...sketch.lines, d.activeLine!],
-        erasing: (d) => d.sketch.lines,
-      );
+            : [...sketch.lines, activeLine],
+        Erasing() => sketch.lines,
+      };
 
   /// Returns a set of [PointerDeviceKind] that represents the currently
   /// supported devices, depending on [ScribbleState.allowedPointersMode].

@@ -61,7 +61,7 @@ class _HomePageState extends State<HomePage> {
                 margin: EdgeInsets.zero,
                 color: Colors.white,
                 surfaceTintColor: Colors.white,
-                child: Scribble(
+                child: ScribbleInteractive(
                   notifier: notifier,
                   drawPen: true,
                   fixedStrokeWidth: _fixedStrokeWidth,
@@ -88,7 +88,18 @@ class _HomePageState extends State<HomePage> {
                             // _buildStrokeToolbar(context),
                           ],
                         ),
-                        const Text("Fixed Stroke Width Drawing"),
+                        Column(
+                          children: [
+                            const Text("Fixed Stroke Width Drawing"),
+                            ValueListenableBuilder(
+                              valueListenable: notifier.select((value) => value.scaleFactor),
+                              builder: (context, scaleFactor, _) => Text(
+                                "Zoom: ${(scaleFactor * 100).toStringAsFixed(0)}%",
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                          ],
+                        ),
                         _buildPointerModeSwitcher(context),
                       ],
                     ),
@@ -189,6 +200,21 @@ class _HomePageState extends State<HomePage> {
         child: const Icon(Icons.redo),
       ),
       IconButton(
+        icon: const Icon(Icons.zoom_out),
+        tooltip: "Zoom Out",
+        onPressed: () => _zoomOut(),
+      ),
+      IconButton(
+        icon: const Icon(Icons.zoom_in),
+        tooltip: "Zoom In", 
+        onPressed: () => _zoomIn(),
+      ),
+      IconButton(
+        icon: const Icon(Icons.center_focus_strong),
+        tooltip: "Reset Zoom",
+        onPressed: () => _resetZoom(),
+      ),
+      IconButton(
         icon: const Icon(Icons.clear),
         tooltip: "Clear",
         onPressed: notifier.clear,
@@ -204,6 +230,22 @@ class _HomePageState extends State<HomePage> {
         onPressed: () => _showJson(context),
       ),
     ];
+  }
+
+  void _zoomIn() {
+    final currentScale = notifier.value.scaleFactor;
+    final newScale = (currentScale * 1.5).clamp(0.1, 10.0);
+    notifier.setScaleFactor(newScale);
+  }
+
+  void _zoomOut() {
+    final currentScale = notifier.value.scaleFactor;
+    final newScale = (currentScale / 1.5).clamp(0.1, 10.0);
+    notifier.setScaleFactor(newScale);
+  }
+
+  void _resetZoom() {
+    notifier.setZoomAndPan(scaleFactor: 1.0, panOffset: Offset.zero);
   }
 
   void _showImage(BuildContext context) async {

@@ -98,10 +98,14 @@ class ScribbleNotifier extends ScribbleNotifierBase
 
     /// {@macro view.state.scribble_state.simplification_tolerance}
     double simplificationTolerance = 0,
-    
+
     /// Fixed stroke width for all drawing. When specified, all strokes will
     /// use this width regardless of pressure or other factors.
     this.fixedStrokeWidth,
+
+    /// The size of the drawing canvas (paper). If specified, drawing and
+    /// erasing will be constrained to this area.
+    this.canvasSize,
   }) : super(
           ScribbleState.drawing(
             sketch: switch (sketch) {
@@ -118,8 +122,6 @@ class ScribbleNotifier extends ScribbleNotifierBase
         ) {
     this.maxHistoryLength = maxHistoryLength;
   }
-
-
 
   /// The state of the sketch at this moment.
   ///
@@ -146,6 +148,10 @@ class ScribbleNotifier extends ScribbleNotifierBase
   /// Fixed stroke width for all drawing. When specified, all strokes will
   /// use this width regardless of pressure or other factors.
   final double? fixedStrokeWidth;
+
+  /// The size of the drawing canvas (paper). If specified, drawing and
+  /// erasing will be constrained to this area.
+  final Size? canvasSize;
 
   /// Only apply the sketch from the undo history, otherwise keep current state
   @override
@@ -230,12 +236,37 @@ class ScribbleNotifier extends ScribbleNotifierBase
 
   /// Switches to eraser mode
   void setEraser() {
+    // Finish any active line before switching to eraser mode
+    final currentState =
+        value is Drawing && (value as Drawing).activeLine != null
+            ? _finishLineForState(value)
+            : value;
+
     temporaryValue = ScribbleState.erasing(
+      sketch: currentState.sketch,
+      selectedWidth: currentState.selectedWidth,
+      scaleFactor: currentState.scaleFactor,
+      panOffset: currentState.panOffset,
+      allowedPointersMode: currentState.allowedPointersMode,
+      activePointerIds: currentState.activePointerIds,
+      pointerPosition: currentState.pointerPosition,
+      simplificationTolerance: currentState.simplificationTolerance,
+    );
+  }
+
+  /// Switches to drawing mode
+  void setDrawing() {
+    temporaryValue = ScribbleState.drawing(
       sketch: value.sketch,
+      selectedColor:
+          value is Drawing ? (value as Drawing).selectedColor : 0xFF000000,
       selectedWidth: value.selectedWidth,
       scaleFactor: value.scaleFactor,
+      panOffset: value.panOffset,
       allowedPointersMode: value.allowedPointersMode,
       activePointerIds: value.activePointerIds,
+      pointerPosition: value.pointerPosition,
+      simplificationTolerance: value.simplificationTolerance,
     );
   }
 
@@ -258,24 +289,51 @@ class ScribbleNotifier extends ScribbleNotifierBase
     );
   }
 
+  /// Sets the pan offset for the canvas.
+  ///
+  /// This allows for panning the canvas view.
+  void setPanOffset(Offset offset) {
+    temporaryValue = value.copyWith(
+      panOffset: offset,
+    );
+  }
+
+  /// Sets both zoom factor and pan offset simultaneously.
+  ///
+  /// This is more efficient than calling setScaleFactor and setPanOffset
+  /// separately.
+  void setZoomAndPan({required double scaleFactor, required Offset panOffset}) {
+    assert(scaleFactor > 0, "The scale factor must be greater than 0.");
+    temporaryValue = value.copyWith(
+      scaleFactor: scaleFactor,
+      panOffset: panOffset,
+    );
+  }
+
   /// Sets the color of the pen to the given color.
   void setColor(Color color) {
-    temporaryValue = value.map(
-      drawing: (s) => ScribbleState.drawing(
-        sketch: s.sketch,
-        selectedColor: color.value, // ignore: deprecated_member_use
-        selectedWidth: s.selectedWidth,
-        allowedPointersMode: s.allowedPointersMode,
-      ),
-      erasing: (s) => ScribbleState.drawing(
-        sketch: s.sketch,
-        selectedColor: color.value, // ignore: deprecated_member_use
-        selectedWidth: s.selectedWidth,
-        allowedPointersMode: s.allowedPointersMode,
-        scaleFactor: value.scaleFactor,
-        activePointerIds: value.activePointerIds,
-      ),
-    );
+    temporaryValue = switch (value) {
+      Drawing() => ScribbleState.drawing(
+          sketch: value.sketch,
+          selectedColor: color.value, // ignore: deprecated_member_use
+          selectedWidth: value.selectedWidth,
+          allowedPointersMode: value.allowedPointersMode,
+          scaleFactor: value.scaleFactor,
+          panOffset: value.panOffset,
+          activePointerIds: value.activePointerIds,
+          simplificationTolerance: value.simplificationTolerance,
+        ),
+      Erasing() => ScribbleState.drawing(
+          sketch: value.sketch,
+          selectedColor: color.value, // ignore: deprecated_member_use
+          selectedWidth: value.selectedWidth,
+          allowedPointersMode: value.allowedPointersMode,
+          scaleFactor: value.scaleFactor,
+          panOffset: value.panOffset,
+          activePointerIds: value.activePointerIds,
+          simplificationTolerance: value.simplificationTolerance,
+        ),
+    };
   }
 
   /// Sets the simplification degree for the sketch in logical pixels.
@@ -429,25 +487,28 @@ class ScribbleNotifier extends ScribbleNotifierBase
 
     // Are there already pointers on the screen?
     if (value.activePointerIds.isNotEmpty) {
-      s = value.map(
-        drawing: (s) =>
-            // If the current line already contains something
-            (s.activeLine != null && s.activeLine!.points.length > 2)
-                ? _finishLineForState(s)
-                : s.copyWith(
-                    activeLine: null,
-                  ),
-        erasing: (s) => s,
-      );
+      s = switch (value) {
+        Drawing(activeLine: final activeLine) =>
+          // If the current line already contains something
+          (activeLine != null && activeLine.points.length > 2)
+              ? _finishLineForState(value)
+              : (value as Drawing).copyWith(
+                  activeLine: null,
+                ),
+        Erasing() => value,
+      };
     } else if (value is Drawing) {
-      s = (value as Drawing).copyWith(
-        pointerPosition: _getPointFromEvent(event),
-        activeLine: SketchLine(
-          points: [_getPointFromEvent(event)],
-          color: (value as Drawing).selectedColor,
-          width: (fixedStrokeWidth ?? value.selectedWidth) / value.scaleFactor,
-        ),
-      );
+      final point = _getPointFromEvent(event);
+      if (point != null) {
+        s = (value as Drawing).copyWith(
+          pointerPosition: point,
+          activeLine: SketchLine(
+            points: [point],
+            color: (value as Drawing).selectedColor,
+            width: fixedStrokeWidth ?? value.selectedWidth,
+          ),
+        );
+      }
     }
     temporaryValue = s.copyWith(
       activePointerIds: [...value.activePointerIds, event.pointer],
@@ -532,31 +593,41 @@ class ScribbleNotifier extends ScribbleNotifierBase
     final distanceToLast = currentLine.points.isEmpty
         ? double.infinity
         : (currentLine.points.last.asOffset - event.localPosition).distance;
-    
+
     // Adaptive filtering: use smaller threshold for better detail preservation
     // Scale based on line width and device pixel ratio for consistent quality
-    final adaptiveThreshold = (kPrecisePointerPanSlop * 0.5) / 
+    final adaptiveThreshold = (kPrecisePointerPanSlop * 0.5) /
         (s.scaleFactor * (currentLine.width / 10.0).clamp(0.5, 2.0));
-    
+
     if (distanceToLast <= adaptiveThreshold) return s;
+
+    final newPoint = _getPointFromEvent(event);
+    if (newPoint == null) return s; // Don't add points outside canvas bounds
+
     return s.copyWith(
       activeLine: currentLine.copyWith(
         points: [
           ...currentLine.points,
-          _getPointFromEvent(event),
+          newPoint,
         ],
       ),
     );
   }
 
   ScribbleState _erasePoint(PointerEvent event) {
+    // Transform the pointer position to canvas coordinates
+    final transformedPosition = _transformPointerPosition(event.localPosition);
+
+    // Define eraser radius (could be made configurable)
+    final eraserRadius = value.selectedWidth * 2.0;
+
     return value.copyWith.sketch(
       lines: value.sketch.lines
           .where(
             (l) => l.points.every(
               (p) =>
-                  (event.localPosition - p.asOffset).distance >
-                  l.width + value.selectedWidth,
+                  (transformedPosition - p.asOffset).distance >
+                  l.width / 2 + eraserRadius,
             ),
           )
           .toList(),
@@ -564,12 +635,60 @@ class ScribbleNotifier extends ScribbleNotifierBase
   }
 
   /// Converts a pointer event to the [Point] on the canvas.
-  Point _getPointFromEvent(PointerEvent event) {
+  ///
+  /// This method accounts for zoom and pan transformations to ensure
+  /// drawing coordinates are correct regardless of the current view state.
+  /// Returns null if the point is outside the canvas bounds.
+  Point? _getPointFromEvent(PointerEvent event) {
+    // Transform the pointer position to account for zoom and pan
+    final transformedPosition = _transformPointerPosition(event.localPosition);
+
+    // Check if the point is within canvas bounds
+    if (!_isPointInCanvas(transformedPosition)) {
+      return null;
+    }
+
     return Point(
-      event.localPosition.dx,
-      event.localPosition.dy,
+      transformedPosition.dx,
+      transformedPosition.dy,
       pressure: 0.5, // Fixed pressure since we're using fixed width
     );
+  }
+
+  /// Transforms a pointer position from screen coordinates to canvas coordinates
+  /// accounting for zoom and pan transformations.
+  Offset _transformPointerPosition(Offset screenPosition) {
+    final state = value;
+
+    // The painters apply transformations in this order:
+    // 1. Clip to canvas bounds (if canvasSize is specified)
+    // 2. Translate by panOffset
+    // 3. Scale by scaleFactor
+
+    // To reverse: we need to undo scale first, then undo translate
+
+    // 1. First, reverse the scaling (zoom)
+    final afterScale = Offset(
+      screenPosition.dx / state.scaleFactor,
+      screenPosition.dy / state.scaleFactor,
+    );
+
+    // 2. Then, reverse the translation (pan)
+    // Note: panOffset is applied in canvas coordinates, so we need to reverse it
+    // in the same coordinate space
+    final canvasPosition = afterScale - (state.panOffset / state.scaleFactor);
+
+    return canvasPosition;
+  }
+
+  /// Checks if a point is within the canvas bounds
+  bool _isPointInCanvas(Offset point) {
+    if (canvasSize == null) return true;
+
+    return point.dx >= 0 &&
+        point.dx <= canvasSize!.width &&
+        point.dy >= 0 &&
+        point.dy <= canvasSize!.height;
   }
 
   ScribbleState _finishLineForState(ScribbleState s) {
