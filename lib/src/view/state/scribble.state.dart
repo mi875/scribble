@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:scribble/src/domain/model/sketch/sketch.dart';
 
@@ -77,6 +78,19 @@ sealed class ScribbleState with _$ScribbleState {
     /// will mean no simplification.
     /// {@endtemplate}
     @Default(0) double simplificationTolerance,
+
+    /// The background image of the scribble area.
+    ///
+    /// This can be used to provide an image that the user can scribble on
+    /// top of.
+    ImageProvider? backgroundImage,
+
+    /// The size of the background image.
+    ///
+    /// If null, the background image will use the canvas size or fit according
+    /// to the BoxFit setting. If specified, the background image will be
+    /// rendered at this specific size.
+    Size? backgroundImageSize,
   }) = Drawing;
 
   /// The state of the scribble widget when the user is currently erasing.
@@ -107,7 +121,6 @@ sealed class ScribbleState with _$ScribbleState {
     /// The current pan offset for the canvas.
     ///
     /// Used for panning functionality when combined with zoom.
-    @JsonKey(includeFromJson: false, includeToJson: false)
     @Default(Offset.zero) Offset panOffset,
 
     /// The current tolerance of simplification, in pixels.
@@ -115,6 +128,19 @@ sealed class ScribbleState with _$ScribbleState {
     /// Lines will be simplified when they are finished. A value of 0 (default)
     /// will mean no simplification.
     @Default(0) double simplificationTolerance,
+
+    /// The background image of the scribble area.
+    ///
+    /// This can be used to provide an image that the user can erase
+    /// top of.
+    ImageProvider? backgroundImage,
+
+    /// The size of the background image.
+    ///
+    /// If null, the background image will use the canvas size or fit according
+    /// to the BoxFit setting. If specified, the background image will be
+    /// rendered at this specific size.
+    Size? backgroundImageSize,
   }) = Erasing;
 
   // /// Constructs a [ScribbleState] from a JSON object.
@@ -129,9 +155,8 @@ sealed class ScribbleState with _$ScribbleState {
   /// Returns the list of lines that should be drawn on the canvas by
   /// combining the sketches lines with the current active line if it exists.
   List<SketchLine> get lines => switch (this) {
-        Drawing(:final activeLine) => activeLine == null
-            ? sketch.lines
-            : [...sketch.lines, activeLine],
+        Drawing(:final activeLine) =>
+          activeLine == null ? sketch.lines : [...sketch.lines, activeLine],
         Erasing() => sketch.lines,
       };
 

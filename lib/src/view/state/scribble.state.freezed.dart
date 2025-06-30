@@ -45,7 +45,6 @@ mixin _$ScribbleState {
   ///
   /// Used for panning functionality when combined with zoom.
   /// {@endtemplate}
-  @JsonKey(includeFromJson: false, includeToJson: false)
   Offset get panOffset;
 
   /// {@template view.state.scribble_state.simplification_tolerance}
@@ -55,6 +54,19 @@ mixin _$ScribbleState {
   /// will mean no simplification.
   /// {@endtemplate}
   double get simplificationTolerance;
+
+  /// The background image of the scribble area.
+  ///
+  /// This can be used to provide an image that the user can scribble on
+  /// top of.
+  ImageProvider? get backgroundImage;
+
+  /// The size of the background image.
+  ///
+  /// If null, the background image will use the canvas size or fit according
+  /// to the BoxFit setting. If specified, the background image will be
+  /// rendered at this specific size.
+  Size? get backgroundImageSize;
 
   /// Create a copy of ScribbleState
   /// with the given fields replaced by the non-null parameter values.
@@ -84,7 +96,11 @@ mixin _$ScribbleState {
                 other.panOffset == panOffset) &&
             (identical(
                     other.simplificationTolerance, simplificationTolerance) ||
-                other.simplificationTolerance == simplificationTolerance));
+                other.simplificationTolerance == simplificationTolerance) &&
+            (identical(other.backgroundImage, backgroundImage) ||
+                other.backgroundImage == backgroundImage) &&
+            (identical(other.backgroundImageSize, backgroundImageSize) ||
+                other.backgroundImageSize == backgroundImageSize));
   }
 
   @override
@@ -97,11 +113,13 @@ mixin _$ScribbleState {
       selectedWidth,
       scaleFactor,
       panOffset,
-      simplificationTolerance);
+      simplificationTolerance,
+      backgroundImage,
+      backgroundImageSize);
 
   @override
   String toString() {
-    return 'ScribbleState(sketch: $sketch, allowedPointersMode: $allowedPointersMode, activePointerIds: $activePointerIds, pointerPosition: $pointerPosition, selectedWidth: $selectedWidth, scaleFactor: $scaleFactor, panOffset: $panOffset, simplificationTolerance: $simplificationTolerance)';
+    return 'ScribbleState(sketch: $sketch, allowedPointersMode: $allowedPointersMode, activePointerIds: $activePointerIds, pointerPosition: $pointerPosition, selectedWidth: $selectedWidth, scaleFactor: $scaleFactor, panOffset: $panOffset, simplificationTolerance: $simplificationTolerance, backgroundImage: $backgroundImage, backgroundImageSize: $backgroundImageSize)';
   }
 }
 
@@ -119,7 +137,9 @@ abstract mixin class $ScribbleStateCopyWith<$Res> {
       double selectedWidth,
       double scaleFactor,
       Offset panOffset,
-      double simplificationTolerance});
+      double simplificationTolerance,
+      ImageProvider<Object>? backgroundImage,
+      Size? backgroundImageSize});
 
   $SketchCopyWith<$Res> get sketch;
   $PointCopyWith<$Res>? get pointerPosition;
@@ -146,6 +166,8 @@ class _$ScribbleStateCopyWithImpl<$Res>
     Object? scaleFactor = null,
     Object? panOffset = null,
     Object? simplificationTolerance = null,
+    Object? backgroundImage = freezed,
+    Object? backgroundImageSize = freezed,
   }) {
     return _then(_self.copyWith(
       sketch: null == sketch
@@ -180,6 +202,14 @@ class _$ScribbleStateCopyWithImpl<$Res>
           ? _self.simplificationTolerance
           : simplificationTolerance // ignore: cast_nullable_to_non_nullable
               as double,
+      backgroundImage: freezed == backgroundImage
+          ? _self.backgroundImage
+          : backgroundImage // ignore: cast_nullable_to_non_nullable
+              as ImageProvider<Object>?,
+      backgroundImageSize: freezed == backgroundImageSize
+          ? _self.backgroundImageSize
+          : backgroundImageSize // ignore: cast_nullable_to_non_nullable
+              as Size?,
     ));
   }
 
@@ -221,7 +251,9 @@ class Drawing extends ScribbleState {
       this.selectedWidth = 5,
       this.scaleFactor = 1,
       this.panOffset = Offset.zero,
-      this.simplificationTolerance = 0})
+      this.simplificationTolerance = 0,
+      this.backgroundImage,
+      this.backgroundImageSize})
       : _activePointerIds = activePointerIds,
         super._();
 
@@ -295,6 +327,21 @@ class Drawing extends ScribbleState {
   @JsonKey()
   final double simplificationTolerance;
 
+  /// The background image of the scribble area.
+  ///
+  /// This can be used to provide an image that the user can scribble on
+  /// top of.
+  @override
+  final ImageProvider? backgroundImage;
+
+  /// The size of the background image.
+  ///
+  /// If null, the background image will use the canvas size or fit according
+  /// to the BoxFit setting. If specified, the background image will be
+  /// rendered at this specific size.
+  @override
+  final Size? backgroundImageSize;
+
   /// Create a copy of ScribbleState
   /// with the given fields replaced by the non-null parameter values.
   @override
@@ -327,7 +374,11 @@ class Drawing extends ScribbleState {
                 other.panOffset == panOffset) &&
             (identical(
                     other.simplificationTolerance, simplificationTolerance) ||
-                other.simplificationTolerance == simplificationTolerance));
+                other.simplificationTolerance == simplificationTolerance) &&
+            (identical(other.backgroundImage, backgroundImage) ||
+                other.backgroundImage == backgroundImage) &&
+            (identical(other.backgroundImageSize, backgroundImageSize) ||
+                other.backgroundImageSize == backgroundImageSize));
   }
 
   @override
@@ -342,11 +393,13 @@ class Drawing extends ScribbleState {
       selectedWidth,
       scaleFactor,
       panOffset,
-      simplificationTolerance);
+      simplificationTolerance,
+      backgroundImage,
+      backgroundImageSize);
 
   @override
   String toString() {
-    return 'ScribbleState.drawing(sketch: $sketch, activeLine: $activeLine, allowedPointersMode: $allowedPointersMode, activePointerIds: $activePointerIds, pointerPosition: $pointerPosition, selectedColor: $selectedColor, selectedWidth: $selectedWidth, scaleFactor: $scaleFactor, panOffset: $panOffset, simplificationTolerance: $simplificationTolerance)';
+    return 'ScribbleState.drawing(sketch: $sketch, activeLine: $activeLine, allowedPointersMode: $allowedPointersMode, activePointerIds: $activePointerIds, pointerPosition: $pointerPosition, selectedColor: $selectedColor, selectedWidth: $selectedWidth, scaleFactor: $scaleFactor, panOffset: $panOffset, simplificationTolerance: $simplificationTolerance, backgroundImage: $backgroundImage, backgroundImageSize: $backgroundImageSize)';
   }
 }
 
@@ -367,7 +420,9 @@ abstract mixin class $DrawingCopyWith<$Res>
       double selectedWidth,
       double scaleFactor,
       Offset panOffset,
-      double simplificationTolerance});
+      double simplificationTolerance,
+      ImageProvider? backgroundImage,
+      Size? backgroundImageSize});
 
   @override
   $SketchCopyWith<$Res> get sketch;
@@ -398,6 +453,8 @@ class _$DrawingCopyWithImpl<$Res> implements $DrawingCopyWith<$Res> {
     Object? scaleFactor = null,
     Object? panOffset = null,
     Object? simplificationTolerance = null,
+    Object? backgroundImage = freezed,
+    Object? backgroundImageSize = freezed,
   }) {
     return _then(Drawing(
       sketch: null == sketch
@@ -440,6 +497,14 @@ class _$DrawingCopyWithImpl<$Res> implements $DrawingCopyWith<$Res> {
           ? _self.simplificationTolerance
           : simplificationTolerance // ignore: cast_nullable_to_non_nullable
               as double,
+      backgroundImage: freezed == backgroundImage
+          ? _self.backgroundImage
+          : backgroundImage // ignore: cast_nullable_to_non_nullable
+              as ImageProvider?,
+      backgroundImageSize: freezed == backgroundImageSize
+          ? _self.backgroundImageSize
+          : backgroundImageSize // ignore: cast_nullable_to_non_nullable
+              as Size?,
     ));
   }
 
@@ -492,9 +557,10 @@ class Erasing extends ScribbleState {
       this.pointerPosition,
       this.selectedWidth = 5,
       this.scaleFactor = 1,
-      @JsonKey(includeFromJson: false, includeToJson: false)
       this.panOffset = Offset.zero,
-      this.simplificationTolerance = 0})
+      this.simplificationTolerance = 0,
+      this.backgroundImage,
+      this.backgroundImageSize})
       : _activePointerIds = activePointerIds,
         super._();
 
@@ -544,7 +610,7 @@ class Erasing extends ScribbleState {
   ///
   /// Used for panning functionality when combined with zoom.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey()
   final Offset panOffset;
 
   /// The current tolerance of simplification, in pixels.
@@ -554,6 +620,21 @@ class Erasing extends ScribbleState {
   @override
   @JsonKey()
   final double simplificationTolerance;
+
+  /// The background image of the scribble area.
+  ///
+  /// This can be used to provide an image that the user can erase
+  /// top of.
+  @override
+  final ImageProvider? backgroundImage;
+
+  /// The size of the background image.
+  ///
+  /// If null, the background image will use the canvas size or fit according
+  /// to the BoxFit setting. If specified, the background image will be
+  /// rendered at this specific size.
+  @override
+  final Size? backgroundImageSize;
 
   /// Create a copy of ScribbleState
   /// with the given fields replaced by the non-null parameter values.
@@ -583,7 +664,11 @@ class Erasing extends ScribbleState {
                 other.panOffset == panOffset) &&
             (identical(
                     other.simplificationTolerance, simplificationTolerance) ||
-                other.simplificationTolerance == simplificationTolerance));
+                other.simplificationTolerance == simplificationTolerance) &&
+            (identical(other.backgroundImage, backgroundImage) ||
+                other.backgroundImage == backgroundImage) &&
+            (identical(other.backgroundImageSize, backgroundImageSize) ||
+                other.backgroundImageSize == backgroundImageSize));
   }
 
   @override
@@ -596,11 +681,13 @@ class Erasing extends ScribbleState {
       selectedWidth,
       scaleFactor,
       panOffset,
-      simplificationTolerance);
+      simplificationTolerance,
+      backgroundImage,
+      backgroundImageSize);
 
   @override
   String toString() {
-    return 'ScribbleState.erasing(sketch: $sketch, allowedPointersMode: $allowedPointersMode, activePointerIds: $activePointerIds, pointerPosition: $pointerPosition, selectedWidth: $selectedWidth, scaleFactor: $scaleFactor, panOffset: $panOffset, simplificationTolerance: $simplificationTolerance)';
+    return 'ScribbleState.erasing(sketch: $sketch, allowedPointersMode: $allowedPointersMode, activePointerIds: $activePointerIds, pointerPosition: $pointerPosition, selectedWidth: $selectedWidth, scaleFactor: $scaleFactor, panOffset: $panOffset, simplificationTolerance: $simplificationTolerance, backgroundImage: $backgroundImage, backgroundImageSize: $backgroundImageSize)';
   }
 }
 
@@ -618,8 +705,10 @@ abstract mixin class $ErasingCopyWith<$Res>
       Point? pointerPosition,
       double selectedWidth,
       double scaleFactor,
-      @JsonKey(includeFromJson: false, includeToJson: false) Offset panOffset,
-      double simplificationTolerance});
+      Offset panOffset,
+      double simplificationTolerance,
+      ImageProvider? backgroundImage,
+      Size? backgroundImageSize});
 
   @override
   $SketchCopyWith<$Res> get sketch;
@@ -647,6 +736,8 @@ class _$ErasingCopyWithImpl<$Res> implements $ErasingCopyWith<$Res> {
     Object? scaleFactor = null,
     Object? panOffset = null,
     Object? simplificationTolerance = null,
+    Object? backgroundImage = freezed,
+    Object? backgroundImageSize = freezed,
   }) {
     return _then(Erasing(
       sketch: null == sketch
@@ -681,6 +772,14 @@ class _$ErasingCopyWithImpl<$Res> implements $ErasingCopyWith<$Res> {
           ? _self.simplificationTolerance
           : simplificationTolerance // ignore: cast_nullable_to_non_nullable
               as double,
+      backgroundImage: freezed == backgroundImage
+          ? _self.backgroundImage
+          : backgroundImage // ignore: cast_nullable_to_non_nullable
+              as ImageProvider?,
+      backgroundImageSize: freezed == backgroundImageSize
+          ? _self.backgroundImageSize
+          : backgroundImageSize // ignore: cast_nullable_to_non_nullable
+              as Size?,
     ));
   }
 

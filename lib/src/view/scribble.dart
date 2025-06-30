@@ -8,6 +8,7 @@ import 'package:scribble/src/view/painting/scribble_editing_painter.dart';
 import 'package:scribble/src/view/painting/scribble_painter.dart';
 import 'package:scribble/src/view/pan_gesture_catcher.dart';
 import 'package:scribble/src/view/state/scribble.state.dart';
+import 'package:scribble/src/view/widgets/background_image_widget.dart';
 
 /// {@template scribble}
 /// This Widget represents a canvas on which users can draw with any pointer.
@@ -46,6 +47,9 @@ class Scribble extends StatelessWidget {
 
     /// The radius of each dot in the grid.
     this.dotRadius = 1.0,
+
+    /// How the background image should fit within the canvas.
+    this.backgroundImageFit = BoxFit.contain,
     super.key,
   });
 
@@ -78,6 +82,9 @@ class Scribble extends StatelessWidget {
   /// The radius of each dot in the grid.
   final double dotRadius;
 
+  /// How the background image should fit within the canvas.
+  final BoxFit backgroundImageFit;
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ScribbleState>(
@@ -87,7 +94,7 @@ class Scribble extends StatelessWidget {
             drawPen && state is Drawing || drawEraser && state is Erasing;
 
         Widget buildScribbleCanvas() {
-          return CustomPaint(
+          final canvas = CustomPaint(
             painter: showDotGrid
                 ? DotGridPainter(
                     scaleFactor: state.scaleFactor,
@@ -124,6 +131,23 @@ class Scribble extends StatelessWidget {
               ),
             ),
           );
+
+          // Wrap with background image if present
+          if (state.backgroundImage != null) {
+            return BackgroundImageWidget(
+              imageProvider: state.backgroundImage!,
+              scaleFactor: state.scaleFactor,
+              panOffset: state.panOffset,
+              canvasSize: (notifier is ScribbleNotifier)
+                  ? (notifier as ScribbleNotifier).canvasSize
+                  : null,
+              backgroundImageSize: state.backgroundImageSize,
+              fit: backgroundImageFit,
+              child: canvas,
+            );
+          }
+
+          return canvas;
         }
 
         final child = canvasSize != null

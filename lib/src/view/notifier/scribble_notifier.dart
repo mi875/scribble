@@ -106,6 +106,12 @@ class ScribbleNotifier extends ScribbleNotifierBase
     /// The size of the drawing canvas (paper). If specified, drawing and
     /// erasing will be constrained to this area.
     this.canvasSize,
+
+    /// Background image for the canvas.
+    ImageProvider? backgroundImage,
+
+    /// Size of the background image.
+    Size? backgroundImageSize,
   }) : super(
           ScribbleState.drawing(
             sketch: switch (sketch) {
@@ -118,6 +124,8 @@ class ScribbleNotifier extends ScribbleNotifierBase
             selectedWidth: fixedStrokeWidth ?? 5.0,
             allowedPointersMode: allowedPointersMode,
             simplificationTolerance: simplificationTolerance,
+            backgroundImage: backgroundImage,
+            backgroundImageSize: backgroundImageSize,
           ),
         ) {
     this.maxHistoryLength = maxHistoryLength;
@@ -251,6 +259,8 @@ class ScribbleNotifier extends ScribbleNotifierBase
       activePointerIds: currentState.activePointerIds,
       pointerPosition: currentState.pointerPosition,
       simplificationTolerance: currentState.simplificationTolerance,
+      backgroundImage: currentState.backgroundImage,
+      backgroundImageSize: currentState.backgroundImageSize,
     );
   }
 
@@ -267,6 +277,8 @@ class ScribbleNotifier extends ScribbleNotifierBase
       activePointerIds: value.activePointerIds,
       pointerPosition: value.pointerPosition,
       simplificationTolerance: value.simplificationTolerance,
+      backgroundImage: value.backgroundImage,
+      backgroundImageSize: value.backgroundImageSize,
     );
   }
 
@@ -322,6 +334,8 @@ class ScribbleNotifier extends ScribbleNotifierBase
           panOffset: value.panOffset,
           activePointerIds: value.activePointerIds,
           simplificationTolerance: value.simplificationTolerance,
+          backgroundImage: value.backgroundImage,
+          backgroundImageSize: value.backgroundImageSize,
         ),
       Erasing() => ScribbleState.drawing(
           sketch: value.sketch,
@@ -332,8 +346,37 @@ class ScribbleNotifier extends ScribbleNotifierBase
           panOffset: value.panOffset,
           activePointerIds: value.activePointerIds,
           simplificationTolerance: value.simplificationTolerance,
+          backgroundImage: value.backgroundImage,
+          backgroundImageSize: value.backgroundImageSize,
         ),
     };
+  }
+
+  /// Sets the background image for the canvas.
+  void setBackgroundImage(ImageProvider? backgroundImage) {
+    temporaryValue = value.copyWith(
+      backgroundImage: backgroundImage,
+    );
+  }
+
+  /// Sets the background image and its size for the canvas.
+  void setBackgroundImageWithSize(ImageProvider? backgroundImage, Size? size) {
+    temporaryValue = value.copyWith(
+      backgroundImage: backgroundImage,
+      backgroundImageSize: size,
+    );
+  }
+
+  /// Sets the size of the background image.
+  void setBackgroundImageSize(Size? size) {
+    temporaryValue = value.copyWith(
+      backgroundImageSize: size,
+    );
+  }
+
+  /// Clears the background image.
+  void clearBackgroundImage() {
+    setBackgroundImage(null);
   }
 
   /// Sets the simplification degree for the sketch in logical pixels.

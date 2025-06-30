@@ -50,6 +50,9 @@ class ScribbleInteractive extends StatefulWidget {
 
     /// The radius of each dot in the grid.
     this.dotRadius = 1.0,
+
+    /// How the background image should fit within the canvas.
+    this.backgroundImageFit = BoxFit.contain,
     super.key,
   });
 
@@ -91,6 +94,9 @@ class ScribbleInteractive extends StatefulWidget {
 
   /// The radius of each dot in the grid.
   final double dotRadius;
+
+  /// How the background image should fit within the canvas.
+  final BoxFit backgroundImageFit;
 
   @override
   State<ScribbleInteractive> createState() => _ScribbleInteractiveState();
@@ -481,6 +487,7 @@ class _ScribbleInteractiveState extends State<ScribbleInteractive> {
         dotSpacing: widget.dotSpacing,
         dotColor: widget.dotColor,
         dotRadius: widget.dotRadius,
+        backgroundImageFit: widget.backgroundImageFit,
       );
     }
 
@@ -498,6 +505,7 @@ class _ScribbleInteractiveState extends State<ScribbleInteractive> {
         dotSpacing: widget.dotSpacing,
         dotColor: widget.dotColor,
         dotRadius: widget.dotRadius,
+        backgroundImageFit: widget.backgroundImageFit,
       ),
     );
   }
