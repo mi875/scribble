@@ -363,9 +363,15 @@ class _ScribbleInteractiveState extends State<ScribbleInteractive> {
     final minY = viewportSize.height - scaledCanvasHeight - zoomTolerance;
     final maxY = zoomTolerance;
 
+    // Ensure clamp bounds are valid (min <= max)
+    final validMinX = math.min(minX, maxX);
+    final validMaxX = math.max(minX, maxX);
+    final validMinY = math.min(minY, maxY);
+    final validMaxY = math.max(minY, maxY);
+
     return Offset(
-      offset.dx.clamp(minX, maxX),
-      offset.dy.clamp(minY, maxY),
+      offset.dx.clamp(validMinX, validMaxX),
+      offset.dy.clamp(validMinY, validMaxY),
     );
   }
 

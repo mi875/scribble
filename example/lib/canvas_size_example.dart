@@ -114,7 +114,8 @@ class _CanvasSizeExamplePageState extends State<CanvasSizeExamplePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Canvas & Display Size Example with Background Image'),
+        title:
+            const Text('Canvas & Display Size Example with Background Image'),
         backgroundColor: Colors.blue,
       ),
       body: Column(
