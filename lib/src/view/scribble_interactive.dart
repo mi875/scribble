@@ -32,6 +32,7 @@ class ScribbleInteractive extends StatefulWidget {
 
     /// The display size of the widget. If null, uses canvasSize or expands to fill space.
     /// This allows the logical canvas size to be different from the display size.
+    /// When null, the widget will expand to fill all available space regardless of canvasSize.
     this.displaySize,
 
     /// Minimum zoom scale factor. Defaults to 1.0 (100%).
@@ -79,6 +80,7 @@ class ScribbleInteractive extends StatefulWidget {
 
   /// The display size of the widget. If null, uses canvasSize or expands to fill space.
   /// This allows the logical canvas size to be different from the display size.
+  /// When null, the widget will expand to fill all available space regardless of canvasSize.
   final Size? displaySize;
 
   /// Minimum zoom scale factor.

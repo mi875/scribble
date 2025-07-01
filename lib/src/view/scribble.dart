@@ -38,6 +38,7 @@ class Scribble extends StatelessWidget {
 
     /// The display size of the widget. If null, uses canvasSize or expands to fill space.
     /// This allows the logical canvas size to be different from the display size.
+    /// When null, the widget will expand to fill all available space regardless of canvasSize.
     this.displaySize,
 
     /// Whether to show the dot grid background. Defaults to true.
@@ -76,6 +77,7 @@ class Scribble extends StatelessWidget {
 
   /// The display size of the widget. If null, uses canvasSize or expands to fill space.
   /// This allows the logical canvas size to be different from the display size.
+  /// When null, the widget will expand to fill all available space regardless of canvasSize.
   final Size? displaySize;
 
   /// Whether to show the dot grid background.
@@ -165,15 +167,9 @@ class Scribble extends StatelessWidget {
                 height: displaySize!.height,
                 child: buildScribbleCanvas(),
               )
-            : canvasSize != null
-                ? SizedBox(
-                    width: canvasSize!.width,
-                    height: canvasSize!.height,
-                    child: buildScribbleCanvas(),
-                  )
-                : SizedBox.expand(
-                    child: buildScribbleCanvas(),
-                  );
+            : SizedBox.expand(
+                child: buildScribbleCanvas(),
+              );
         return !state.active
             ? child
             : GestureCatcher(

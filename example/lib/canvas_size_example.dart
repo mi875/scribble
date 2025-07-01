@@ -318,13 +318,15 @@ class _CanvasSizeExamplePageState extends State<CanvasSizeExamplePage> {
                 const SizedBox(height: 16),
                 const Text('Display Size Controls:',
                     style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('Controls the widget size. When unchecked, widget expands to fill available space.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey)),
                 Row(
                   children: [
                     Checkbox(
                       value: displaySize != null,
                       onChanged: (value) {
                         if (value == true) {
-                          _updateDisplaySize(Size(300, 200));
+                          _updateDisplaySize(const Size(300, 200));
                         } else {
                           _updateDisplaySize(null);
                         }
