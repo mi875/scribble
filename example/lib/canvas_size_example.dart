@@ -30,9 +30,11 @@ class CanvasSizeExamplePage extends StatefulWidget {
 class _CanvasSizeExamplePageState extends State<CanvasSizeExamplePage> {
   late ScribbleNotifier notifier;
   Size canvasSize = const Size(400, 300);
+  Size? displaySize;
   bool useFiniteCanvas = true;
   bool hasBackgroundImage = false;
   Size? backgroundImageSize;
+  Offset backgroundImageOffset = Offset.zero;
 
   @override
   void initState() {
@@ -63,13 +65,20 @@ class _CanvasSizeExamplePageState extends State<CanvasSizeExamplePage> {
     });
   }
 
+  void _updateDisplaySize(Size? newSize) {
+    setState(() {
+      displaySize = newSize;
+    });
+  }
+
   void _toggleBackgroundImage() {
     setState(() {
       hasBackgroundImage = !hasBackgroundImage;
       if (hasBackgroundImage) {
-        notifier.setBackgroundImageWithSize(
+        notifier.setBackgroundImageWithSizeAndOffset(
           _createGradientImageProvider(),
           backgroundImageSize,
+          backgroundImageOffset,
         );
       } else {
         notifier.clearBackgroundImage();
@@ -86,6 +95,15 @@ class _CanvasSizeExamplePageState extends State<CanvasSizeExamplePage> {
     });
   }
 
+  void _updateBackgroundImageOffset(Offset newOffset) {
+    setState(() {
+      backgroundImageOffset = newOffset;
+      if (hasBackgroundImage) {
+        notifier.setBackgroundImageOffset(newOffset);
+      }
+    });
+  }
+
   ImageProvider _createGradientImageProvider() {
     return const NetworkImage(
       'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
@@ -96,7 +114,7 @@ class _CanvasSizeExamplePageState extends State<CanvasSizeExamplePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Canvas Size Example with Background Image'),
+        title: const Text('Canvas & Display Size Example with Background Image'),
         backgroundColor: Colors.blue,
       ),
       body: Column(
@@ -202,6 +220,47 @@ class _CanvasSizeExamplePageState extends State<CanvasSizeExamplePage> {
                       ],
                     ),
                   ],
+                  const SizedBox(height: 16),
+                  const Text('Background Image Position:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text(
+                      'Offset: (${backgroundImageOffset.dx.toInt()}, ${backgroundImageOffset.dy.toInt()})'),
+                  Row(
+                    children: [
+                      const Text('X: '),
+                      Expanded(
+                        child: Slider(
+                          value: backgroundImageOffset.dx,
+                          min: -200,
+                          max: 200,
+                          divisions: 80,
+                          onChanged: (value) {
+                            final newOffset =
+                                Offset(value, backgroundImageOffset.dy);
+                            _updateBackgroundImageOffset(newOffset);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      const Text('Y: '),
+                      Expanded(
+                        child: Slider(
+                          value: backgroundImageOffset.dy,
+                          min: -200,
+                          max: 200,
+                          divisions: 80,
+                          onChanged: (value) {
+                            final newOffset =
+                                Offset(backgroundImageOffset.dx, value);
+                            _updateBackgroundImageOffset(newOffset);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
                 const SizedBox(height: 16),
                 Row(
@@ -255,6 +314,62 @@ class _CanvasSizeExamplePageState extends State<CanvasSizeExamplePage> {
                     ),
                   ]),
                 ],
+                const SizedBox(height: 16),
+                const Text('Display Size Controls:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: displaySize != null,
+                      onChanged: (value) {
+                        if (value == true) {
+                          _updateDisplaySize(Size(300, 200));
+                        } else {
+                          _updateDisplaySize(null);
+                        }
+                      },
+                    ),
+                    const Text('Use custom display size'),
+                  ],
+                ),
+                if (displaySize != null) ...[
+                  Text(
+                      'Display Size: ${displaySize!.width.toInt()} x ${displaySize!.height.toInt()}'),
+                  Row(
+                    children: [
+                      const Text('Width: '),
+                      Expanded(
+                        child: Slider(
+                          value: displaySize!.width,
+                          min: 150,
+                          max: 800,
+                          divisions: 65,
+                          onChanged: (value) {
+                            final newSize = Size(value, displaySize!.height);
+                            _updateDisplaySize(newSize);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      const Text('Height: '),
+                      Expanded(
+                        child: Slider(
+                          value: displaySize!.height,
+                          min: 100,
+                          max: 600,
+                          divisions: 50,
+                          onChanged: (value) {
+                            final newSize = Size(displaySize!.width, value);
+                            _updateDisplaySize(newSize);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ])),
           Expanded(
             child: Center(
@@ -266,8 +381,8 @@ class _CanvasSizeExamplePageState extends State<CanvasSizeExamplePage> {
                 padding: const EdgeInsets.all(8),
                 child: useFiniteCanvas
                     ? Container(
-                        width: canvasSize.width,
-                        height: canvasSize.height,
+                        width: (displaySize ?? canvasSize).width,
+                        height: (displaySize ?? canvasSize).height,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           border: Border.all(color: Colors.black, width: 2),
@@ -284,6 +399,8 @@ class _CanvasSizeExamplePageState extends State<CanvasSizeExamplePage> {
                           child: ScribbleInteractive(
                             notifier: notifier,
                             fixedStrokeWidth: 2.0,
+                            canvasSize: canvasSize,
+                            displaySize: displaySize,
                             backgroundImageFit: BoxFit.cover,
                           ),
                         ),
@@ -293,6 +410,8 @@ class _CanvasSizeExamplePageState extends State<CanvasSizeExamplePage> {
                         child: ScribbleInteractive(
                           notifier: notifier,
                           fixedStrokeWidth: 2.0,
+                          canvasSize: canvasSize,
+                          displaySize: displaySize,
                         ),
                       ),
               ),

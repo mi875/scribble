@@ -112,6 +112,9 @@ class ScribbleNotifier extends ScribbleNotifierBase
 
     /// Size of the background image.
     Size? backgroundImageSize,
+
+    /// Position/offset of the background image.
+    Offset backgroundImageOffset = Offset.zero,
   }) : super(
           ScribbleState.drawing(
             sketch: switch (sketch) {
@@ -126,6 +129,7 @@ class ScribbleNotifier extends ScribbleNotifierBase
             simplificationTolerance: simplificationTolerance,
             backgroundImage: backgroundImage,
             backgroundImageSize: backgroundImageSize,
+            backgroundImageOffset: backgroundImageOffset,
           ),
         ) {
     this.maxHistoryLength = maxHistoryLength;
@@ -261,6 +265,7 @@ class ScribbleNotifier extends ScribbleNotifierBase
       simplificationTolerance: currentState.simplificationTolerance,
       backgroundImage: currentState.backgroundImage,
       backgroundImageSize: currentState.backgroundImageSize,
+      backgroundImageOffset: currentState.backgroundImageOffset,
     );
   }
 
@@ -279,6 +284,7 @@ class ScribbleNotifier extends ScribbleNotifierBase
       simplificationTolerance: value.simplificationTolerance,
       backgroundImage: value.backgroundImage,
       backgroundImageSize: value.backgroundImageSize,
+      backgroundImageOffset: value.backgroundImageOffset,
     );
   }
 
@@ -336,6 +342,7 @@ class ScribbleNotifier extends ScribbleNotifierBase
           simplificationTolerance: value.simplificationTolerance,
           backgroundImage: value.backgroundImage,
           backgroundImageSize: value.backgroundImageSize,
+          backgroundImageOffset: value.backgroundImageOffset,
         ),
       Erasing() => ScribbleState.drawing(
           sketch: value.sketch,
@@ -348,6 +355,7 @@ class ScribbleNotifier extends ScribbleNotifierBase
           simplificationTolerance: value.simplificationTolerance,
           backgroundImage: value.backgroundImage,
           backgroundImageSize: value.backgroundImageSize,
+          backgroundImageOffset: value.backgroundImageOffset,
         ),
     };
   }
@@ -371,6 +379,26 @@ class ScribbleNotifier extends ScribbleNotifierBase
   void setBackgroundImageSize(Size? size) {
     temporaryValue = value.copyWith(
       backgroundImageSize: size,
+    );
+  }
+
+  /// Sets the position/offset of the background image.
+  void setBackgroundImageOffset(Offset offset) {
+    temporaryValue = value.copyWith(
+      backgroundImageOffset: offset,
+    );
+  }
+
+  /// Sets the background image with size and offset for the canvas.
+  void setBackgroundImageWithSizeAndOffset(
+    ImageProvider? backgroundImage,
+    Size? size,
+    Offset offset,
+  ) {
+    temporaryValue = value.copyWith(
+      backgroundImage: backgroundImage,
+      backgroundImageSize: size,
+      backgroundImageOffset: offset,
     );
   }
 

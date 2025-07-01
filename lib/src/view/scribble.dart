@@ -36,6 +36,10 @@ class Scribble extends StatelessWidget {
     /// all available space.
     this.canvasSize,
 
+    /// The display size of the widget. If null, uses canvasSize or expands to fill space.
+    /// This allows the logical canvas size to be different from the display size.
+    this.displaySize,
+
     /// Whether to show the dot grid background. Defaults to true.
     this.showDotGrid = true,
 
@@ -69,6 +73,10 @@ class Scribble extends StatelessWidget {
   /// The size of the canvas. If null, the canvas will expand to fill
   /// all available space.
   final Size? canvasSize;
+
+  /// The display size of the widget. If null, uses canvasSize or expands to fill space.
+  /// This allows the logical canvas size to be different from the display size.
+  final Size? displaySize;
 
   /// Whether to show the dot grid background.
   final bool showDotGrid;
@@ -142,6 +150,7 @@ class Scribble extends StatelessWidget {
                   ? (notifier as ScribbleNotifier).canvasSize
                   : null,
               backgroundImageSize: state.backgroundImageSize,
+              backgroundImageOffset: state.backgroundImageOffset,
               fit: backgroundImageFit,
               child: canvas,
             );
@@ -150,15 +159,21 @@ class Scribble extends StatelessWidget {
           return canvas;
         }
 
-        final child = canvasSize != null
+        final child = displaySize != null
             ? SizedBox(
-                width: canvasSize!.width,
-                height: canvasSize!.height,
+                width: displaySize!.width,
+                height: displaySize!.height,
                 child: buildScribbleCanvas(),
               )
-            : SizedBox.expand(
-                child: buildScribbleCanvas(),
-              );
+            : canvasSize != null
+                ? SizedBox(
+                    width: canvasSize!.width,
+                    height: canvasSize!.height,
+                    child: buildScribbleCanvas(),
+                  )
+                : SizedBox.expand(
+                    child: buildScribbleCanvas(),
+                  );
         return !state.active
             ? child
             : GestureCatcher(

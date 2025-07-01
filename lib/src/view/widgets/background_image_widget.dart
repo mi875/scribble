@@ -12,6 +12,7 @@ class BackgroundImageWidget extends StatefulWidget {
     required this.child,
     this.canvasSize,
     this.backgroundImageSize,
+    this.backgroundImageOffset = Offset.zero,
     this.fit = BoxFit.contain,
     super.key,
   });
@@ -30,6 +31,9 @@ class BackgroundImageWidget extends StatefulWidget {
 
   /// The size of the background image, if specified.
   final Size? backgroundImageSize;
+
+  /// The position/offset of the background image.
+  final Offset backgroundImageOffset;
 
   /// How the image should be fit within the canvas.
   final BoxFit fit;
@@ -108,6 +112,7 @@ class _BackgroundImageWidgetState extends State<BackgroundImageWidget> {
         panOffset: widget.panOffset,
         canvasSize: widget.canvasSize,
         backgroundImageSize: widget.backgroundImageSize,
+        backgroundImageOffset: widget.backgroundImageOffset,
         fit: widget.fit,
       ),
       child: widget.child,

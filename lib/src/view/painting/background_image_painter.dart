@@ -10,6 +10,7 @@ class BackgroundImagePainter extends CustomPainter {
     required this.panOffset,
     this.canvasSize,
     this.backgroundImageSize,
+    this.backgroundImageOffset = Offset.zero,
     this.fit = BoxFit.contain,
   });
 
@@ -27,6 +28,9 @@ class BackgroundImagePainter extends CustomPainter {
 
   /// The size of the background image, if specified.
   final Size? backgroundImageSize;
+
+  /// The position/offset of the background image.
+  final Offset backgroundImageOffset;
 
   /// How the image should be fit within the canvas.
   final BoxFit fit;
@@ -47,6 +51,9 @@ class BackgroundImagePainter extends CustomPainter {
 
     // Apply scale
     canvas.scale(scaleFactor);
+
+    // Apply background image offset
+    canvas.translate(backgroundImageOffset.dx, backgroundImageOffset.dy);
 
     // Calculate the destination rectangle
     final targetSize = backgroundImageSize ?? canvasSize ?? size;
@@ -177,6 +184,7 @@ class BackgroundImagePainter extends CustomPainter {
         panOffset != oldDelegate.panOffset ||
         canvasSize != oldDelegate.canvasSize ||
         backgroundImageSize != oldDelegate.backgroundImageSize ||
+        backgroundImageOffset != oldDelegate.backgroundImageOffset ||
         fit != oldDelegate.fit;
   }
 }

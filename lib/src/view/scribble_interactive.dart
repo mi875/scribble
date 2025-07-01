@@ -30,6 +30,10 @@ class ScribbleInteractive extends StatefulWidget {
     /// available space.
     this.canvasSize,
 
+    /// The display size of the widget. If null, uses canvasSize or expands to fill space.
+    /// This allows the logical canvas size to be different from the display size.
+    this.displaySize,
+
     /// Minimum zoom scale factor. Defaults to 1.0 (100%).
     this.minScale = 1.0,
 
@@ -72,6 +76,10 @@ class ScribbleInteractive extends StatefulWidget {
   /// The size of the canvas. If null, the canvas will expand to fill
   /// available space.
   final Size? canvasSize;
+
+  /// The display size of the widget. If null, uses canvasSize or expands to fill space.
+  /// This allows the logical canvas size to be different from the display size.
+  final Size? displaySize;
 
   /// Minimum zoom scale factor.
   final double minScale;
@@ -483,6 +491,7 @@ class _ScribbleInteractiveState extends State<ScribbleInteractive> {
         drawEraser: widget.drawEraser,
         fixedStrokeWidth: widget.fixedStrokeWidth,
         canvasSize: widget.canvasSize,
+        displaySize: widget.displaySize,
         showDotGrid: widget.showDotGrid,
         dotSpacing: widget.dotSpacing,
         dotColor: widget.dotColor,
@@ -501,6 +510,7 @@ class _ScribbleInteractiveState extends State<ScribbleInteractive> {
         drawEraser: widget.drawEraser,
         fixedStrokeWidth: widget.fixedStrokeWidth,
         canvasSize: widget.canvasSize,
+        displaySize: widget.displaySize,
         showDotGrid: widget.showDotGrid,
         dotSpacing: widget.dotSpacing,
         dotColor: widget.dotColor,

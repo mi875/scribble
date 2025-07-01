@@ -91,6 +91,12 @@ sealed class ScribbleState with _$ScribbleState {
     /// to the BoxFit setting. If specified, the background image will be
     /// rendered at this specific size.
     Size? backgroundImageSize,
+
+    /// The position/offset of the background image.
+    ///
+    /// If null, the background image will be positioned at (0,0).
+    /// This allows positioning the background image at any location on the canvas.
+    @Default(Offset.zero) Offset backgroundImageOffset,
   }) = Drawing;
 
   /// The state of the scribble widget when the user is currently erasing.
@@ -141,6 +147,12 @@ sealed class ScribbleState with _$ScribbleState {
     /// to the BoxFit setting. If specified, the background image will be
     /// rendered at this specific size.
     Size? backgroundImageSize,
+
+    /// The position/offset of the background image.
+    ///
+    /// If null, the background image will be positioned at (0,0).
+    /// This allows positioning the background image at any location on the canvas.
+    @Default(Offset.zero) Offset backgroundImageOffset,
   }) = Erasing;
 
   // /// Constructs a [ScribbleState] from a JSON object.
