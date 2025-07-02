@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:scribble/scribble.dart';
 
 /// Example demonstrating how to store and restore strokes using the Scribble library.
-/// 
+///
 /// The Scribble library already provides comprehensive stroke storage and restoration
 /// capabilities through its JSON serialization features.
 class StrokeStorageExample extends StatefulWidget {
@@ -36,7 +36,7 @@ class _StrokeStorageExampleState extends State<StrokeStorageExample> {
       // Get current sketch and convert to JSON
       final sketch = notifier.currentSketch;
       _savedSketchJson = jsonEncode(sketch.toJson());
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Sketch saved to memory!')),
       );
@@ -54,10 +54,10 @@ class _StrokeStorageExampleState extends State<StrokeStorageExample> {
         // Convert JSON back to Sketch object
         final jsonMap = jsonDecode(_savedSketchJson!) as Map<String, dynamic>;
         final sketch = Sketch.fromJson(jsonMap);
-        
+
         // Restore the sketch to the notifier
         notifier.setSketch(sketch: sketch);
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Sketch loaded from memory!')),
         );
@@ -102,7 +102,8 @@ class _StrokeStorageExampleState extends State<StrokeStorageExample> {
         ),
         // Blue circle-like shape
         SketchLine(
-          points: _generateCirclePoints(center: const Offset(200, 200), radius: 50),
+          points:
+              _generateCirclePoints(center: const Offset(200, 200), radius: 50),
           color: Colors.blue.value,
           width: 3.0,
         ),
@@ -117,7 +118,7 @@ class _StrokeStorageExampleState extends State<StrokeStorageExample> {
         ),
       ],
     );
-    
+
     notifier.setSketch(sketch: sampleSketch);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Sample sketch created!')),
@@ -125,17 +126,18 @@ class _StrokeStorageExampleState extends State<StrokeStorageExample> {
   }
 
   /// Generate points for a circle shape
-  List<Point> _generateCirclePoints({required Offset center, required double radius}) {
+  List<Point> _generateCirclePoints(
+      {required Offset center, required double radius}) {
     final points = <Point>[];
     const steps = 32;
-    
+
     for (int i = 0; i <= steps; i++) {
       final angle = (i * 2 * math.pi) / steps;
       final x = center.dx + radius * math.cos(angle);
       final y = center.dy + radius * math.sin(angle);
       points.add(Point(x, y));
     }
-    
+
     return points;
   }
 
@@ -164,7 +166,7 @@ class _StrokeStorageExampleState extends State<StrokeStorageExample> {
               ),
             ),
           ),
-          
+
           // Control buttons
           Padding(
             padding: const EdgeInsets.all(16),
@@ -207,13 +209,15 @@ class _StrokeStorageExampleState extends State<StrokeStorageExample> {
                 ElevatedButton.icon(
                   onPressed: () {
                     // Import a sample sketch JSON for demonstration
-                    const sampleJson = '{"lines":[{"points":[{"x":150,"y":150,"pressure":0.5},{"x":250,"y":200,"pressure":0.5}],"color":4294901760,"width":5}]}';
-                    final success = notifier.importFromJson(sampleJson, clearFirst: false);
+                    const sampleJson =
+                        '{"lines":[{"points":[{"x":150,"y":150,"pressure":0.5},{"x":250,"y":200,"pressure":0.5}],"color":4294901760,"width":5}]}';
+                    final success =
+                        notifier.importFromJson(sampleJson, clearFirst: false);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(success 
-                          ? 'Sample sketch imported successfully!' 
-                          : 'Failed to import sample sketch'),
+                        content: Text(success
+                            ? 'Sample sketch imported successfully!'
+                            : 'Failed to import sample sketch'),
                       ),
                     );
                   },
@@ -251,10 +255,12 @@ class _StrokeStorageExampleState extends State<StrokeStorageExample> {
                           children: [
                             Text('Strokes: ${stats.strokeCount}'),
                             Text('Total Points: ${stats.totalPoints}'),
-                            Text('Average Width: ${stats.averageStrokeWidth.toStringAsFixed(1)}'),
+                            Text(
+                                'Average Width: ${stats.averageStrokeWidth.toStringAsFixed(1)}'),
                             Text('Colors Used: ${stats.colorsUsed.length}'),
                             if (stats.boundingBox != null)
-                              Text('Size: ${stats.boundingBox!.width.toStringAsFixed(0)} x ${stats.boundingBox!.height.toStringAsFixed(0)}'),
+                              Text(
+                                  'Size: ${stats.boundingBox!.width.toStringAsFixed(0)} x ${stats.boundingBox!.height.toStringAsFixed(0)}'),
                           ],
                         ),
                         actions: [
@@ -272,7 +278,7 @@ class _StrokeStorageExampleState extends State<StrokeStorageExample> {
               ],
             ),
           ),
-          
+
           // Information panel
           Container(
             width: double.infinity,
@@ -287,11 +293,14 @@ class _StrokeStorageExampleState extends State<StrokeStorageExample> {
                 ),
                 const SizedBox(height: 8),
                 const Text('• Save/Load: Strokes stored as JSON in memory'),
-                const Text('• Export/Import: JSON format with extension methods'),
+                const Text(
+                    '• Export/Import: JSON format with extension methods'),
                 const Text('• Undo/Redo: Built-in history management'),
                 const Text('• Programmatic Creation: Create strokes from code'),
-                const Text('• Statistics: Analyze stroke count, points, colors'),
-                const Text('• Full Serialization: Points, colors, widths, pressure'),
+                const Text(
+                    '• Statistics: Analyze stroke count, points, colors'),
+                const Text(
+                    '• Full Serialization: Points, colors, widths, pressure'),
                 const SizedBox(height: 8),
                 ValueListenableBuilder<ScribbleState>(
                   valueListenable: notifier,
