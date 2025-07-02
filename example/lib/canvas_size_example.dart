@@ -318,7 +318,8 @@ class _CanvasSizeExamplePageState extends State<CanvasSizeExamplePage> {
                 const SizedBox(height: 16),
                 const Text('Display Size Controls:',
                     style: TextStyle(fontWeight: FontWeight.bold)),
-                const Text('Controls the widget size. When unchecked, widget expands to fill available space.',
+                const Text(
+                    'Controls the widget size. When unchecked, widget expands to fill available space.',
                     style: TextStyle(fontSize: 12, color: Colors.grey)),
                 Row(
                   children: [

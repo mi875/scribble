@@ -7,3 +7,4 @@ export 'package:scribble/src/view/scribble.dart';
 export 'package:scribble/src/view/scribble_interactive.dart';
 export 'package:scribble/src/view/scribble_sketch.dart';
 export 'package:scribble/src/view/state/scribble.state.dart';
+export 'package:scribble/src/extensions/scribble_storage_extension.dart';
