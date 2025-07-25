@@ -1,8 +1,11 @@
 import 'dart:convert';
 
+import 'package:example/notebook_demo.dart';
 import 'package:flutter/material.dart';
 import 'package:scribble/scribble.dart';
 import 'package:value_notifier_tools/value_notifier_tools.dart';
+
+import 'notebook_demo_simple.dart';
 
 void main() {
   runApp(const MyApp());
@@ -134,6 +137,25 @@ class _HomePageState extends State<HomePage> {
                         child: const Text("Simplify"),
                       ),
                     ],
+                  ),
+                  const Divider(height: 32),
+                  // Notebook Demo Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const NotebookDemo(),
+                        ),
+                      ),
+                      icon: const Icon(Icons.book),
+                      label: const Text('View Notebook Features Demo'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.all(16),
+                      ),
+                    ),
                   ),
                 ],
               ),
