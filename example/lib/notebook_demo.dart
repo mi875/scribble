@@ -85,9 +85,10 @@ class _NotebookDemoState extends State<NotebookDemo> {
           Container(
             width: 200,
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                 // Paper Size Selection
                 Card(
                   child: Padding(
@@ -233,7 +234,8 @@ class _NotebookDemoState extends State<NotebookDemo> {
 
                 // Page Navigation
                 PageNavigationControls(notifier: notifier),
-              ],
+                ],
+              ),
             ),
           ),
 

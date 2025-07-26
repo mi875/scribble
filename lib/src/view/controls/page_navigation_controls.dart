@@ -41,9 +41,11 @@ class PageNavigationControls extends StatelessWidget {
         return Card(
           child: Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                 // Previous Page Button
                 IconButton(
                   onPressed: isFirstPage ? null : notifier.previousPage,
@@ -116,7 +118,8 @@ class PageNavigationControls extends StatelessWidget {
                     tooltip: 'Remove Current Page',
                   ),
                 ],
-              ],
+                ],
+              ),
             ),
           ),
         );
