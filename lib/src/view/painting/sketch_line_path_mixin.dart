@@ -30,7 +30,7 @@ mixin SketchLinePathMixin {
     final outlinePoints = pf.getStroke(
       points,
       options: pf.StrokeOptions(
-        size: line.width * 2 * scaleFactor,
+        size: line.width * 2,
         simulatePressure: needSimulate,
       ),
     );

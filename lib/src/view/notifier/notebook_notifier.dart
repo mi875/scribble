@@ -201,7 +201,10 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
   /// Sets the visual zoom level of the canvas.
   void setZoomLevel(double zoomLevel) {
     assert(zoomLevel > 0, "The zoom level must be greater than 0.");
-    temporaryValue = value.copyWith(zoomLevel: zoomLevel);
+    temporaryValue = value.copyWith(
+      zoomLevel: zoomLevel,
+      scaleFactor: zoomLevel,
+    );
   }
 
   /// Sets the pan offset for the canvas.

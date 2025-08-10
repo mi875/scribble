@@ -15,15 +15,20 @@ class ScrollableNotebookDemo extends StatefulWidget {
 class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
   late NotebookNotifier notifier;
   Color selectedColor = Colors.black;
-  double selectedWidth = 5.0;
+  double selectedWidth = 1.0;
+  bool showRowLines = false;
+  double rowLineSpacing = 24.0;
+  RowLineMode rowLineMode = RowLineMode.static;
+  bool showLineNumbers = false;
 
   @override
   void initState() {
     super.initState();
     notifier = NotebookNotifier(
+      widths: [selectedWidth],
       allowedPointersMode: ScribblePointerMode.penOnly,
     );
-    
+
     // Add a few pages to demonstrate scrolling
     notifier.addPage(paperSize: PaperSize.a4);
     notifier.addPage(paperSize: PaperSize.a4);
@@ -111,7 +116,9 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
                             '• Draw/erase only works on the active page\n'
                             '• Use TWO FINGERS to zoom in/out at finger position\n'
                             '• Pan with single finger when zoomed in\n'
-                            '• Zoom centers exactly where you place fingers (accounts for scroll position)',
+                            '• Row lines: Static mode shows all lines, Dynamic mode shows lines near content\n'
+                            '• Line numbers: Shows 1,2,3... in left margin, syncs with row spacing when enabled\n'
+                            '• Adjust row spacing with the slider',
                             style: TextStyle(fontSize: 12),
                           ),
                         ],
@@ -149,11 +156,11 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
                               Text(
                                 'Zoom: ${(state.zoomLevel * 100).round()}%',
                                 style: TextStyle(
-                                  color: state.zoomLevel != 1.0 
-                                      ? Colors.blue 
+                                  color: state.zoomLevel != 1.0
+                                      ? Colors.blue
                                       : null,
-                                  fontWeight: state.zoomLevel != 1.0 
-                                      ? FontWeight.bold 
+                                  fontWeight: state.zoomLevel != 1.0
+                                      ? FontWeight.bold
                                       : null,
                                 ),
                               ),
@@ -190,14 +197,14 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
                               ValueListenableBuilder(
                                 valueListenable: notifier,
                                 builder: (context, state, _) {
-                                  final canRemove = 
+                                  final canRemove =
                                       state.notebook.pages.length > 1;
                                   return Expanded(
                                     child: ElevatedButton(
-                                      onPressed: canRemove 
+                                      onPressed: canRemove
                                           ? () => notifier.removePage(
-                                              state.notebook.currentPageIndex,
-                                            ) 
+                                                state.notebook.currentPageIndex,
+                                              )
                                           : null,
                                       child: const Text('Remove'),
                                     ),
@@ -269,7 +276,7 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
 
                   const SizedBox(height: 16),
 
-                  // Stroke Width
+                  // Row Line Controls
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -277,22 +284,91 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Stroke Width',
+                            'Row Lines',
                             style: Theme.of(context).textTheme.titleSmall,
                           ),
                           const SizedBox(height: 8),
-                          Slider(
-                            value: selectedWidth,
-                            min: 1,
-                            max: 20,
-                            divisions: 19,
-                            label: selectedWidth.round().toString(),
-                            onChanged: (value) {
-                              setState(() {
-                                selectedWidth = value;
-                              });
-                              notifier.setStrokeWidth(value);
-                            },
+                          Row(
+                            children: [
+                              Switch(
+                                value: showRowLines,
+                                onChanged: (value) {
+                                  setState(() {
+                                    showRowLines = value;
+                                  });
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              const Text('Show Lines'),
+                            ],
+                          ),
+                          if (showRowLines) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              'Spacing: ${rowLineSpacing.round()}px',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            Slider(
+                              value: rowLineSpacing,
+                              min: 12.0,
+                              max: 48.0,
+                              divisions: 18,
+                              onChanged: (value) {
+                                setState(() {
+                                  rowLineSpacing = value;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: RadioListTile<RowLineMode>(
+                                    title: const Text('Static'),
+                                    value: RowLineMode.static,
+                                    groupValue: rowLineMode,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        rowLineMode = value!;
+                                      });
+                                    },
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: RadioListTile<RowLineMode>(
+                                    title: const Text('Dynamic'),
+                                    value: RowLineMode.dynamic,
+                                    groupValue: rowLineMode,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        rowLineMode = value!;
+                                      });
+                                    },
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Switch(
+                                value: showLineNumbers,
+                                onChanged: (value) {
+                                  setState(() {
+                                    showLineNumbers = value;
+                                  });
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              const Text('Line Numbers'),
+                            ],
                           ),
                         ],
                       ),
@@ -317,6 +393,15 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
                 showPaperShadow: true,
                 showPaperBorder: true,
                 pageSpacing: 40,
+                showRowLines: showRowLines,
+                rowLineSpacing: rowLineSpacing,
+                rowLineMode: rowLineMode,
+                showLineNumbers: showLineNumbers,
+                onRowLineSpacingChanged: (newSpacing) {
+                  setState(() {
+                    rowLineSpacing = newSpacing;
+                  });
+                },
               ),
             ),
           ),

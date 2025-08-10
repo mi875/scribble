@@ -350,7 +350,7 @@ class ScribbleNotifier extends ScribbleNotifierBase
     final pos =
         event.kind == PointerDeviceKind.mouse ? value.pointerPosition : null;
     if (value is Drawing) {
-      value = _finishLineForState(_addPoint(event, value)).copyWith(
+      value = _finishLineForState(value).copyWith(
         pointerPosition: pos,
         activePointerIds:
             value.activePointerIds.where((id) => id != event.pointer).toList(),
@@ -369,7 +369,7 @@ class ScribbleNotifier extends ScribbleNotifierBase
   void onPointerCancel(PointerCancelEvent event) {
     if (!value.supportedPointerKinds.contains(event.kind)) return;
     if (value is Drawing) {
-      value = _finishLineForState(_addPoint(event, value)).copyWith(
+      value = _finishLineForState(value).copyWith(
         pointerPosition: null,
         activePointerIds:
             value.activePointerIds.where((id) => id != event.pointer).toList(),

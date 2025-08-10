@@ -163,6 +163,7 @@ class _NotebookCanvasState extends State<NotebookCanvas> {
           offset: state.panOffset,
           child: Transform.scale(
             scale: state.zoomLevel,
+            alignment: Alignment.topLeft,
             child: canvasWidget,
           ),
         );

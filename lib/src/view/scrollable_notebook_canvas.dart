@@ -7,8 +7,19 @@ import 'package:scribble/src/domain/model/page/page.dart';
 import 'package:scribble/src/view/notifier/notebook_notifier.dart';
 import 'package:scribble/src/view/painting/scribble_editing_painter.dart';
 import 'package:scribble/src/view/painting/scribble_painter.dart';
+import 'package:scribble/src/view/painting/row_line_painter.dart';
+import 'package:scribble/src/view/painting/dynamic_row_line_painter.dart';
+import 'package:scribble/src/view/painting/line_number_painter.dart';
 import 'package:scribble/src/view/pan_gesture_catcher.dart';
 import 'package:scribble/src/view/state/notebook_state.dart';
+
+/// Enum for different row line display modes
+enum RowLineMode {
+  /// Always show row lines
+  static,
+  /// Show row lines dynamically based on user writing
+  dynamic,
+}
 
 /// A scrollable canvas widget that renders all notebook pages vertically.
 /// 
@@ -50,6 +61,33 @@ class ScrollableNotebookCanvas extends StatefulWidget {
     /// Spacing between pages in logical pixels.
     this.pageSpacing = 32,
 
+    /// Whether to show row lines on pages.
+    this.showRowLines = false,
+
+    /// Spacing between row lines in logical pixels.
+    this.rowLineSpacing = 24.0,
+
+    /// Color of the row lines.
+    this.rowLineColor = const Color(0xFFE3F2FD),
+
+    /// Width of the row lines in logical pixels.
+    this.rowLineWidth = 0.5,
+
+    /// Mode for displaying row lines.
+    this.rowLineMode = RowLineMode.static,
+
+    /// Callback when row line spacing changes through gestures.
+    this.onRowLineSpacingChanged,
+
+    /// Whether to show line numbers on the left side.
+    this.showLineNumbers = false,
+
+    /// Color for the line numbers.
+    this.lineNumberColor = const Color(0xFF616161),
+
+    /// Font size for the line numbers.
+    this.lineNumberFontSize = 12.0,
+
     super.key,
   });
 
@@ -84,6 +122,33 @@ class ScrollableNotebookCanvas extends StatefulWidget {
   /// Spacing between pages in logical pixels.
   final double pageSpacing;
 
+  /// Whether to show row lines on pages.
+  final bool showRowLines;
+
+  /// Spacing between row lines in logical pixels.
+  final double rowLineSpacing;
+
+  /// Color of the row lines.
+  final Color rowLineColor;
+
+  /// Width of the row lines in logical pixels.
+  final double rowLineWidth;
+
+  /// Mode for displaying row lines.
+  final RowLineMode rowLineMode;
+
+  /// Callback when row line spacing changes through gestures.
+  final ValueChanged<double>? onRowLineSpacingChanged;
+
+  /// Whether to show line numbers on the left side.
+  final bool showLineNumbers;
+
+  /// Color for the line numbers.
+  final Color lineNumberColor;
+
+  /// Font size for the line numbers.
+  final double lineNumberFontSize;
+
   @override
   State<ScrollableNotebookCanvas> createState() => _ScrollableNotebookCanvasState();
 }
@@ -92,11 +157,22 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
   final TransformationController _transformationController = TransformationController();
   final Map<int, GlobalKey> _pageKeys = {};
   final GlobalKey _containerKey = GlobalKey();
+  double _currentRowLineSpacing = 24.0;
+  bool _isAdjustingRowLines = false;
 
   @override
   void initState() {
     super.initState();
     _transformationController.addListener(_onTransformationChanged);
+    _currentRowLineSpacing = widget.rowLineSpacing;
+  }
+
+  @override
+  void didUpdateWidget(ScrollableNotebookCanvas oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.rowLineSpacing != widget.rowLineSpacing) {
+      _currentRowLineSpacing = widget.rowLineSpacing;
+    }
   }
 
   @override
@@ -119,6 +195,26 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
     
     // Update current page based on visible area
     _updateCurrentPageFromTransformation();
+  }
+
+  /// Handles row line spacing gesture adjustments.
+  void _handleRowLineGesture(ScaleUpdateDetails details) {
+    if (!widget.showRowLines || widget.onRowLineSpacingChanged == null) return;
+
+    if (details.pointerCount == 2) {
+      // Calculate vertical distance between the two pointers
+      final delta1 = details.localFocalPoint;
+      final scale = details.scale;
+      
+      // Use scale to adjust row line spacing
+      if (_isAdjustingRowLines) {
+        final newSpacing = (_currentRowLineSpacing * scale).clamp(12.0, 48.0);
+        setState(() {
+          _currentRowLineSpacing = newSpacing;
+        });
+        widget.onRowLineSpacingChanged!(newSpacing);
+      }
+    }
   }
 
   /// Updates the current page based on the visible area in the transformation
@@ -304,19 +400,61 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
             : null,
       ),
       child: CustomPaint(
+        painter: widget.showRowLines
+            ? widget.rowLineMode == RowLineMode.dynamic
+                ? DynamicRowLinePainter(
+                    paperWidth: paperSize.width,
+                    paperHeight: paperSize.height,
+                    lineSpacing: _currentRowLineSpacing,
+                    lineColor: widget.rowLineColor,
+                    lineWidth: widget.rowLineWidth,
+                    sketch: page.sketch,
+                    leftMargin: widget.showLineNumbers ? 60 : 20,
+                    rightMargin: 20,
+                    topMargin: 30,
+                    bottomMargin: 30,
+                    proximityRadius: 40,
+                    fadeDistance: 80,
+                  )
+                : RowLinePainter(
+                    paperWidth: paperSize.width,
+                    paperHeight: paperSize.height,
+                    lineSpacing: _currentRowLineSpacing,
+                    lineColor: widget.rowLineColor,
+                    lineWidth: widget.rowLineWidth,
+                    leftMargin: widget.showLineNumbers ? 60 : 20,
+                    rightMargin: 20,
+                    topMargin: 30,
+                    bottomMargin: 30,
+                  )
+            : null,
         foregroundPainter: isCurrentPage ? ScribbleEditingPainter(
           state: _convertToScribbleState(state),
           drawPointer: widget.drawPen,
           drawEraser: widget.drawEraser,
           simulatePressure: widget.simulatePressure,
         ) : null,
-        child: RepaintBoundary(
-          key: isCurrentPage ? widget.notifier.repaintBoundaryKey : null,
-          child: CustomPaint(
-            painter: ScribblePainter(
-              sketch: page.sketch,
-              scaleFactor: state.scaleFactor,
-              simulatePressure: widget.simulatePressure,
+        child: CustomPaint(
+          painter: widget.showLineNumbers
+              ? LineNumberPainter(
+                  paperWidth: paperSize.width,
+                  paperHeight: paperSize.height,
+                  textColor: widget.lineNumberColor,
+                  fontSize: widget.lineNumberFontSize,
+                  leftMargin: 20,
+                  topMargin: 30,
+                  bottomMargin: 30,
+                  rowLineSpacing: widget.showRowLines ? _currentRowLineSpacing : null,
+                )
+              : null,
+          child: RepaintBoundary(
+            key: isCurrentPage ? widget.notifier.repaintBoundaryKey : null,
+            child: CustomPaint(
+              painter: ScribblePainter(
+                sketch: page.sketch,
+                scaleFactor: state.scaleFactor,
+                simulatePressure: widget.simulatePressure,
+              ),
             ),
           ),
         ),
