@@ -143,7 +143,7 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
       id: '${currentNotebook.id}_page_${DateTime.now().millisecondsSinceEpoch}',
       paperSize: paperSize ?? currentPaperSize,
     );
-    
+
     value = value.copyWith(
       notebook: currentNotebook.addPage(newPage, index: index),
     );
@@ -251,7 +251,7 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
     final updatedPage = currentPage.copyWith(sketch: newSketch);
     final updatedNotebook = currentNotebook.updateCurrentPage(updatedPage);
     final newState = value.copyWith(notebook: updatedNotebook);
-    
+
     if (addToUndoHistory) {
       value = newState;
     } else {
@@ -304,7 +304,7 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
         activeLine: SketchLine(
           points: [_getPointFromEvent(event)],
           color: (value as NotebookDrawing).selectedColor,
-          width: value.selectedWidth / value.scaleFactor,
+          width: value.selectedWidth,
         ),
       );
     }

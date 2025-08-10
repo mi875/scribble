@@ -389,6 +389,7 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
             child: Container(
               color: Colors.grey.shade100,
               child: ScrollableNotebookCanvas(
+                simulatePressure: false,
                 notifier: notifier,
                 showPaperShadow: true,
                 showPaperBorder: true,
