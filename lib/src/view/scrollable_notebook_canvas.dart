@@ -43,10 +43,16 @@ class ScrollableNotebookCanvas extends StatefulWidget {
     /// Whether to simulate pressure for lines without pressure information
     this.simulatePressure = true,
 
+    /// Theme configuration for colors. When provided, individual color 
+    /// parameters are ignored in favor of theme colors.
+    this.theme,
+
     /// Background color for the paper. If null, uses white.
+    /// Ignored if [theme] is provided.
     this.paperColor = Colors.white,
 
     /// Color for the paper border. If null, uses light gray.
+    /// Ignored if [theme] is provided.
     this.paperBorderColor = Colors.grey,
 
     /// Width of the paper border in logical pixels.
@@ -68,6 +74,7 @@ class ScrollableNotebookCanvas extends StatefulWidget {
     this.rowLineSpacing = 24.0,
 
     /// Color of the row lines.
+    /// Ignored if [theme] is provided.
     this.rowLineColor = const Color(0xFFBDBDBD),
 
     /// Width of the row lines in logical pixels.
@@ -83,6 +90,7 @@ class ScrollableNotebookCanvas extends StatefulWidget {
     this.showLineNumbers = false,
 
     /// Color for the line numbers.
+    /// Ignored if [theme] is provided.
     this.lineNumberColor = const Color(0xFF616161),
 
     /// Font size for the line numbers.
@@ -115,6 +123,10 @@ class ScrollableNotebookCanvas extends StatefulWidget {
   /// Whether to simulate pressure when drawing lines that don't have pressure
   /// information (all points have the same pressure).
   final bool simulatePressure;
+
+  /// Theme configuration for colors. When provided, individual color 
+  /// parameters are ignored in favor of theme colors.
+  final ScribbleTheme? theme;
 
   /// Background color for the paper.
   final Color paperColor;
@@ -172,6 +184,18 @@ class ScrollableNotebookCanvas extends StatefulWidget {
 
   /// Callback when a row should be erased.
   final void Function(int rowIndex)? onEraseRow;
+
+  /// Gets the resolved paper color from theme or parameter.
+  Color get _paperColor => theme?.paperColor ?? paperColor;
+
+  /// Gets the resolved paper border color from theme or parameter.
+  Color get _paperBorderColor => theme?.paperBorderColor ?? paperBorderColor;
+
+  /// Gets the resolved row line color from theme or parameter.
+  Color get _rowLineColor => theme?.rowLineColor ?? rowLineColor;
+
+  /// Gets the resolved line number color from theme or parameter.
+  Color get _lineNumberColor => theme?.lineNumberColor ?? lineNumberColor;
 
   @override
   State<ScrollableNotebookCanvas> createState() => _ScrollableNotebookCanvasState();
@@ -553,12 +577,12 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
       width: paperSize.width,
       height: paperSize.height,
       decoration: BoxDecoration(
-        color: widget.paperColor,
+        color: widget._paperColor,
         border: widget.showPaperBorder
             ? Border.all(
                 color: isCurrentPage 
-                    ? widget.paperBorderColor.withValues(alpha: 0.8)
-                    : widget.paperBorderColor.withValues(alpha: 0.3),
+                    ? widget._paperBorderColor.withValues(alpha: 0.8)
+                    : widget._paperBorderColor.withValues(alpha: 0.3),
                 width: isCurrentPage 
                     ? widget.paperBorderWidth * 2
                     : widget.paperBorderWidth,
@@ -583,7 +607,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
                     paperWidth: paperSize.width,
                     paperHeight: paperSize.height,
                     lineSpacing: _currentRowLineSpacing,
-                    lineColor: widget.rowLineColor,
+                    lineColor: widget._rowLineColor,
                     lineWidth: widget.rowLineWidth,
                     sketch: page.sketch,
                     leftMargin: widget.showLineNumbers ? 60 : 20,
@@ -597,7 +621,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
                     paperWidth: paperSize.width,
                     paperHeight: paperSize.height,
                     lineSpacing: _currentRowLineSpacing,
-                    lineColor: widget.rowLineColor,
+                    lineColor: widget._rowLineColor,
                     lineWidth: widget.rowLineWidth,
                     leftMargin: widget.showLineNumbers ? 60 : 20,
                     rightMargin: 20,
@@ -610,6 +634,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
           drawPointer: widget.drawPen,
           drawEraser: widget.drawEraser,
           simulatePressure: widget.simulatePressure,
+          theme: widget.theme,
         ) : null,
         child: Stack(
           children: [
@@ -618,7 +643,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
                   ? LineNumberPainter(
                       paperWidth: paperSize.width,
                       paperHeight: paperSize.height,
-                      textColor: widget.lineNumberColor,
+                      textColor: widget._lineNumberColor,
                       fontSize: widget.lineNumberFontSize,
                       leftMargin: 20,
                       topMargin: 30,
@@ -638,6 +663,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
                     sketch: page.sketch,
                     scaleFactor: state.scaleFactor,
                     simulatePressure: widget.simulatePressure,
+                    theme: widget.theme,
                   ),
                 ),
               ),

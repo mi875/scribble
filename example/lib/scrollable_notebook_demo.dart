@@ -14,6 +14,7 @@ class ScrollableNotebookDemo extends StatefulWidget {
 
 class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
   late NotebookNotifier notifier;
+  late ScribbleThemeController themeController;
   Color selectedColor = Colors.black;
   double selectedWidth = 1.0;
   bool showRowLines = false;
@@ -26,6 +27,7 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
   @override
   void initState() {
     super.initState();
+    themeController = ScribbleThemeController(followSystemTheme: true);
     notifier = NotebookNotifier(
       widths: [selectedWidth],
       allowedPointersMode: ScribblePointerMode.penOnly,
@@ -40,17 +42,34 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
   @override
   void dispose() {
     notifier.dispose();
+    themeController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Scrollable Notebook Demo'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          // Drawing Tools
+    return ScribbleThemeBuilder(
+      controller: themeController,
+      builder: (context, theme) {
+        return Scaffold(
+          backgroundColor: theme.paperColor,
+          appBar: AppBar(
+            title: const Text('Scrollable Notebook Demo'),
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+            actions: [
+              // Theme Toggle Button
+              IconButton(
+                onPressed: themeController.toggleTheme,
+                icon: Icon(
+                  theme == ScribbleTheme.light
+                      ? Icons.dark_mode
+                      : Icons.light_mode,
+                ),
+                tooltip: theme == ScribbleTheme.light
+                    ? 'Switch to Dark Mode'
+                    : 'Switch to Light Mode',
+              ),
+              // Drawing Tools
           IconButton(
             onPressed: () {
               notifier.setColor(selectedColor);
@@ -447,7 +466,10 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
                   const SizedBox(height: 16),
 
                   // Zoom Controls
-                  ZoomControls(notifier: notifier),
+                  ZoomControls(
+                    notifier: notifier,
+                    theme: theme,
+                  ),
                 ],
               ),
             ),
@@ -456,8 +478,9 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
           // Right Panel - Scrollable Canvas
           Expanded(
             child: Container(
-              color: Colors.grey.shade100,
+              color: theme.paperShadowColor.withValues(alpha: 0.1),
               child: ScrollableNotebookCanvas(
+                theme: theme,
                 simulatePressure: false,
                 notifier: notifier,
                 showPaperShadow: true,
@@ -496,6 +519,8 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
           ),
         ],
       ),
+        );
+      },
     );
   }
 

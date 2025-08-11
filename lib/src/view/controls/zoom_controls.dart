@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:scribble/scribble.dart';
 import 'package:scribble/src/view/notifier/notebook_notifier.dart';
 
 /// A widget that provides zoom controls for a notebook canvas.
@@ -9,6 +10,7 @@ class ZoomControls extends StatelessWidget {
   /// Creates zoom controls for the given notebook notifier.
   const ZoomControls({
     required this.notifier,
+    this.theme,
     this.showZoomLevel = true,
     this.iconSize = 24,
     this.buttonPadding = const EdgeInsets.all(8.0),
@@ -17,6 +19,9 @@ class ZoomControls extends StatelessWidget {
 
   /// The notebook notifier to control.
   final NotebookNotifier notifier;
+
+  /// Theme configuration for colors.
+  final ScribbleTheme? theme;
 
   /// Whether to show the current zoom level.
   final bool showZoomLevel;
@@ -41,6 +46,7 @@ class ZoomControls extends StatelessWidget {
         final zoomPercentage = (currentZoom * 100).round();
 
         return Card(
+          color: theme?.controlBackgroundColor,
           child: Padding(
             padding: const EdgeInsets.all(8.0),
             child: Column(
@@ -49,7 +55,11 @@ class ZoomControls extends StatelessWidget {
                 // Zoom Out Button
                 IconButton(
                   onPressed: _zoomOut,
-                  icon: Icon(Icons.zoom_out, size: iconSize),
+                  icon: Icon(
+                    Icons.zoom_out, 
+                    size: iconSize,
+                    color: theme?.controlIconColor,
+                  ),
                   tooltip: 'Zoom Out',
                   padding: buttonPadding,
                 ),
@@ -66,12 +76,17 @@ class ZoomControls extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
+                        border: Border.all(
+                          color: theme?.controlBorderColor ?? 
+                              Colors.grey.shade300,
+                        ),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         '$zoomPercentage%',
-                        style: Theme.of(context).textTheme.bodySmall,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: theme?.controlIconColor,
+                        ),
                       ),
                     ),
                   ),
@@ -81,7 +96,11 @@ class ZoomControls extends StatelessWidget {
                 // Zoom In Button
                 IconButton(
                   onPressed: _zoomIn,
-                  icon: Icon(Icons.zoom_in, size: iconSize),
+                  icon: Icon(
+                    Icons.zoom_in, 
+                    size: iconSize,
+                    color: theme?.controlIconColor,
+                  ),
                   tooltip: 'Zoom In',
                   padding: buttonPadding,
                 ),
@@ -91,7 +110,11 @@ class ZoomControls extends StatelessWidget {
                 // Fit to Screen Button
                 IconButton(
                   onPressed: _fitToScreen,
-                  icon: Icon(Icons.fit_screen, size: iconSize),
+                  icon: Icon(
+                    Icons.fit_screen, 
+                    size: iconSize,
+                    color: theme?.controlIconColor,
+                  ),
                   tooltip: 'Fit to Screen',
                   padding: buttonPadding,
                 ),
@@ -101,7 +124,11 @@ class ZoomControls extends StatelessWidget {
                 // Actual Size Button (100%)
                 IconButton(
                   onPressed: _actualSize,
-                  icon: Icon(Icons.crop_free, size: iconSize),
+                  icon: Icon(
+                    Icons.crop_free, 
+                    size: iconSize,
+                    color: theme?.controlIconColor,
+                  ),
                   tooltip: 'Actual Size (100%)',
                   padding: buttonPadding,
                 ),

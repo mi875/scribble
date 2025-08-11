@@ -7,6 +7,7 @@ import 'package:scribble/src/view/painting/scribble_editing_painter.dart';
 import 'package:scribble/src/view/painting/scribble_painter.dart';
 import 'package:scribble/src/view/pan_gesture_catcher.dart';
 import 'package:scribble/src/view/state/scribble.state.dart';
+import 'package:scribble/src/view/theme/scribble_theme.dart';
 
 /// {@template scribble}
 /// This Widget represents a canvas on which users can draw with any pointer.
@@ -26,6 +27,9 @@ class Scribble extends StatelessWidget {
     /// Whether to draw the pointer when in erasing mode
     this.drawEraser = true,
     this.simulatePressure = true,
+    
+    /// Theme configuration for stroke color adaptation.
+    this.theme,
     super.key,
   });
 
@@ -46,6 +50,9 @@ class Scribble extends StatelessWidget {
   /// {@endtemplate}
   final bool simulatePressure;
 
+  /// Theme configuration for stroke color adaptation.
+  final ScribbleTheme? theme;
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ScribbleState>(
@@ -60,6 +67,7 @@ class Scribble extends StatelessWidget {
               drawPointer: drawPen,
               drawEraser: drawEraser,
               simulatePressure: simulatePressure,
+              theme: theme,
             ),
             child: RepaintBoundary(
               key: notifier.repaintBoundaryKey,
@@ -68,6 +76,7 @@ class Scribble extends StatelessWidget {
                   sketch: state.sketch,
                   scaleFactor: state.scaleFactor,
                   simulatePressure: simulatePressure,
+                  theme: theme,
                 ),
               ),
             ),

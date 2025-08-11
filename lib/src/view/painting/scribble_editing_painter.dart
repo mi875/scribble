@@ -14,6 +14,7 @@ class ScribbleEditingPainter extends CustomPainter with SketchLinePathMixin {
     required this.drawPointer,
     required this.drawEraser,
     required this.simulatePressure,
+    this.theme,
   });
 
   /// The current state of the scribble sketch
@@ -27,11 +28,46 @@ class ScribbleEditingPainter extends CustomPainter with SketchLinePathMixin {
 
   /// Whether to draw the pointer when in erasing mode
   ///
-  /// The pointer will be drawn as a transparent circle with a black border.
+  /// The pointer will be drawn as a transparent circle with a border.
+  /// The border color comes from the theme's eraserPointerColor.
   final bool drawEraser;
+
+  /// Theme configuration for colors.
+  final ScribbleTheme? theme;
 
   @override
   final bool simulatePressure;
+
+  /// Adapts a stroke color based on the current theme.
+  /// 
+  /// In dark mode, converts black/very dark colors to white/light colors
+  /// to ensure visibility against dark backgrounds.
+  Color _adaptStrokeColor(Color originalColor) {
+    if (theme == null || theme == ScribbleTheme.light) {
+      return originalColor;
+    }
+
+    // In dark mode, adapt dark colors to light colors
+    if (theme == ScribbleTheme.dark) {
+      // Calculate relative luminance to determine if color is dark
+      final luminance = originalColor.computeLuminance();
+      
+      // If the color is very dark (black or near-black), make it white
+      if (luminance < 0.1) {
+        return const Color(0xFFFFFFFF); // White
+      }
+      
+      // If the color is somewhat dark, lighten it
+      if (luminance < 0.3) {
+        final hsl = HSLColor.fromColor(originalColor);
+        return hsl.withLightness(
+          (hsl.lightness + 0.4).clamp(0.0, 1.0),
+        ).toColor();
+      }
+    }
+
+    return originalColor;
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -47,7 +83,7 @@ class ScribbleEditingPainter extends CustomPainter with SketchLinePathMixin {
         scaleFactor: state.scaleFactor,
       );
       if (path != null) {
-        paint.color = Color(activeLine.color);
+        paint.color = _adaptStrokeColor(Color(activeLine.color));
         canvas.drawPath(path, paint);
       }
     }
@@ -60,8 +96,8 @@ class ScribbleEditingPainter extends CustomPainter with SketchLinePathMixin {
           erasing: (_) => PaintingStyle.stroke,
         )
         ..color = state.map(
-          drawing: (s) => Color(s.selectedColor),
-          erasing: (s) => const Color(0xFF000000),
+          drawing: (s) => _adaptStrokeColor(Color(s.selectedColor)),
+          erasing: (s) => theme?.eraserPointerColor ?? const Color(0xFF000000),
         )
         ..strokeWidth = 1;
       canvas.drawCircle(
@@ -75,6 +111,7 @@ class ScribbleEditingPainter extends CustomPainter with SketchLinePathMixin {
   @override
   bool shouldRepaint(ScribbleEditingPainter oldDelegate) {
     return oldDelegate.state != state ||
-        oldDelegate.simulatePressure != simulatePressure;
+        oldDelegate.simulatePressure != simulatePressure ||
+        oldDelegate.theme != theme;
   }
 }
