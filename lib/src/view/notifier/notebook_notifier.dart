@@ -59,6 +59,12 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
 
   final GlobalKey _repaintBoundaryKey = GlobalKey();
 
+  /// Whether to automatically add pages when writing near the bottom.
+  bool _autoAddPages = false;
+
+  /// Distance from bottom edge that triggers new page creation.
+  double _bottomMarginThreshold = 50.0;
+
   /// The repaint boundary key for accessing the render object.
   GlobalKey get repaintBoundaryKey => _repaintBoundaryKey;
 
@@ -149,6 +155,17 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
     );
   }
 
+  /// Checks if writing is near the bottom of the current page and adds a new page if needed.
+  void _checkAndAddPageIfNeeded(Offset writingPosition, double bottomThreshold) {
+    final paperSize = currentPaperSize;
+    final distanceFromBottom = paperSize.height - writingPosition.dy;
+    
+    // If writing within threshold distance from bottom and we're on the last page
+    if (distanceFromBottom <= bottomThreshold && currentNotebook.isLastPage) {
+      addPage(paperSize: paperSize);
+    }
+  }
+
   /// Removes the page at the specified index.
   void removePage(int index) {
     try {
@@ -165,6 +182,174 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
     final updatedPage = currentPage.copyWith(sketch: const Sketch(lines: []));
     final updatedNotebook = currentNotebook.updateCurrentPage(updatedPage);
     value = value.copyWith(notebook: updatedNotebook);
+  }
+
+  /// Deletes a row and moves all content below it up by one row spacing.
+  void deleteRow(int rowIndex, {double? rowLineSpacing, double? topMargin}) {
+    final spacing = rowLineSpacing ?? 24.0;
+    final margin = topMargin ?? 30.0;
+    
+    // Calculate the Y bounds for this row
+    final rowTop = margin + (rowIndex * spacing);
+    final rowBottom = rowTop + spacing;
+    
+    final currentSketch = currentPage.sketch;
+    
+    // Process all lines
+    final newLines = <SketchLine>[];
+    
+    for (final line in currentSketch.lines) {
+      // Check if line has any points in the deleted row
+      final hasPointsInDeletedRow = line.points.any((point) => 
+        point.y >= rowTop && point.y < rowBottom,
+      );
+      
+      if (hasPointsInDeletedRow) {
+        // Skip lines that are in the deleted row
+        continue;
+      }
+      
+      // Check if line is below the deleted row
+      final hasPointsBelowDeletedRow = line.points.any((point) => 
+        point.y >= rowBottom,
+      );
+      
+      if (hasPointsBelowDeletedRow) {
+        // Move this line up by one row spacing
+        final movedPoints = line.points.map((point) {
+          return point.y >= rowBottom 
+              ? Point(point.x, point.y - spacing, pressure: point.pressure)
+              : point;
+        }).toList();
+        
+        newLines.add(line.copyWith(points: movedPoints));
+      } else {
+        // Keep lines above the deleted row unchanged
+        newLines.add(line);
+      }
+    }
+    
+    // Only update if there are changes
+    if (newLines.length != currentSketch.lines.length || 
+        newLines.any((newLine) {
+          final originalLine = currentSketch.lines.firstWhere(
+            (orig) => orig.color == newLine.color && orig.width == newLine.width,
+            orElse: () => newLine,
+          );
+          return originalLine != newLine;
+        })) {
+      final newSketch = currentSketch.copyWith(lines: newLines);
+      final updatedPage = currentPage.copyWith(sketch: newSketch);
+      final updatedNotebook = currentNotebook.updateCurrentPage(updatedPage);
+      
+      // Use the main value setter to ensure proper state management and history
+      value = value.copyWith(notebook: updatedNotebook);
+    }
+  }
+
+  /// Deletes a row with animation by gradually moving content up.
+  Future<void> deleteRowAnimated(
+    int rowIndex, {
+    double? rowLineSpacing,
+    double? topMargin,
+    Duration duration = const Duration(milliseconds: 300),
+  }) async {
+    final spacing = rowLineSpacing ?? 24.0;
+    final margin = topMargin ?? 30.0;
+    
+    // Calculate the Y bounds for this row
+    final rowTop = margin + (rowIndex * spacing);
+    final rowBottom = rowTop + spacing;
+    
+    final currentSketch = currentPage.sketch;
+    
+    // First, identify lines that will be affected
+    final linesToDelete = <SketchLine>[];
+    final linesToMove = <SketchLine>[];
+    final linesToKeep = <SketchLine>[];
+    
+    for (final line in currentSketch.lines) {
+      final hasPointsInDeletedRow = line.points.any((point) => 
+        point.y >= rowTop && point.y < rowBottom,
+      );
+      
+      final hasPointsBelowDeletedRow = line.points.any((point) => 
+        point.y >= rowBottom,
+      );
+      
+      if (hasPointsInDeletedRow) {
+        linesToDelete.add(line);
+      } else if (hasPointsBelowDeletedRow) {
+        linesToMove.add(line);
+      } else {
+        linesToKeep.add(line);
+      }
+    }
+    
+    // If no changes needed, return early
+    if (linesToDelete.isEmpty && linesToMove.isEmpty) return;
+    
+    // Animate the movement over several frames
+    const int animationSteps = 15;
+    const stepDelay = Duration(milliseconds: 20);
+    
+    for (int step = 0; step < animationSteps; step++) {
+      final progress = (step + 1) / animationSteps;
+      final currentOffset = spacing * progress;
+      
+      // Create the animated frame
+      final animatedLines = <SketchLine>[
+        ...linesToKeep, // Keep lines above unchanged
+        // Move lines below gradually
+        ...linesToMove.map((line) {
+          final movedPoints = line.points.map((point) {
+            return point.y >= rowBottom 
+                ? Point(point.x, point.y - currentOffset, pressure: point.pressure)
+                : point;
+          }).toList();
+          return line.copyWith(points: movedPoints);
+        }),
+      ];
+      
+      // Update the sketch with the current animation frame
+      final animatedSketch = currentSketch.copyWith(lines: animatedLines);
+      final updatedPage = currentPage.copyWith(sketch: animatedSketch);
+      final updatedNotebook = currentNotebook.updateCurrentPage(updatedPage);
+      
+      // Use temporaryValue for intermediate animation frames
+      temporaryValue = value.copyWith(notebook: updatedNotebook);
+      
+      // Wait for next frame
+      if (step < animationSteps - 1) {
+        await Future.delayed(stepDelay);
+      }
+    }
+    
+    // Set the final state and save to history
+    final finalLines = <SketchLine>[
+      ...linesToKeep,
+      ...linesToMove.map((line) {
+        final movedPoints = line.points.map((point) {
+          return point.y >= rowBottom 
+              ? Point(point.x, point.y - spacing, pressure: point.pressure)
+              : point;
+        }).toList();
+        return line.copyWith(points: movedPoints);
+      }),
+    ];
+    
+    final finalSketch = currentSketch.copyWith(lines: finalLines);
+    final finalPage = currentPage.copyWith(sketch: finalSketch);
+    final finalNotebook = currentNotebook.updateCurrentPage(finalPage);
+    
+    // Save to history
+    value = value.copyWith(notebook: finalNotebook);
+  }
+
+  /// Erases all content within a specific row range on the current page (legacy method).
+  void eraseRow(int rowIndex, {double? rowLineSpacing, double? topMargin}) {
+    // For backward compatibility, call deleteRow
+    deleteRow(rowIndex, rowLineSpacing: rowLineSpacing, topMargin: topMargin);
   }
 
   /// Sets the width of the next line.
@@ -210,6 +395,14 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
   /// Sets the pan offset for the canvas.
   void setPanOffset(Offset panOffset) {
     temporaryValue = value.copyWith(panOffset: panOffset);
+  }
+
+  /// Enables or disables automatic page addition.
+  void setAutoAddPages(bool enabled, {double? bottomThreshold}) {
+    _autoAddPages = enabled;
+    if (bottomThreshold != null) {
+      _bottomMarginThreshold = bottomThreshold;
+    }
   }
 
   /// Sets the color of the pen.
@@ -321,6 +514,11 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
       return;
     }
     if (value is NotebookDrawing) {
+      // Check if we need to add a new page when drawing near the bottom
+      if (_autoAddPages) {
+        _checkAndAddPageIfNeeded(event.localPosition, _bottomMarginThreshold);
+      }
+      
       temporaryValue = _addPoint(event, value).copyWith(
         pointerPosition: _getPointFromEvent(event),
       );

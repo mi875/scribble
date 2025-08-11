@@ -85,8 +85,8 @@ class DynamicRowLinePainter extends CustomPainter {
       // Don't draw lines beyond the bottom margin
       if (y > drawingBottom) break;
 
-      // Calculate opacity based on proximity to content
-      final opacity = _calculateLineOpacity(y, contentPoints);
+      // Calculate opacity based on proximity to content and line progression
+      final opacity = _calculateLineOpacity(y, contentPoints, i);
       
       if (opacity > 0.01) {  // Only draw if visible enough
         final paint = Paint()
@@ -116,34 +116,59 @@ class DynamicRowLinePainter extends CustomPainter {
     return points;
   }
 
-  /// Calculates line opacity based on proximity to content.
-  double _calculateLineOpacity(double lineY, List<Offset> contentPoints) {
-    if (contentPoints.isEmpty) {
-      // If no content, show faint lines
-      return 0.1;
+  /// Calculates line opacity based on proximity to content and progressive appearance.
+  double _calculateLineOpacity(double lineY, List<Offset> contentPoints, int lineIndex) {
+    // Always show the first two row lines at full opacity initially
+    if (lineIndex == 0) {
+      return 1.0;
+    }
+    if (lineIndex == 1) {
+      return 1.0;
     }
 
-    // Find the closest content point to this line
-    double minDistance = double.infinity;
-    
+    if (contentPoints.isEmpty) {
+      // If no content, only show the first two lines
+      return 0.0;
+    }
+
+    // Find the lowest content point (highest Y value) to determine progression
+    double maxContentY = contentPoints.isEmpty ? 0.0 : contentPoints.first.dy;
     for (final point in contentPoints) {
-      final distance = (point.dy - lineY).abs();
-      if (distance < minDistance) {
-        minDistance = distance;
+      if (point.dy > maxContentY) {
+        maxContentY = point.dy;
       }
     }
 
-    // Calculate opacity based on distance
-    if (minDistance <= proximityRadius) {
-      // Full opacity near content
-      return 1.0;
-    } else if (minDistance <= proximityRadius + fadeDistance) {
-      // Fade out over distance
-      final fadeProgress = (minDistance - proximityRadius) / fadeDistance;
-      return (1.0 - fadeProgress).clamp(0.1, 1.0);
+    // Calculate which line this content has reached based on progression
+    final contentLineIndex = ((maxContentY - topMargin) / lineSpacing).floor();
+    
+    // Show lines progressively: if content has reached line N, show lines 0 through N+2
+    if (lineIndex <= contentLineIndex + 2) {
+      // Find the closest content point to this specific line
+      double minDistance = double.infinity;
+      
+      for (final point in contentPoints) {
+        final distance = (point.dy - lineY).abs();
+        if (distance < minDistance) {
+          minDistance = distance;
+        }
+      }
+
+      // Calculate opacity based on distance for visible lines
+      if (minDistance <= proximityRadius) {
+        // Full opacity near content
+        return 1.0;
+      } else if (minDistance <= proximityRadius + fadeDistance) {
+        // Fade out over distance
+        final fadeProgress = (minDistance - proximityRadius) / fadeDistance;
+        return (1.0 - fadeProgress).clamp(0.3, 1.0);
+      } else {
+        // Medium opacity for distant but revealed lines
+        return 0.3;
+      }
     } else {
-      // Very faint for distant lines
-      return 0.1;
+      // Lines beyond the progression are not shown
+      return 0.0;
     }
   }
 

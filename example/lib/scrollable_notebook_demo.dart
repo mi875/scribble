@@ -20,6 +20,8 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
   double rowLineSpacing = 24.0;
   RowLineMode rowLineMode = RowLineMode.static;
   bool showLineNumbers = false;
+  Color rowLineColor = const Color(0xFFBDBDBD);
+  double rowLineWidth = 1.0;
 
   @override
   void initState() {
@@ -118,7 +120,9 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
                             '• Pan with single finger when zoomed in\n'
                             '• Row lines: Static mode shows all lines, Dynamic mode shows lines near content\n'
                             '• Line numbers: Shows 1,2,3... in left margin, syncs with row spacing when enabled\n'
-                            '• Adjust row spacing with the slider',
+                            '• Tap on line numbers to show row controls and delete specific rows\n'
+                            '• Adjust row spacing with the slider\n'
+                            '• Dynamic mode: Pages auto-add when writing near bottom',
                             style: TextStyle(fontSize: 12),
                           ),
                         ],
@@ -370,6 +374,71 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
                               const Text('Line Numbers'),
                             ],
                           ),
+                          if (showRowLines) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              'Line Appearance',
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Width: ${rowLineWidth.toStringAsFixed(1)}px',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            Slider(
+                              value: rowLineWidth,
+                              min: 0.5,
+                              max: 3.0,
+                              divisions: 10,
+                              onChanged: (value) {
+                                setState(() {
+                                  rowLineWidth = value;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Color:',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            const SizedBox(height: 4),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                const Color(0xFFBDBDBD), // Gray (default)
+                                const Color(0xFFE3F2FD), // Light Blue
+                                const Color(0xFFE8F5E8), // Light Green
+                                const Color(0xFFFFF3E0), // Light Orange
+                                const Color(0xFFE1F5FE), // Light Cyan
+                                const Color(0xFFF3E5F5), // Light Purple
+                              ].map((color) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      rowLineColor = color;
+                                    });
+                                  },
+                                  child: Container(
+                                    width: 30,
+                                    height: 30,
+                                    decoration: BoxDecoration(
+                                      color: color,
+                                      shape: BoxShape.circle,
+                                      border: rowLineColor == color
+                                          ? Border.all(
+                                              color: Colors.grey.shade800,
+                                              width: 3,
+                                            )
+                                          : Border.all(
+                                              color: Colors.grey.shade300,
+                                            ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -396,12 +465,20 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
                 pageSpacing: 40,
                 showRowLines: showRowLines,
                 rowLineSpacing: rowLineSpacing,
+                rowLineColor: rowLineColor,
+                rowLineWidth: rowLineWidth,
                 rowLineMode: rowLineMode,
                 showLineNumbers: showLineNumbers,
+                showRowControls: showLineNumbers,
+                autoAddPages: true,
+                bottomMarginThreshold: 50.0,
                 onRowLineSpacingChanged: (newSpacing) {
                   setState(() {
                     rowLineSpacing = newSpacing;
                   });
+                },
+                onEraseRow: (rowIndex) {
+                  // Row deleted silently - no notification needed
                 },
               ),
             ),

@@ -68,10 +68,10 @@ class ScrollableNotebookCanvas extends StatefulWidget {
     this.rowLineSpacing = 24.0,
 
     /// Color of the row lines.
-    this.rowLineColor = const Color(0xFFE3F2FD),
+    this.rowLineColor = const Color(0xFFBDBDBD),
 
     /// Width of the row lines in logical pixels.
-    this.rowLineWidth = 0.5,
+    this.rowLineWidth = 1.0,
 
     /// Mode for displaying row lines.
     this.rowLineMode = RowLineMode.static,
@@ -87,6 +87,18 @@ class ScrollableNotebookCanvas extends StatefulWidget {
 
     /// Font size for the line numbers.
     this.lineNumberFontSize = 12.0,
+
+    /// Whether to automatically add new pages when writing near the bottom.
+    this.autoAddPages = false,
+
+    /// Distance from bottom edge that triggers new page creation.
+    this.bottomMarginThreshold = 50.0,
+
+    /// Whether to show row controls when tapping line numbers.
+    this.showRowControls = false,
+
+    /// Callback when a row should be erased.
+    this.onEraseRow,
 
     super.key,
   });
@@ -149,6 +161,18 @@ class ScrollableNotebookCanvas extends StatefulWidget {
   /// Font size for the line numbers.
   final double lineNumberFontSize;
 
+  /// Whether to automatically add new pages when writing near the bottom.
+  final bool autoAddPages;
+
+  /// Distance from bottom edge that triggers new page creation.
+  final double bottomMarginThreshold;
+
+  /// Whether to show row controls when tapping line numbers.
+  final bool showRowControls;
+
+  /// Callback when a row should be erased.
+  final void Function(int rowIndex)? onEraseRow;
+
   @override
   State<ScrollableNotebookCanvas> createState() => _ScrollableNotebookCanvasState();
 }
@@ -159,12 +183,22 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
   final GlobalKey _containerKey = GlobalKey();
   double _currentRowLineSpacing = 24.0;
   bool _isAdjustingRowLines = false;
+  
+  // Row controls state
+  OverlayEntry? _rowControlsOverlay;
+  int? _selectedRowIndex;
+  int? _selectedPageIndex;
 
   @override
   void initState() {
     super.initState();
     _transformationController.addListener(_onTransformationChanged);
     _currentRowLineSpacing = widget.rowLineSpacing;
+    
+    // Enable auto-page addition if configured and in dynamic mode
+    if (widget.autoAddPages && widget.rowLineMode == RowLineMode.dynamic) {
+      widget.notifier.setAutoAddPages(true, bottomThreshold: widget.bottomMarginThreshold);
+    }
   }
 
   @override
@@ -173,14 +207,157 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
     if (oldWidget.rowLineSpacing != widget.rowLineSpacing) {
       _currentRowLineSpacing = widget.rowLineSpacing;
     }
+    
+    // Update auto-page settings if they changed
+    if (oldWidget.autoAddPages != widget.autoAddPages ||
+        oldWidget.rowLineMode != widget.rowLineMode ||
+        oldWidget.bottomMarginThreshold != widget.bottomMarginThreshold) {
+      final shouldEnable = widget.autoAddPages && widget.rowLineMode == RowLineMode.dynamic;
+      widget.notifier.setAutoAddPages(shouldEnable, bottomThreshold: widget.bottomMarginThreshold);
+    }
   }
 
   @override
   void dispose() {
+    _removeRowControls();
     _transformationController
       ..removeListener(_onTransformationChanged)
       ..dispose();
     super.dispose();
+  }
+
+  /// Shows row controls at the specified position.
+  void _showRowControls(int pageIndex, int rowIndex, Offset globalPosition) {
+    _removeRowControls();
+    
+    _selectedPageIndex = pageIndex;
+    _selectedRowIndex = rowIndex;
+    
+    _rowControlsOverlay = OverlayEntry(
+      builder: (context) {
+        final theme = Theme.of(context);
+        final colorScheme = theme.colorScheme;
+        
+        // Calculate optimal positioning to avoid hiding the row
+        final screenSize = MediaQuery.of(context).size;
+        final popupHeight = 64.0; // Estimated popup height
+        final popupWidth = 180.0; // Estimated popup width
+        
+        // Determine if popup should appear above or below the tapped row
+        final spaceBelow = screenSize.height - globalPosition.dy;
+        final spaceAbove = globalPosition.dy;
+        final showAbove = spaceBelow < popupHeight + 20 && spaceAbove > popupHeight + 20;
+        
+        // Calculate vertical position
+        final topPosition = showAbove 
+            ? globalPosition.dy - popupHeight - 8  // Above the row
+            : globalPosition.dy + 8;               // Below the row
+            
+        // Calculate horizontal position (ensure it stays on screen)
+        final leftPosition = (globalPosition.dx + popupWidth > screenSize.width)
+            ? screenSize.width - popupWidth - 16  // Move left to fit
+            : globalPosition.dx + 16;             // Normal right offset
+        
+        return Positioned(
+          left: leftPosition,
+          top: topPosition,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Arrow pointing to the row (shown above popup when below row)
+              if (!showAbove)
+                CustomPaint(
+                  painter: _TrianglePainter(
+                    color: colorScheme.surfaceContainerHigh,
+                    pointUp: true,
+                  ),
+                  size: const Size(16, 8),
+                ),
+              Material(
+                type: MaterialType.card,
+                elevation: 3,
+                shadowColor: colorScheme.shadow,
+                surfaceTintColor: colorScheme.surfaceTint,
+                color: colorScheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  constraints: const BoxConstraints(minHeight: 48),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Row ${rowIndex + 1}',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      FilledButton.tonalIcon(
+                        onPressed: () => _eraseRow(pageIndex, rowIndex),
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        label: const Text('Delete'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(72, 36),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filledTonal(
+                        onPressed: _removeRowControls,
+                        icon: const Icon(Icons.close, size: 18),
+                        tooltip: 'Close',
+                        style: IconButton.styleFrom(
+                          minimumSize: const Size(36, 36),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Arrow pointing to the row (shown below popup when above row)
+              if (showAbove)
+                CustomPaint(
+                  painter: _TrianglePainter(
+                    color: colorScheme.surfaceContainerHigh,
+                    pointUp: false,
+                  ),
+                  size: const Size(16, 8),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+    
+    Overlay.of(context).insert(_rowControlsOverlay!);
+  }
+
+  /// Removes the row controls overlay.
+  void _removeRowControls() {
+    _rowControlsOverlay?.remove();
+    _rowControlsOverlay = null;
+    _selectedRowIndex = null;
+    _selectedPageIndex = null;
+  }
+
+  /// Deletes the specified row with animation.
+  Future<void> _eraseRow(int pageIndex, int rowIndex) async {
+    // Remove the controls popup immediately
+    _removeRowControls();
+    
+    // Call the callback to notify the parent (before animation starts)
+    widget.onEraseRow?.call(rowIndex);
+    
+    // Perform animated row deletion
+    await widget.notifier.deleteRowAnimated(
+      rowIndex,
+      rowLineSpacing: _currentRowLineSpacing,
+      topMargin: 30.0,
+    );
   }
 
   /// Called when the transformation matrix changes
@@ -434,29 +611,57 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
           drawEraser: widget.drawEraser,
           simulatePressure: widget.simulatePressure,
         ) : null,
-        child: CustomPaint(
-          painter: widget.showLineNumbers
-              ? LineNumberPainter(
-                  paperWidth: paperSize.width,
-                  paperHeight: paperSize.height,
-                  textColor: widget.lineNumberColor,
-                  fontSize: widget.lineNumberFontSize,
-                  leftMargin: 20,
-                  topMargin: 30,
-                  bottomMargin: 30,
-                  rowLineSpacing: widget.showRowLines ? _currentRowLineSpacing : null,
-                )
-              : null,
-          child: RepaintBoundary(
-            key: isCurrentPage ? widget.notifier.repaintBoundaryKey : null,
-            child: CustomPaint(
-              painter: ScribblePainter(
-                sketch: page.sketch,
-                scaleFactor: state.scaleFactor,
-                simulatePressure: widget.simulatePressure,
+        child: Stack(
+          children: [
+            CustomPaint(
+              painter: widget.showLineNumbers
+                  ? LineNumberPainter(
+                      paperWidth: paperSize.width,
+                      paperHeight: paperSize.height,
+                      textColor: widget.lineNumberColor,
+                      fontSize: widget.lineNumberFontSize,
+                      leftMargin: 20,
+                      topMargin: 30,
+                      bottomMargin: 30,
+                      rowLineSpacing: widget.showRowLines ? _currentRowLineSpacing : null,
+                      sketch: widget.rowLineMode == RowLineMode.dynamic 
+                          ? page.sketch : null,
+                      isDynamic: widget.rowLineMode == RowLineMode.dynamic,
+                      proximityRadius: 40,
+                      fadeDistance: 80,
+                    )
+                  : null,
+              child: RepaintBoundary(
+                key: isCurrentPage ? widget.notifier.repaintBoundaryKey : null,
+                child: CustomPaint(
+                  painter: ScribblePainter(
+                    sketch: page.sketch,
+                    scaleFactor: state.scaleFactor,
+                    simulatePressure: widget.simulatePressure,
+                  ),
+                ),
               ),
             ),
-          ),
+            // Line number tap detector
+            if (widget.showLineNumbers && widget.showRowControls)
+              Positioned(
+                left: 0,
+                top: 0,
+                width: 60, // Cover line number area
+                height: paperSize.height,
+                child: GestureDetector(
+                  onTapDown: (details) {
+                    final localY = details.localPosition.dy;
+                    final rowIndex = ((localY - 30) / _currentRowLineSpacing).floor();
+                    if (rowIndex >= 0) {
+                      final globalPosition = details.globalPosition;
+                      _showRowControls(pageIndex, rowIndex, globalPosition);
+                    }
+                  },
+                  behavior: HitTestBehavior.translucent,
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -529,5 +734,45 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
         simplificationTolerance: s.simplificationTolerance,
       ),
     );
+  }
+}
+
+/// A custom painter that draws a small triangle pointer.
+class _TrianglePainter extends CustomPainter {
+  const _TrianglePainter({
+    required this.color,
+    required this.pointUp,
+  });
+
+  final Color color;
+  final bool pointUp;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    
+    if (pointUp) {
+      // Triangle pointing up (for popup below row)
+      path.moveTo(size.width / 2, 0); // Top point
+      path.lineTo(0, size.height); // Bottom left
+      path.lineTo(size.width, size.height); // Bottom right
+    } else {
+      // Triangle pointing down (for popup above row)
+      path.moveTo(0, 0); // Top left
+      path.lineTo(size.width, 0); // Top right
+      path.lineTo(size.width / 2, size.height); // Bottom point
+    }
+    
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_TrianglePainter oldDelegate) {
+    return color != oldDelegate.color || pointUp != oldDelegate.pointUp;
   }
 }
