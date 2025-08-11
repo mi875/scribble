@@ -23,6 +23,7 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
   bool showLineNumbers = false;
   Color rowLineColor = const Color(0xFFBDBDBD);
   double rowLineWidth = 1.0;
+  RowConstraintMode rowConstraintMode = RowConstraintMode.none;
 
   @override
   void initState() {
@@ -141,7 +142,10 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
                             '• Line numbers: Shows 1,2,3... in left margin, syncs with row spacing when enabled\n'
                             '• Tap on line numbers to show row controls and delete specific rows\n'
                             '• Adjust row spacing with the slider\n'
-                            '• Dynamic mode: Pages auto-add when writing near bottom',
+                            '• Dynamic mode: Pages auto-add when writing near bottom\n'
+                            '• Writing Constraints: Force line-by-line writing behavior\n'
+                            '  - Current: Only write on highlighted active row\n'
+                            '  - Sequential: Write lines in order from top to bottom',
                             style: TextStyle(fontSize: 12),
                           ),
                         ],
@@ -465,6 +469,100 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
 
                   const SizedBox(height: 16),
 
+                  // Row Constraint Controls
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Writing Constraints',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Force line-by-line writing',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          const SizedBox(height: 8),
+                          SegmentedButton<RowConstraintMode>(
+                            segments: const [
+                              ButtonSegment(
+                                value: RowConstraintMode.none,
+                                label: Text('None'),
+                                tooltip: 'No constraints - write anywhere',
+                              ),
+                              ButtonSegment(
+                                value: RowConstraintMode.current,
+                                label: Text('Current'),
+                                tooltip: 'Only write on current active line',
+                              ),
+                              ButtonSegment(
+                                value: RowConstraintMode.sequential,
+                                label: Text('Sequential'),
+                                tooltip: 'Write lines in sequential order',
+                              ),
+                            ],
+                            selected: {rowConstraintMode},
+                            onSelectionChanged: (Set<RowConstraintMode> selection) {
+                              setState(() {
+                                rowConstraintMode = selection.first;
+                              });
+                            },
+                          ),
+                          if (rowConstraintMode != RowConstraintMode.none) ...[
+                            const SizedBox(height: 12),
+                            ValueListenableBuilder(
+                              valueListenable: notifier,
+                              builder: (context, state, _) {
+                                return Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Active Row: ${state.activeRowIndex + 1}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          onPressed: state.activeRowIndex > 0
+                                              ? () => notifier.previousRow()
+                                              : null,
+                                          icon: const Icon(Icons.keyboard_arrow_up, size: 20),
+                                          tooltip: 'Previous Row',
+                                          constraints: const BoxConstraints.tightFor(
+                                            width: 32,
+                                            height: 32,
+                                          ),
+                                        ),
+                                        IconButton(
+                                          onPressed: () => notifier.nextRow(),
+                                          icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+                                          tooltip: 'Next Row',
+                                          constraints: const BoxConstraints.tightFor(
+                                            width: 32,
+                                            height: 32,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
                   // Zoom Controls
                   ZoomControls(
                     notifier: notifier,
@@ -491,6 +589,7 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
                 rowLineColor: rowLineColor,
                 rowLineWidth: rowLineWidth,
                 rowLineMode: rowLineMode,
+                rowConstraintMode: rowConstraintMode,
                 showLineNumbers: showLineNumbers,
                 showRowControls: showLineNumbers,
                 autoAddPages: true,

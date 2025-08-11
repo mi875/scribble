@@ -9,6 +9,7 @@ import 'package:scribble/src/domain/model/notebook/notebook.dart';
 import 'package:scribble/src/domain/model/page/page.dart';
 import 'package:scribble/src/domain/model/paper_size/paper_size.dart';
 import 'package:scribble/src/view/painting/point_to_offset_x.dart';
+import 'package:scribble/src/view/scrollable_notebook_canvas.dart';
 import 'package:scribble/src/view/simplification/sketch_simplifier.dart';
 import 'package:scribble/src/view/state/notebook_state.dart';
 import 'package:value_notifier_tools/value_notifier_tools.dart';
@@ -64,6 +65,15 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
 
   /// Distance from bottom edge that triggers new page creation.
   double _bottomMarginThreshold = 50.0;
+
+  /// Current row constraint mode for controlling writing behavior.
+  RowConstraintMode _rowConstraintMode = RowConstraintMode.none;
+
+  /// Row line spacing used for constraint calculations.
+  double _rowLineSpacing = 24.0;
+
+  /// Top margin used for constraint calculations.
+  double _topMargin = 30.0;
 
   /// The repaint boundary key for accessing the render object.
   GlobalKey get repaintBoundaryKey => _repaintBoundaryKey;
@@ -367,6 +377,7 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
       activePointerIds: value.activePointerIds,
       zoomLevel: value.zoomLevel,
       panOffset: value.panOffset,
+      activeRowIndex: value.activeRowIndex,
     );
   }
 
@@ -405,27 +416,120 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
     }
   }
 
+  /// Sets the row constraint mode and related parameters.
+  void setRowConstraintMode(
+    RowConstraintMode mode, {
+    double? rowLineSpacing,
+    double? topMargin,
+  }) {
+    _rowConstraintMode = mode;
+    if (rowLineSpacing != null) {
+      _rowLineSpacing = rowLineSpacing;
+    }
+    if (topMargin != null) {
+      _topMargin = topMargin;
+    }
+  }
+
+  /// Sets the active row index.
+  void setActiveRow(int rowIndex) {
+    temporaryValue = value.copyWith(activeRowIndex: rowIndex);
+  }
+
+  /// Advances to the next row.
+  void nextRow() {
+    temporaryValue = value.copyWith(activeRowIndex: value.activeRowIndex + 1);
+  }
+
+  /// Goes to the previous row.
+  void previousRow() {
+    if (value.activeRowIndex > 0) {
+      temporaryValue = value.copyWith(activeRowIndex: value.activeRowIndex - 1);
+    }
+  }
+
+  /// Returns the bounds of the current active row.
+  Rect getCurrentRowBounds() {
+    final rowIndex = value.activeRowIndex;
+    final rowTop = _topMargin + (rowIndex * _rowLineSpacing);
+    final rowBottom = rowTop + _rowLineSpacing;
+    return Rect.fromLTRB(0, rowTop, currentPaperSize.width, rowBottom);
+  }
+
+  /// Checks if a drawing position is allowed based on the current constraint mode.
+  bool isPositionAllowed(Offset position) {
+    switch (_rowConstraintMode) {
+      case RowConstraintMode.none:
+        return true;
+      case RowConstraintMode.current:
+        final rowBounds = getCurrentRowBounds();
+        return rowBounds.contains(position);
+      case RowConstraintMode.sequential:
+        final rowIndex = value.activeRowIndex;
+        final maxAllowedRow = _findLastRowWithContent() + 1;
+        final positionRowIndex = ((position.dy - _topMargin) / _rowLineSpacing).floor();
+        return positionRowIndex <= maxAllowedRow && positionRowIndex >= 0;
+    }
+  }
+
+  /// Finds the last row that has content on the current page.
+  int _findLastRowWithContent() {
+    var lastRowWithContent = -1;
+    
+    for (final line in currentSketch.lines) {
+      for (final point in line.points) {
+        final rowIndex = ((point.y - _topMargin) / _rowLineSpacing).floor();
+        if (rowIndex > lastRowWithContent) {
+          lastRowWithContent = rowIndex;
+        }
+      }
+    }
+    
+    return lastRowWithContent;
+  }
+
+  /// Auto-advances to the next row if the current row has content.
+  void _autoAdvanceRowIfNeeded() {
+    if (_rowConstraintMode == RowConstraintMode.current) {
+      final currentRowBounds = getCurrentRowBounds();
+      final hasContentInCurrentRow = currentSketch.lines.any(
+        (line) => line.points.any(
+          (point) => currentRowBounds.contains(Offset(point.x, point.y)),
+        ),
+      );
+      
+      if (hasContentInCurrentRow) {
+        // Small delay to allow the current drawing to finish
+        Future.delayed(const Duration(milliseconds: 100), () {
+          nextRow();
+        });
+      }
+    }
+  }
+
   /// Sets the color of the pen.
   void setColor(Color color) {
     temporaryValue = value.map(
       drawing: (s) => NotebookState.drawing(
         notebook: s.notebook,
-        selectedColor: color.value,
+        selectedColor: color.toARGB32(),
         selectedWidth: s.selectedWidth,
         allowedPointersMode: s.allowedPointersMode,
         scaleFactor: s.scaleFactor,
         zoomLevel: s.zoomLevel,
         panOffset: s.panOffset,
+        activeRowIndex: s.activeRowIndex,
       ),
       erasing: (s) => NotebookState.drawing(
         notebook: s.notebook,
-        selectedColor: color.value,
+        selectedColor: color.toARGB32(),
         selectedWidth: s.selectedWidth,
         allowedPointersMode: s.allowedPointersMode,
         scaleFactor: s.scaleFactor,
         activePointerIds: s.activePointerIds,
         zoomLevel: s.zoomLevel,
         panOffset: s.panOffset,
+        activeRowIndex: s.activeRowIndex,
       ),
     );
   }
@@ -481,6 +585,12 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
   /// Handles pointer down events to start drawing.
   void onPointerDown(PointerDownEvent event) {
     if (!value.supportedPointerKinds.contains(event.kind)) return;
+    
+    // Check if this position is allowed based on constraint mode
+    if (!isPositionAllowed(event.localPosition)) {
+      return; // Ignore the event if position is not allowed
+    }
+    
     var s = value;
 
     if (value.activePointerIds.isNotEmpty) {
@@ -513,6 +623,12 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
       temporaryValue = value.copyWith(pointerPosition: null);
       return;
     }
+    
+    // Check if this position is allowed based on constraint mode
+    if (!isPositionAllowed(event.localPosition)) {
+      return; // Ignore the event if position is not allowed
+    }
+    
     if (value is NotebookDrawing) {
       // Check if we need to add a new page when drawing near the bottom
       if (_autoAddPages) {
@@ -540,6 +656,9 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
         activePointerIds:
             value.activePointerIds.where((id) => id != event.pointer).toList(),
       );
+      
+      // Auto-advance to next row if needed
+      _autoAdvanceRowIfNeeded();
     } else if (value is NotebookErasing) {
       value = _erasePoint(event).copyWith(
         pointerPosition: pos,

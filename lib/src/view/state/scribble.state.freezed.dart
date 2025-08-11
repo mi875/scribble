@@ -14,19 +14,6 @@ T _$identity<T>(T value) => value;
 final _privateConstructorUsedError = UnsupportedError(
     'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
-ScribbleState _$ScribbleStateFromJson(Map<String, dynamic> json) {
-  switch (json['runtimeType']) {
-    case 'drawing':
-      return Drawing.fromJson(json);
-    case 'erasing':
-      return Erasing.fromJson(json);
-
-    default:
-      throw CheckedFromJsonException(json, 'runtimeType', 'ScribbleState',
-          'Invalid union type "${json['runtimeType']}"!');
-  }
-}
-
 /// @nodoc
 mixin _$ScribbleState {
   /// The current state of the sketch
@@ -154,9 +141,6 @@ mixin _$ScribbleState {
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
-
-  /// Serializes this ScribbleState to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
   /// Create a copy of ScribbleState
   /// with the given fields replaced by the non-null parameter values.
@@ -369,7 +353,7 @@ class __$$DrawingImplCopyWithImpl<$Res>
 }
 
 /// @nodoc
-@JsonSerializable()
+
 class _$DrawingImpl extends Drawing {
   const _$DrawingImpl(
       {required this.sketch,
@@ -380,14 +364,9 @@ class _$DrawingImpl extends Drawing {
       this.selectedColor = 0xFF000000,
       this.selectedWidth = 5,
       this.scaleFactor = 1,
-      this.simplificationTolerance = 0,
-      final String? $type})
+      this.simplificationTolerance = 0})
       : _activePointerIds = activePointerIds,
-        $type = $type ?? 'drawing',
         super._();
-
-  factory _$DrawingImpl.fromJson(Map<String, dynamic> json) =>
-      _$$DrawingImplFromJson(json);
 
   /// The current state of the sketch
   @override
@@ -452,9 +431,6 @@ class _$DrawingImpl extends Drawing {
   @JsonKey()
   final double simplificationTolerance;
 
-  @JsonKey(name: 'runtimeType')
-  final String $type;
-
   @override
   String toString() {
     return 'ScribbleState.drawing(sketch: $sketch, activeLine: $activeLine, allowedPointersMode: $allowedPointersMode, activePointerIds: $activePointerIds, pointerPosition: $pointerPosition, selectedColor: $selectedColor, selectedWidth: $selectedWidth, scaleFactor: $scaleFactor, simplificationTolerance: $simplificationTolerance)';
@@ -485,7 +461,6 @@ class _$DrawingImpl extends Drawing {
                 other.simplificationTolerance == simplificationTolerance));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
       runtimeType,
@@ -649,13 +624,6 @@ class _$DrawingImpl extends Drawing {
     }
     return orElse();
   }
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$DrawingImplToJson(
-      this,
-    );
-  }
 }
 
 abstract class Drawing extends ScribbleState {
@@ -670,8 +638,6 @@ abstract class Drawing extends ScribbleState {
       final double scaleFactor,
       final double simplificationTolerance}) = _$DrawingImpl;
   const Drawing._() : super._();
-
-  factory Drawing.fromJson(Map<String, dynamic> json) = _$DrawingImpl.fromJson;
 
   /// The current state of the sketch
   @override
@@ -805,7 +771,7 @@ class __$$ErasingImplCopyWithImpl<$Res>
 }
 
 /// @nodoc
-@JsonSerializable()
+
 class _$ErasingImpl extends Erasing {
   const _$ErasingImpl(
       {required this.sketch,
@@ -814,14 +780,9 @@ class _$ErasingImpl extends Erasing {
       this.pointerPosition,
       this.selectedWidth = 5,
       this.scaleFactor = 1,
-      this.simplificationTolerance = 0,
-      final String? $type})
+      this.simplificationTolerance = 0})
       : _activePointerIds = activePointerIds,
-        $type = $type ?? 'erasing',
         super._();
-
-  factory _$ErasingImpl.fromJson(Map<String, dynamic> json) =>
-      _$$ErasingImplFromJson(json);
 
   /// The current state of the sketch
   @override
@@ -873,9 +834,6 @@ class _$ErasingImpl extends Erasing {
   @JsonKey()
   final double simplificationTolerance;
 
-  @JsonKey(name: 'runtimeType')
-  final String $type;
-
   @override
   String toString() {
     return 'ScribbleState.erasing(sketch: $sketch, allowedPointersMode: $allowedPointersMode, activePointerIds: $activePointerIds, pointerPosition: $pointerPosition, selectedWidth: $selectedWidth, scaleFactor: $scaleFactor, simplificationTolerance: $simplificationTolerance)';
@@ -902,7 +860,6 @@ class _$ErasingImpl extends Erasing {
                 other.simplificationTolerance == simplificationTolerance));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
       runtimeType,
@@ -1040,13 +997,6 @@ class _$ErasingImpl extends Erasing {
     }
     return orElse();
   }
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$ErasingImplToJson(
-      this,
-    );
-  }
 }
 
 abstract class Erasing extends ScribbleState {
@@ -1059,8 +1009,6 @@ abstract class Erasing extends ScribbleState {
       final double scaleFactor,
       final double simplificationTolerance}) = _$ErasingImpl;
   const Erasing._() : super._();
-
-  factory Erasing.fromJson(Map<String, dynamic> json) = _$ErasingImpl.fromJson;
 
   /// The current state of the sketch
   @override

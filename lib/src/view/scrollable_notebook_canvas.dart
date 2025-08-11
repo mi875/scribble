@@ -9,6 +9,7 @@ import 'package:scribble/src/view/painting/scribble_editing_painter.dart';
 import 'package:scribble/src/view/painting/scribble_painter.dart';
 import 'package:scribble/src/view/painting/row_line_painter.dart';
 import 'package:scribble/src/view/painting/dynamic_row_line_painter.dart';
+import 'package:scribble/src/view/painting/constrained_row_line_painter.dart';
 import 'package:scribble/src/view/painting/line_number_painter.dart';
 import 'package:scribble/src/view/pan_gesture_catcher.dart';
 import 'package:scribble/src/view/state/notebook_state.dart';
@@ -19,6 +20,16 @@ enum RowLineMode {
   static,
   /// Show row lines dynamically based on user writing
   dynamic,
+}
+
+/// Enum for different row constraint modes that control writing behavior
+enum RowConstraintMode {
+  /// No constraints - users can write anywhere (default behavior)
+  none,
+  /// Users must write lines sequentially from top to bottom
+  sequential,
+  /// Users can only write on the currently active line
+  current,
 }
 
 /// A scrollable canvas widget that renders all notebook pages vertically.
@@ -82,6 +93,9 @@ class ScrollableNotebookCanvas extends StatefulWidget {
 
     /// Mode for displaying row lines.
     this.rowLineMode = RowLineMode.static,
+
+    /// Mode for constraining writing to specific rows.
+    this.rowConstraintMode = RowConstraintMode.none,
 
     /// Callback when row line spacing changes through gestures.
     this.onRowLineSpacingChanged,
@@ -161,6 +175,9 @@ class ScrollableNotebookCanvas extends StatefulWidget {
   /// Mode for displaying row lines.
   final RowLineMode rowLineMode;
 
+  /// Mode for constraining writing to specific rows.
+  final RowConstraintMode rowConstraintMode;
+
   /// Callback when row line spacing changes through gestures.
   final ValueChanged<double>? onRowLineSpacingChanged;
 
@@ -223,6 +240,13 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
     if (widget.autoAddPages && widget.rowLineMode == RowLineMode.dynamic) {
       widget.notifier.setAutoAddPages(true, bottomThreshold: widget.bottomMarginThreshold);
     }
+    
+    // Setup row constraint mode
+    widget.notifier.setRowConstraintMode(
+      widget.rowConstraintMode,
+      rowLineSpacing: _currentRowLineSpacing,
+      topMargin: 30.0,
+    );
   }
 
   @override
@@ -238,6 +262,16 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
         oldWidget.bottomMarginThreshold != widget.bottomMarginThreshold) {
       final shouldEnable = widget.autoAddPages && widget.rowLineMode == RowLineMode.dynamic;
       widget.notifier.setAutoAddPages(shouldEnable, bottomThreshold: widget.bottomMarginThreshold);
+    }
+    
+    // Update constraint mode settings if they changed
+    if (oldWidget.rowConstraintMode != widget.rowConstraintMode ||
+        oldWidget.rowLineSpacing != widget.rowLineSpacing) {
+      widget.notifier.setRowConstraintMode(
+        widget.rowConstraintMode,
+        rowLineSpacing: _currentRowLineSpacing,
+        topMargin: 30.0,
+      );
     }
   }
 
@@ -602,32 +636,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
       ),
       child: CustomPaint(
         painter: widget.showRowLines
-            ? widget.rowLineMode == RowLineMode.dynamic
-                ? DynamicRowLinePainter(
-                    paperWidth: paperSize.width,
-                    paperHeight: paperSize.height,
-                    lineSpacing: _currentRowLineSpacing,
-                    lineColor: widget._rowLineColor,
-                    lineWidth: widget.rowLineWidth,
-                    sketch: page.sketch,
-                    leftMargin: widget.showLineNumbers ? 60 : 20,
-                    rightMargin: 20,
-                    topMargin: 30,
-                    bottomMargin: 30,
-                    proximityRadius: 40,
-                    fadeDistance: 80,
-                  )
-                : RowLinePainter(
-                    paperWidth: paperSize.width,
-                    paperHeight: paperSize.height,
-                    lineSpacing: _currentRowLineSpacing,
-                    lineColor: widget._rowLineColor,
-                    lineWidth: widget.rowLineWidth,
-                    leftMargin: widget.showLineNumbers ? 60 : 20,
-                    rightMargin: 20,
-                    topMargin: 30,
-                    bottomMargin: 30,
-                  )
+            ? _getRowLinePainter(Size(paperSize.width, paperSize.height), page, state)
             : null,
         foregroundPainter: isCurrentPage ? ScribbleEditingPainter(
           state: _convertToScribbleState(state),
@@ -735,6 +744,65 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
     );
   }
 
+  /// Gets the appropriate row line painter based on configuration.
+  CustomPainter _getRowLinePainter(Size paperSize, NotebookPage page, NotebookState state) {
+    final leftMargin = widget.showLineNumbers ? 60.0 : 20.0;
+    final rightMargin = 20.0;
+    final topMargin = 30.0;
+    final bottomMargin = 30.0;
+
+    // Use constrained painter if constraint mode is active
+    if (widget.rowConstraintMode != RowConstraintMode.none) {
+      return ConstrainedRowLinePainter(
+        paperWidth: paperSize.width,
+        paperHeight: paperSize.height,
+        lineSpacing: _currentRowLineSpacing,
+        lineColor: widget._rowLineColor,
+        lineWidth: widget.rowLineWidth,
+        leftMargin: leftMargin,
+        rightMargin: rightMargin,
+        topMargin: topMargin,
+        bottomMargin: bottomMargin,
+        activeRowIndex: state.activeRowIndex,
+        activeRowColor: const Color(0xFF2196F3),
+        activeRowOpacity: 0.1,
+        sketch: widget.rowLineMode == RowLineMode.dynamic ? page.sketch : null,
+        proximityRadius: 40,
+        fadeDistance: 80,
+        isDynamic: widget.rowLineMode == RowLineMode.dynamic,
+      );
+    }
+
+    // Use regular painters if no constraint mode
+    if (widget.rowLineMode == RowLineMode.dynamic) {
+      return DynamicRowLinePainter(
+        paperWidth: paperSize.width,
+        paperHeight: paperSize.height,
+        lineSpacing: _currentRowLineSpacing,
+        lineColor: widget._rowLineColor,
+        lineWidth: widget.rowLineWidth,
+        sketch: page.sketch,
+        leftMargin: leftMargin,
+        rightMargin: rightMargin,
+        topMargin: topMargin,
+        bottomMargin: bottomMargin,
+        proximityRadius: 40,
+        fadeDistance: 80,
+      );
+    } else {
+      return RowLinePainter(
+        paperWidth: paperSize.width,
+        paperHeight: paperSize.height,
+        lineSpacing: _currentRowLineSpacing,
+        lineColor: widget._rowLineColor,
+        lineWidth: widget.rowLineWidth,
+        leftMargin: leftMargin,
+        rightMargin: rightMargin,
+        topMargin: topMargin,
+        bottomMargin: bottomMargin,
+      );
+    }
+  }
 
   /// Converts NotebookState to ScribbleState for compatibility.
   ScribbleState _convertToScribbleState(NotebookState state) {

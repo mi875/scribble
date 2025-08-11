@@ -43,6 +43,9 @@ mixin _$NotebookState {
 
   /// The pan offset for the canvas when zoomed
   Offset get panOffset => throw _privateConstructorUsedError;
+
+  /// The currently active row index for line-by-line constraint mode
+  int get activeRowIndex => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(
@@ -56,7 +59,8 @@ mixin _$NotebookState {
             double scaleFactor,
             double simplificationTolerance,
             double zoomLevel,
-            Offset panOffset)
+            Offset panOffset,
+            int activeRowIndex)
         drawing,
     required TResult Function(
             Notebook notebook,
@@ -67,7 +71,8 @@ mixin _$NotebookState {
             double scaleFactor,
             double simplificationTolerance,
             double zoomLevel,
-            Offset panOffset)
+            Offset panOffset,
+            int activeRowIndex)
         erasing,
   }) =>
       throw _privateConstructorUsedError;
@@ -84,7 +89,8 @@ mixin _$NotebookState {
             double scaleFactor,
             double simplificationTolerance,
             double zoomLevel,
-            Offset panOffset)?
+            Offset panOffset,
+            int activeRowIndex)?
         drawing,
     TResult? Function(
             Notebook notebook,
@@ -95,7 +101,8 @@ mixin _$NotebookState {
             double scaleFactor,
             double simplificationTolerance,
             double zoomLevel,
-            Offset panOffset)?
+            Offset panOffset,
+            int activeRowIndex)?
         erasing,
   }) =>
       throw _privateConstructorUsedError;
@@ -112,7 +119,8 @@ mixin _$NotebookState {
             double scaleFactor,
             double simplificationTolerance,
             double zoomLevel,
-            Offset panOffset)?
+            Offset panOffset,
+            int activeRowIndex)?
         drawing,
     TResult Function(
             Notebook notebook,
@@ -123,7 +131,8 @@ mixin _$NotebookState {
             double scaleFactor,
             double simplificationTolerance,
             double zoomLevel,
-            Offset panOffset)?
+            Offset panOffset,
+            int activeRowIndex)?
         erasing,
     required TResult orElse(),
   }) =>
@@ -170,7 +179,8 @@ abstract class $NotebookStateCopyWith<$Res> {
       double scaleFactor,
       double simplificationTolerance,
       double zoomLevel,
-      Offset panOffset});
+      Offset panOffset,
+      int activeRowIndex});
 
   $PointCopyWith<$Res>? get pointerPosition;
 }
@@ -199,6 +209,7 @@ class _$NotebookStateCopyWithImpl<$Res, $Val extends NotebookState>
     Object? simplificationTolerance = null,
     Object? zoomLevel = null,
     Object? panOffset = null,
+    Object? activeRowIndex = null,
   }) {
     return _then(_value.copyWith(
       notebook: null == notebook
@@ -237,6 +248,10 @@ class _$NotebookStateCopyWithImpl<$Res, $Val extends NotebookState>
           ? _value.panOffset
           : panOffset // ignore: cast_nullable_to_non_nullable
               as Offset,
+      activeRowIndex: null == activeRowIndex
+          ? _value.activeRowIndex
+          : activeRowIndex // ignore: cast_nullable_to_non_nullable
+              as int,
     ) as $Val);
   }
 
@@ -274,7 +289,8 @@ abstract class _$$NotebookDrawingImplCopyWith<$Res>
       double scaleFactor,
       double simplificationTolerance,
       double zoomLevel,
-      Offset panOffset});
+      Offset panOffset,
+      int activeRowIndex});
 
   $SketchLineCopyWith<$Res>? get activeLine;
   @override
@@ -305,6 +321,7 @@ class __$$NotebookDrawingImplCopyWithImpl<$Res>
     Object? simplificationTolerance = null,
     Object? zoomLevel = null,
     Object? panOffset = null,
+    Object? activeRowIndex = null,
   }) {
     return _then(_$NotebookDrawingImpl(
       notebook: null == notebook
@@ -351,6 +368,10 @@ class __$$NotebookDrawingImplCopyWithImpl<$Res>
           ? _value.panOffset
           : panOffset // ignore: cast_nullable_to_non_nullable
               as Offset,
+      activeRowIndex: null == activeRowIndex
+          ? _value.activeRowIndex
+          : activeRowIndex // ignore: cast_nullable_to_non_nullable
+              as int,
     ));
   }
 
@@ -383,7 +404,8 @@ class _$NotebookDrawingImpl extends NotebookDrawing {
       this.scaleFactor = 1,
       this.simplificationTolerance = 0,
       this.zoomLevel = 1,
-      this.panOffset = Offset.zero})
+      this.panOffset = Offset.zero,
+      this.activeRowIndex = 0})
       : _activePointerIds = activePointerIds,
         super._();
 
@@ -447,9 +469,14 @@ class _$NotebookDrawingImpl extends NotebookDrawing {
   @JsonKey()
   final Offset panOffset;
 
+  /// The currently active row index for line-by-line constraint mode
+  @override
+  @JsonKey()
+  final int activeRowIndex;
+
   @override
   String toString() {
-    return 'NotebookState.drawing(notebook: $notebook, activeLine: $activeLine, allowedPointersMode: $allowedPointersMode, activePointerIds: $activePointerIds, pointerPosition: $pointerPosition, selectedColor: $selectedColor, selectedWidth: $selectedWidth, scaleFactor: $scaleFactor, simplificationTolerance: $simplificationTolerance, zoomLevel: $zoomLevel, panOffset: $panOffset)';
+    return 'NotebookState.drawing(notebook: $notebook, activeLine: $activeLine, allowedPointersMode: $allowedPointersMode, activePointerIds: $activePointerIds, pointerPosition: $pointerPosition, selectedColor: $selectedColor, selectedWidth: $selectedWidth, scaleFactor: $scaleFactor, simplificationTolerance: $simplificationTolerance, zoomLevel: $zoomLevel, panOffset: $panOffset, activeRowIndex: $activeRowIndex)';
   }
 
   @override
@@ -479,7 +506,9 @@ class _$NotebookDrawingImpl extends NotebookDrawing {
             (identical(other.zoomLevel, zoomLevel) ||
                 other.zoomLevel == zoomLevel) &&
             (identical(other.panOffset, panOffset) ||
-                other.panOffset == panOffset));
+                other.panOffset == panOffset) &&
+            (identical(other.activeRowIndex, activeRowIndex) ||
+                other.activeRowIndex == activeRowIndex));
   }
 
   @override
@@ -495,7 +524,8 @@ class _$NotebookDrawingImpl extends NotebookDrawing {
       scaleFactor,
       simplificationTolerance,
       zoomLevel,
-      panOffset);
+      panOffset,
+      activeRowIndex);
 
   /// Create a copy of NotebookState
   /// with the given fields replaced by the non-null parameter values.
@@ -520,7 +550,8 @@ class _$NotebookDrawingImpl extends NotebookDrawing {
             double scaleFactor,
             double simplificationTolerance,
             double zoomLevel,
-            Offset panOffset)
+            Offset panOffset,
+            int activeRowIndex)
         drawing,
     required TResult Function(
             Notebook notebook,
@@ -531,7 +562,8 @@ class _$NotebookDrawingImpl extends NotebookDrawing {
             double scaleFactor,
             double simplificationTolerance,
             double zoomLevel,
-            Offset panOffset)
+            Offset panOffset,
+            int activeRowIndex)
         erasing,
   }) {
     return drawing(
@@ -545,7 +577,8 @@ class _$NotebookDrawingImpl extends NotebookDrawing {
         scaleFactor,
         simplificationTolerance,
         zoomLevel,
-        panOffset);
+        panOffset,
+        activeRowIndex);
   }
 
   @override
@@ -562,7 +595,8 @@ class _$NotebookDrawingImpl extends NotebookDrawing {
             double scaleFactor,
             double simplificationTolerance,
             double zoomLevel,
-            Offset panOffset)?
+            Offset panOffset,
+            int activeRowIndex)?
         drawing,
     TResult? Function(
             Notebook notebook,
@@ -573,7 +607,8 @@ class _$NotebookDrawingImpl extends NotebookDrawing {
             double scaleFactor,
             double simplificationTolerance,
             double zoomLevel,
-            Offset panOffset)?
+            Offset panOffset,
+            int activeRowIndex)?
         erasing,
   }) {
     return drawing?.call(
@@ -587,7 +622,8 @@ class _$NotebookDrawingImpl extends NotebookDrawing {
         scaleFactor,
         simplificationTolerance,
         zoomLevel,
-        panOffset);
+        panOffset,
+        activeRowIndex);
   }
 
   @override
@@ -604,7 +640,8 @@ class _$NotebookDrawingImpl extends NotebookDrawing {
             double scaleFactor,
             double simplificationTolerance,
             double zoomLevel,
-            Offset panOffset)?
+            Offset panOffset,
+            int activeRowIndex)?
         drawing,
     TResult Function(
             Notebook notebook,
@@ -615,7 +652,8 @@ class _$NotebookDrawingImpl extends NotebookDrawing {
             double scaleFactor,
             double simplificationTolerance,
             double zoomLevel,
-            Offset panOffset)?
+            Offset panOffset,
+            int activeRowIndex)?
         erasing,
     required TResult orElse(),
   }) {
@@ -631,7 +669,8 @@ class _$NotebookDrawingImpl extends NotebookDrawing {
           scaleFactor,
           simplificationTolerance,
           zoomLevel,
-          panOffset);
+          panOffset,
+          activeRowIndex);
     }
     return orElse();
   }
@@ -680,7 +719,8 @@ abstract class NotebookDrawing extends NotebookState {
       final double scaleFactor,
       final double simplificationTolerance,
       final double zoomLevel,
-      final Offset panOffset}) = _$NotebookDrawingImpl;
+      final Offset panOffset,
+      final int activeRowIndex}) = _$NotebookDrawingImpl;
   const NotebookDrawing._() : super._();
 
   /// The current notebook with multiple pages
@@ -725,6 +765,10 @@ abstract class NotebookDrawing extends NotebookState {
   @override
   Offset get panOffset;
 
+  /// The currently active row index for line-by-line constraint mode
+  @override
+  int get activeRowIndex;
+
   /// Create a copy of NotebookState
   /// with the given fields replaced by the non-null parameter values.
   @override
@@ -750,7 +794,8 @@ abstract class _$$NotebookErasingImplCopyWith<$Res>
       double scaleFactor,
       double simplificationTolerance,
       double zoomLevel,
-      Offset panOffset});
+      Offset panOffset,
+      int activeRowIndex});
 
   @override
   $PointCopyWith<$Res>? get pointerPosition;
@@ -778,6 +823,7 @@ class __$$NotebookErasingImplCopyWithImpl<$Res>
     Object? simplificationTolerance = null,
     Object? zoomLevel = null,
     Object? panOffset = null,
+    Object? activeRowIndex = null,
   }) {
     return _then(_$NotebookErasingImpl(
       notebook: null == notebook
@@ -816,6 +862,10 @@ class __$$NotebookErasingImplCopyWithImpl<$Res>
           ? _value.panOffset
           : panOffset // ignore: cast_nullable_to_non_nullable
               as Offset,
+      activeRowIndex: null == activeRowIndex
+          ? _value.activeRowIndex
+          : activeRowIndex // ignore: cast_nullable_to_non_nullable
+              as int,
     ));
   }
 }
@@ -832,7 +882,8 @@ class _$NotebookErasingImpl extends NotebookErasing {
       this.scaleFactor = 1,
       this.simplificationTolerance = 0,
       this.zoomLevel = 1,
-      this.panOffset = Offset.zero})
+      this.panOffset = Offset.zero,
+      this.activeRowIndex = 0})
       : _activePointerIds = activePointerIds,
         super._();
 
@@ -887,9 +938,14 @@ class _$NotebookErasingImpl extends NotebookErasing {
   @JsonKey()
   final Offset panOffset;
 
+  /// The currently active row index for line-by-line constraint mode
+  @override
+  @JsonKey()
+  final int activeRowIndex;
+
   @override
   String toString() {
-    return 'NotebookState.erasing(notebook: $notebook, allowedPointersMode: $allowedPointersMode, activePointerIds: $activePointerIds, pointerPosition: $pointerPosition, selectedWidth: $selectedWidth, scaleFactor: $scaleFactor, simplificationTolerance: $simplificationTolerance, zoomLevel: $zoomLevel, panOffset: $panOffset)';
+    return 'NotebookState.erasing(notebook: $notebook, allowedPointersMode: $allowedPointersMode, activePointerIds: $activePointerIds, pointerPosition: $pointerPosition, selectedWidth: $selectedWidth, scaleFactor: $scaleFactor, simplificationTolerance: $simplificationTolerance, zoomLevel: $zoomLevel, panOffset: $panOffset, activeRowIndex: $activeRowIndex)';
   }
 
   @override
@@ -915,7 +971,9 @@ class _$NotebookErasingImpl extends NotebookErasing {
             (identical(other.zoomLevel, zoomLevel) ||
                 other.zoomLevel == zoomLevel) &&
             (identical(other.panOffset, panOffset) ||
-                other.panOffset == panOffset));
+                other.panOffset == panOffset) &&
+            (identical(other.activeRowIndex, activeRowIndex) ||
+                other.activeRowIndex == activeRowIndex));
   }
 
   @override
@@ -929,7 +987,8 @@ class _$NotebookErasingImpl extends NotebookErasing {
       scaleFactor,
       simplificationTolerance,
       zoomLevel,
-      panOffset);
+      panOffset,
+      activeRowIndex);
 
   /// Create a copy of NotebookState
   /// with the given fields replaced by the non-null parameter values.
@@ -954,7 +1013,8 @@ class _$NotebookErasingImpl extends NotebookErasing {
             double scaleFactor,
             double simplificationTolerance,
             double zoomLevel,
-            Offset panOffset)
+            Offset panOffset,
+            int activeRowIndex)
         drawing,
     required TResult Function(
             Notebook notebook,
@@ -965,7 +1025,8 @@ class _$NotebookErasingImpl extends NotebookErasing {
             double scaleFactor,
             double simplificationTolerance,
             double zoomLevel,
-            Offset panOffset)
+            Offset panOffset,
+            int activeRowIndex)
         erasing,
   }) {
     return erasing(
@@ -977,7 +1038,8 @@ class _$NotebookErasingImpl extends NotebookErasing {
         scaleFactor,
         simplificationTolerance,
         zoomLevel,
-        panOffset);
+        panOffset,
+        activeRowIndex);
   }
 
   @override
@@ -994,7 +1056,8 @@ class _$NotebookErasingImpl extends NotebookErasing {
             double scaleFactor,
             double simplificationTolerance,
             double zoomLevel,
-            Offset panOffset)?
+            Offset panOffset,
+            int activeRowIndex)?
         drawing,
     TResult? Function(
             Notebook notebook,
@@ -1005,7 +1068,8 @@ class _$NotebookErasingImpl extends NotebookErasing {
             double scaleFactor,
             double simplificationTolerance,
             double zoomLevel,
-            Offset panOffset)?
+            Offset panOffset,
+            int activeRowIndex)?
         erasing,
   }) {
     return erasing?.call(
@@ -1017,7 +1081,8 @@ class _$NotebookErasingImpl extends NotebookErasing {
         scaleFactor,
         simplificationTolerance,
         zoomLevel,
-        panOffset);
+        panOffset,
+        activeRowIndex);
   }
 
   @override
@@ -1034,7 +1099,8 @@ class _$NotebookErasingImpl extends NotebookErasing {
             double scaleFactor,
             double simplificationTolerance,
             double zoomLevel,
-            Offset panOffset)?
+            Offset panOffset,
+            int activeRowIndex)?
         drawing,
     TResult Function(
             Notebook notebook,
@@ -1045,7 +1111,8 @@ class _$NotebookErasingImpl extends NotebookErasing {
             double scaleFactor,
             double simplificationTolerance,
             double zoomLevel,
-            Offset panOffset)?
+            Offset panOffset,
+            int activeRowIndex)?
         erasing,
     required TResult orElse(),
   }) {
@@ -1059,7 +1126,8 @@ class _$NotebookErasingImpl extends NotebookErasing {
           scaleFactor,
           simplificationTolerance,
           zoomLevel,
-          panOffset);
+          panOffset,
+          activeRowIndex);
     }
     return orElse();
   }
@@ -1106,7 +1174,8 @@ abstract class NotebookErasing extends NotebookState {
       final double scaleFactor,
       final double simplificationTolerance,
       final double zoomLevel,
-      final Offset panOffset}) = _$NotebookErasingImpl;
+      final Offset panOffset,
+      final int activeRowIndex}) = _$NotebookErasingImpl;
   const NotebookErasing._() : super._();
 
   /// The current notebook with multiple pages
@@ -1144,6 +1213,10 @@ abstract class NotebookErasing extends NotebookState {
   /// The pan offset for the canvas when zoomed
   @override
   Offset get panOffset;
+
+  /// The currently active row index for line-by-line constraint mode
+  @override
+  int get activeRowIndex;
 
   /// Create a copy of NotebookState
   /// with the given fields replaced by the non-null parameter values.

@@ -5,8 +5,6 @@ import 'package:scribble/src/domain/model/sketch/sketch.dart';
 
 part 'scribble.state.freezed.dart';
 
-part 'scribble.state.g.dart';
-
 /// Which pointers are allowed for drawing and will be captured by the scribble
 /// widget.
 enum ScribblePointerMode {
@@ -104,9 +102,6 @@ sealed class ScribbleState with _$ScribbleState {
     @Default(0) double simplificationTolerance,
   }) = Erasing;
 
-  /// Constructs a [ScribbleState] from a JSON object.
-  factory ScribbleState.fromJson(Map<String, dynamic> json) =>
-      _$ScribbleStateFromJson(json);
   const ScribbleState._();
 
   /// Returns whether the widget is currently active, meaning that only one
