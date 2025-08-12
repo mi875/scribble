@@ -297,7 +297,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
         // Calculate optimal positioning to avoid hiding the row
         final screenSize = MediaQuery.of(context).size;
         final popupHeight = 64.0; // Estimated popup height
-        final popupWidth = 180.0; // Estimated popup width
+        final popupWidth = 260.0; // Estimated popup width for two buttons
         
         // Determine if popup should appear above or below the tapped row
         final spaceBelow = screenSize.height - globalPosition.dy;
@@ -349,7 +349,18 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 12),
+                      FilledButton.tonalIcon(
+                        onPressed: () => _insertRowAbove(pageIndex, rowIndex),
+                        icon: const Icon(Icons.add_circle_outline, size: 18),
+                        label: const Text('Insert'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(72, 36),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       FilledButton.tonalIcon(
                         onPressed: () => _eraseRow(pageIndex, rowIndex),
                         icon: const Icon(Icons.delete_outline, size: 18),
@@ -410,6 +421,19 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
     
     // Perform animated row deletion
     await widget.notifier.deleteRowAnimated(
+      rowIndex,
+      rowLineSpacing: _currentRowLineSpacing,
+      topMargin: 30.0,
+    );
+  }
+
+  /// Inserts a new row above the specified row with animation.
+  Future<void> _insertRowAbove(int pageIndex, int rowIndex) async {
+    // Remove the controls popup immediately
+    _removeRowControls();
+    
+    // Perform animated row insertion
+    await widget.notifier.insertRowAboveAnimated(
       rowIndex,
       rowLineSpacing: _currentRowLineSpacing,
       topMargin: 30.0,

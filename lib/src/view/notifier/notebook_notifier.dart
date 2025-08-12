@@ -356,6 +356,150 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
     value = value.copyWith(notebook: finalNotebook);
   }
 
+  /// Inserts a new row above the specified row by moving content down.
+  void insertRowAbove(int rowIndex, {double? rowLineSpacing, double? topMargin}) {
+    final spacing = rowLineSpacing ?? 24.0;
+    final margin = topMargin ?? 30.0;
+    
+    // Calculate the Y position where the new row will be inserted
+    final insertionY = margin + (rowIndex * spacing);
+    
+    final currentSketch = currentPage.sketch;
+    
+    // Process all lines
+    final newLines = <SketchLine>[];
+    
+    for (final line in currentSketch.lines) {
+      // Check if line has any points at or below the insertion point
+      final hasPointsAtOrBelowInsertion = line.points.any((point) => 
+        point.y >= insertionY,
+      );
+      
+      if (hasPointsAtOrBelowInsertion) {
+        // Move this line down by one row spacing
+        final movedPoints = line.points.map((point) {
+          return point.y >= insertionY 
+              ? Point(point.x, point.y + spacing, pressure: point.pressure)
+              : point;
+        }).toList();
+        
+        newLines.add(line.copyWith(points: movedPoints));
+      } else {
+        // Keep lines above the insertion point unchanged
+        newLines.add(line);
+      }
+    }
+    
+    // Only update if there are changes
+    if (newLines.any((newLine) {
+      final originalIndex = currentSketch.lines.indexOf(
+        currentSketch.lines.firstWhere(
+          (orig) => orig.color == newLine.color && orig.width == newLine.width,
+          orElse: () => newLine,
+        ),
+      );
+      return originalIndex == -1 || currentSketch.lines[originalIndex] != newLine;
+    })) {
+      final newSketch = currentSketch.copyWith(lines: newLines);
+      final updatedPage = currentPage.copyWith(sketch: newSketch);
+      final updatedNotebook = currentNotebook.updateCurrentPage(updatedPage);
+      
+      // Use the main value setter to ensure proper state management and history
+      value = value.copyWith(notebook: updatedNotebook);
+    }
+  }
+
+  /// Inserts a new row above the specified row with animation.
+  Future<void> insertRowAboveAnimated(
+    int rowIndex, {
+    double? rowLineSpacing,
+    double? topMargin,
+    Duration duration = const Duration(milliseconds: 300),
+  }) async {
+    final spacing = rowLineSpacing ?? 24.0;
+    final margin = topMargin ?? 30.0;
+    
+    // Calculate the Y position where the new row will be inserted
+    final insertionY = margin + (rowIndex * spacing);
+    
+    final currentSketch = currentPage.sketch;
+    
+    // Identify lines that will be affected
+    final linesToMove = <SketchLine>[];
+    final linesToKeep = <SketchLine>[];
+    
+    for (final line in currentSketch.lines) {
+      final hasPointsAtOrBelowInsertion = line.points.any((point) => 
+        point.y >= insertionY,
+      );
+      
+      if (hasPointsAtOrBelowInsertion) {
+        linesToMove.add(line);
+      } else {
+        linesToKeep.add(line);
+      }
+    }
+    
+    // If no changes needed, return early
+    if (linesToMove.isEmpty) return;
+    
+    // Animate the movement over several frames
+    const int animationSteps = 15;
+    const stepDelay = Duration(milliseconds: 20);
+    
+    for (int step = 0; step < animationSteps; step++) {
+      final progress = (step + 1) / animationSteps;
+      final currentOffset = spacing * progress;
+      
+      // Create the animated frame
+      final animatedLines = <SketchLine>[
+        ...linesToKeep, // Keep lines above unchanged
+        // Move lines below gradually
+        ...linesToMove.map((line) {
+          final movedPoints = line.points.map((point) {
+            return point.y >= insertionY 
+                ? Point(point.x, point.y + currentOffset, pressure: point.pressure)
+                : point;
+          }).toList();
+          return line.copyWith(points: movedPoints);
+        }),
+      ];
+      
+      // Update the sketch with the current animation frame
+      final animatedSketch = currentSketch.copyWith(lines: animatedLines);
+      final updatedPage = currentPage.copyWith(sketch: animatedSketch);
+      final updatedNotebook = currentNotebook.updateCurrentPage(updatedPage);
+      
+      // Use temporaryValue for intermediate animation frames
+      temporaryValue = value.copyWith(notebook: updatedNotebook);
+      
+      // Wait for next frame
+      if (step < animationSteps - 1) {
+        await Future.delayed(stepDelay);
+      }
+    }
+    
+    // Set the final state and save to history
+    final finalLines = <SketchLine>[
+      ...linesToKeep,
+      ...linesToMove.map((line) {
+        final movedPoints = line.points.map((point) {
+          return point.y >= insertionY 
+              ? Point(point.x, point.y + spacing, pressure: point.pressure)
+              : point;
+        }).toList();
+        return line.copyWith(points: movedPoints);
+      }),
+    ];
+    
+    final finalSketch = currentSketch.copyWith(lines: finalLines);
+    final finalPage = currentPage.copyWith(sketch: finalSketch);
+    final finalNotebook = currentNotebook.updateCurrentPage(finalPage);
+    
+    // Save to history
+    value = value.copyWith(notebook: finalNotebook);
+  }
+
   /// Erases all content within a specific row range on the current page (legacy method).
   void eraseRow(int rowIndex, {double? rowLineSpacing, double? topMargin}) {
     // For backward compatibility, call deleteRow
