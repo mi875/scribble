@@ -1,10 +1,13 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:scribble/src/domain/model/region/page_region.dart';
 import 'package:scribble/src/domain/model/sketch/sketch.dart';
+import 'package:scribble/src/view/painting/region_aware_painter_mixin.dart';
 
 /// A custom painter that draws row lines for constraint modes.
-class ConstrainedRowLinePainter extends CustomPainter {
+/// It can skip lines in free drawing regions when regions are provided.
+class ConstrainedRowLinePainter extends CustomPainter with RegionAwarePainterMixin {
   /// Creates a new constrained row line painter.
   const ConstrainedRowLinePainter({
     required this.paperWidth,
@@ -20,6 +23,7 @@ class ConstrainedRowLinePainter extends CustomPainter {
     this.proximityRadius = 50,
     this.fadeDistance = 100,
     this.isDynamic = false,
+    this.regions = const <PageRegion>[],
   });
 
   /// The width of the paper.
@@ -62,6 +66,10 @@ class ConstrainedRowLinePainter extends CustomPainter {
   /// Whether to use dynamic line behavior.
   final bool isDynamic;
 
+  /// List of regions on the page that affect line rendering.
+  @override
+  final List<PageRegion> regions;
+
   @override
   void paint(Canvas canvas, Size size) {
     final linePaint = Paint()
@@ -87,11 +95,31 @@ class ConstrainedRowLinePainter extends CustomPainter {
       linePaint.color = lineColor.withValues(alpha: opacity);
       linePaint.strokeWidth = lineWidth;
 
-      canvas.drawLine(
-        Offset(leftMargin, y),
-        Offset(paperWidth - rightMargin, y),
-        linePaint,
-      );
+      // If there are no free drawing regions, draw the full line
+      if (!hasFreeDrawingRegions) {
+        canvas.drawLine(
+          Offset(leftMargin, y),
+          Offset(paperWidth - rightMargin, y),
+          linePaint,
+        );
+      } else {
+        // Draw line segments that don't intersect with free drawing regions
+        final segments = getDrawableLineSegments(
+          lineY: y,
+          fullStartX: leftMargin,
+          fullEndX: paperWidth - rightMargin,
+        );
+        
+        for (final (startX, endX) in segments) {
+          if (endX > startX) {
+            canvas.drawLine(
+              Offset(startX, y),
+              Offset(endX, y),
+              linePaint,
+            );
+          }
+        }
+      }
     }
   }
 
@@ -150,6 +178,7 @@ class ConstrainedRowLinePainter extends CustomPainter {
         sketch != oldDelegate.sketch ||
         proximityRadius != oldDelegate.proximityRadius ||
         fadeDistance != oldDelegate.fadeDistance ||
-        isDynamic != oldDelegate.isDynamic;
+        isDynamic != oldDelegate.isDynamic ||
+        regions != oldDelegate.regions;
   }
 }

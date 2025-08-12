@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:scribble/src/domain/model/region/page_region.dart';
 import 'package:scribble/src/domain/model/sketch/sketch.dart';
+import 'package:scribble/src/view/painting/region_aware_painter_mixin.dart';
 
 /// A custom painter that draws dynamic row lines based on writing activity.
 /// 
 /// This painter shows lines that appear near content areas and fade based
-/// on proximity to drawn content.
-class DynamicRowLinePainter extends CustomPainter {
+/// on proximity to drawn content. It can skip lines in free drawing regions.
+class DynamicRowLinePainter extends CustomPainter with RegionAwarePainterMixin {
   /// Creates a new dynamic row line painter.
   const DynamicRowLinePainter({
     required this.paperWidth,
@@ -20,6 +22,7 @@ class DynamicRowLinePainter extends CustomPainter {
     this.bottomMargin = 0.0,
     this.proximityRadius = 50.0,
     this.fadeDistance = 100.0,
+    this.regions = const <PageRegion>[],
   });
 
   /// Width of the paper in logical pixels.
@@ -58,6 +61,10 @@ class DynamicRowLinePainter extends CustomPainter {
   /// Distance over which lines fade out.
   final double fadeDistance;
 
+  /// List of regions on the page that affect line rendering.
+  @override
+  final List<PageRegion> regions;
+
   @override
   void paint(Canvas canvas, Size size) {
     if (lineSpacing <= 0) return;
@@ -94,11 +101,31 @@ class DynamicRowLinePainter extends CustomPainter {
           ..strokeWidth = lineWidth
           ..style = PaintingStyle.stroke;
         
-        canvas.drawLine(
-          Offset(drawingLeft, y),
-          Offset(drawingRight, y),
-          paint,
-        );
+        // If there are no free drawing regions, draw the full line
+        if (!hasFreeDrawingRegions) {
+          canvas.drawLine(
+            Offset(drawingLeft, y),
+            Offset(drawingRight, y),
+            paint,
+          );
+        } else {
+          // Draw line segments that don't intersect with free drawing regions
+          final segments = getDrawableLineSegments(
+            lineY: y,
+            fullStartX: drawingLeft,
+            fullEndX: drawingRight,
+          );
+          
+          for (final (startX, endX) in segments) {
+            if (endX > startX) {
+              canvas.drawLine(
+                Offset(startX, y),
+                Offset(endX, y),
+                paint,
+              );
+            }
+          }
+        }
       }
     }
   }
@@ -185,6 +212,7 @@ class DynamicRowLinePainter extends CustomPainter {
            topMargin != oldDelegate.topMargin ||
            bottomMargin != oldDelegate.bottomMargin ||
            proximityRadius != oldDelegate.proximityRadius ||
-           fadeDistance != oldDelegate.fadeDistance;
+           fadeDistance != oldDelegate.fadeDistance ||
+           regions != oldDelegate.regions;
   }
 }

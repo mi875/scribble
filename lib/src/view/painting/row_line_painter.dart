@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:scribble/src/domain/model/region/page_region.dart';
+import 'package:scribble/src/view/painting/region_aware_painter_mixin.dart';
 
 /// A custom painter that draws horizontal row lines on notebook pages.
 /// 
 /// This painter is designed to render evenly spaced horizontal lines
 /// across the width of the paper, similar to ruled notebook paper.
-class RowLinePainter extends CustomPainter {
+/// It can skip lines in free drawing regions when regions are provided.
+class RowLinePainter extends CustomPainter with RegionAwarePainterMixin {
   /// Creates a new row line painter.
   const RowLinePainter({
     required this.paperWidth,
@@ -16,6 +19,7 @@ class RowLinePainter extends CustomPainter {
     this.rightMargin = 0.0,
     this.topMargin = 0.0,
     this.bottomMargin = 0.0,
+    this.regions = const <PageRegion>[],
   });
 
   /// Width of the paper in logical pixels.
@@ -44,6 +48,10 @@ class RowLinePainter extends CustomPainter {
 
   /// Bottom margin where lines should not be drawn.
   final double bottomMargin;
+
+  /// List of regions on the page that affect line rendering.
+  @override
+  final List<PageRegion> regions;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -74,11 +82,31 @@ class RowLinePainter extends CustomPainter {
       // Don't draw lines beyond the bottom margin
       if (y > drawingBottom) break;
       
-      canvas.drawLine(
-        Offset(drawingLeft, y),
-        Offset(drawingRight, y),
-        paint,
-      );
+      // If there are no regions or no free drawing regions, draw the full line
+      if (!hasFreeDrawingRegions) {
+        canvas.drawLine(
+          Offset(drawingLeft, y),
+          Offset(drawingRight, y),
+          paint,
+        );
+      } else {
+        // Draw line segments that don't intersect with free drawing regions
+        final segments = getDrawableLineSegments(
+          lineY: y,
+          fullStartX: drawingLeft,
+          fullEndX: drawingRight,
+        );
+        
+        for (final (startX, endX) in segments) {
+          if (endX > startX) {
+            canvas.drawLine(
+              Offset(startX, y),
+              Offset(endX, y),
+              paint,
+            );
+          }
+        }
+      }
     }
   }
 
@@ -92,6 +120,7 @@ class RowLinePainter extends CustomPainter {
            leftMargin != oldDelegate.leftMargin ||
            rightMargin != oldDelegate.rightMargin ||
            topMargin != oldDelegate.topMargin ||
-           bottomMargin != oldDelegate.bottomMargin;
+           bottomMargin != oldDelegate.bottomMargin ||
+           regions != oldDelegate.regions;
   }
 }

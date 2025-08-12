@@ -12,6 +12,8 @@ import 'package:scribble/src/view/painting/point_to_offset_x.dart';
 import 'package:scribble/src/view/scrollable_notebook_canvas.dart';
 import 'package:scribble/src/view/simplification/sketch_simplifier.dart';
 import 'package:scribble/src/view/state/notebook_state.dart';
+import 'package:scribble/src/domain/model/region/region_type.dart';
+import 'package:scribble/src/domain/model/region/page_region.dart';
 import 'package:value_notifier_tools/value_notifier_tools.dart';
 
 /// A notifier that manages a notebook with multiple pages and provides
@@ -498,6 +500,336 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
     
     // Save to history
     value = value.copyWith(notebook: finalNotebook);
+  }
+
+  /// Inserts a free drawing region at the specified row position.
+  void insertFreeDrawingRegion({
+    required int rowIndex,
+    required FreeDrawingPreset preset,
+    double? rowLineSpacing,
+    double? topMargin,
+    double? paperWidth,
+    double? leftMargin,
+    double? rightMargin,
+  }) {
+    final spacing = rowLineSpacing ?? 24.0;
+    final margin = topMargin ?? 30.0;
+    final width = paperWidth ?? 400.0;
+    final leftM = leftMargin ?? 60.0;
+    final rightM = rightMargin ?? 20.0;
+    
+    // Calculate the region bounds
+    final regionTop = margin + (rowIndex * spacing);
+    final regionHeight = spacing * preset.heightMultiplier;
+    
+    final regionBounds = Rect.fromLTWH(
+      leftM,
+      regionTop,
+      width - leftM - rightM,
+      regionHeight,
+    );
+    
+    // Create the new region
+    final newRegion = PageRegion.freeDrawing(
+      bounds: regionBounds,
+      preset: preset,
+    );
+    
+    // Move content below the insertion point down
+    _moveContentDown(regionTop, regionHeight);
+    
+    // Add the region to the current page
+    final updatedPage = currentPage.withAddedRegion(newRegion);
+    final updatedNotebook = currentNotebook.updateCurrentPage(updatedPage);
+    
+    // Update state
+    value = value.copyWith(notebook: updatedNotebook);
+  }
+
+  /// Inserts a free drawing region with animation.
+  Future<void> insertFreeDrawingRegionAnimated({
+    required int rowIndex,
+    required FreeDrawingPreset preset,
+    double? rowLineSpacing,
+    double? topMargin,
+    double? paperWidth,
+    double? leftMargin,
+    double? rightMargin,
+    Duration duration = const Duration(milliseconds: 400),
+  }) async {
+    final spacing = rowLineSpacing ?? 24.0;
+    final margin = topMargin ?? 30.0;
+    final width = paperWidth ?? 400.0;
+    final leftM = leftMargin ?? 60.0;
+    final rightM = rightMargin ?? 20.0;
+    
+    // Calculate the region bounds
+    final regionTop = margin + (rowIndex * spacing);
+    final regionHeight = spacing * preset.heightMultiplier;
+    
+    final regionBounds = Rect.fromLTWH(
+      leftM,
+      regionTop,
+      width - leftM - rightM,
+      regionHeight,
+    );
+    
+    // Create the new region
+    final newRegion = PageRegion.freeDrawing(
+      bounds: regionBounds,
+      preset: preset,
+    );
+    
+    // Animate content movement down
+    await _moveContentDownAnimated(regionTop, regionHeight, duration);
+    
+    // Add the region to the current page
+    final updatedPage = currentPage.withAddedRegion(newRegion);
+    final updatedNotebook = currentNotebook.updateCurrentPage(updatedPage);
+    
+    // Update state with final result
+    value = value.copyWith(notebook: updatedNotebook);
+  }
+
+  /// Moves content down by the specified amount at the insertion point.
+  void _moveContentDown(double insertionY, double moveDistance) {
+    final currentSketch = currentPage.sketch;
+    final newLines = <SketchLine>[];
+    
+    for (final line in currentSketch.lines) {
+      // Check if line has any points at or below the insertion point
+      final hasPointsAtOrBelowInsertion = line.points.any((point) => 
+        point.y >= insertionY,
+      );
+      
+      if (hasPointsAtOrBelowInsertion) {
+        // Move this line down by the specified distance
+        final movedPoints = line.points.map((point) {
+          return point.y >= insertionY 
+              ? Point(point.x, point.y + moveDistance, pressure: point.pressure)
+              : point;
+        }).toList();
+        
+        newLines.add(line.copyWith(points: movedPoints));
+      } else {
+        // Keep lines above the insertion point unchanged
+        newLines.add(line);
+      }
+    }
+    
+    // Update sketch if there are changes
+    if (newLines.any((newLine) {
+      final originalIndex = currentSketch.lines.indexOf(
+        currentSketch.lines.firstWhere(
+          (orig) => orig.color == newLine.color && orig.width == newLine.width,
+          orElse: () => newLine,
+        ),
+      );
+      return originalIndex == -1 || currentSketch.lines[originalIndex] != newLine;
+    })) {
+      final newSketch = currentSketch.copyWith(lines: newLines);
+      final updatedPage = currentPage.copyWith(sketch: newSketch);
+      final updatedNotebook = currentNotebook.updateCurrentPage(updatedPage);
+      temporaryValue = value.copyWith(notebook: updatedNotebook);
+    }
+  }
+
+  /// Moves content down with animation.
+  Future<void> _moveContentDownAnimated(
+    double insertionY,
+    double moveDistance,
+    Duration duration,
+  ) async {
+    final currentSketch = currentPage.sketch;
+    
+    // Identify lines that will be moved
+    final linesToMove = <SketchLine>[];
+    final linesToKeep = <SketchLine>[];
+    
+    for (final line in currentSketch.lines) {
+      final hasPointsAtOrBelowInsertion = line.points.any((point) => 
+        point.y >= insertionY,
+      );
+      
+      if (hasPointsAtOrBelowInsertion) {
+        linesToMove.add(line);
+      } else {
+        linesToKeep.add(line);
+      }
+    }
+    
+    if (linesToMove.isEmpty) return;
+    
+    // Animate the movement over several frames
+    const int animationSteps = 15;
+    final stepDelay = Duration(milliseconds: duration.inMilliseconds ~/ animationSteps);
+    
+    for (int step = 0; step < animationSteps; step++) {
+      final progress = (step + 1) / animationSteps;
+      final currentOffset = moveDistance * progress;
+      
+      // Create the animated frame
+      final animatedLines = <SketchLine>[
+        ...linesToKeep, // Keep lines above unchanged
+        // Move lines below gradually
+        ...linesToMove.map((line) {
+          final movedPoints = line.points.map((point) {
+            return point.y >= insertionY 
+                ? Point(point.x, point.y + currentOffset, pressure: point.pressure)
+                : point;
+          }).toList();
+          return line.copyWith(points: movedPoints);
+        }),
+      ];
+      
+      // Update the sketch with the current animation frame
+      final animatedSketch = currentSketch.copyWith(lines: animatedLines);
+      final updatedPage = currentPage.copyWith(sketch: animatedSketch);
+      final updatedNotebook = currentNotebook.updateCurrentPage(updatedPage);
+      
+      // Use temporaryValue for intermediate animation frames
+      temporaryValue = value.copyWith(notebook: updatedNotebook);
+      
+      // Wait for next frame
+      if (step < animationSteps - 1) {
+        await Future.delayed(stepDelay);
+      }
+    }
+  }
+
+  /// Removes a free drawing region from the current page.
+  void removeFreeDrawingRegion(PageRegion region) {
+    // Move content below the region back up
+    _moveContentUp(region.bounds.top, region.bounds.height);
+    
+    // Remove the region from the current page
+    final updatedPage = currentPage.withRemovedRegion(region);
+    final updatedNotebook = currentNotebook.updateCurrentPage(updatedPage);
+    
+    // Update state
+    value = value.copyWith(notebook: updatedNotebook);
+  }
+
+  /// Removes a free drawing region with animation.
+  Future<void> removeFreeDrawingRegionAnimated(
+    PageRegion region, {
+    Duration duration = const Duration(milliseconds: 400),
+  }) async {
+    // Move content below the region back up with animation
+    await _moveContentUpAnimated(region.bounds.top, region.bounds.height, duration);
+    
+    // Remove the region from the current page
+    final updatedPage = currentPage.withRemovedRegion(region);
+    final updatedNotebook = currentNotebook.updateCurrentPage(updatedPage);
+    
+    // Update state with final result
+    value = value.copyWith(notebook: updatedNotebook);
+  }
+
+  /// Moves content up by the specified amount at the deletion point.
+  void _moveContentUp(double deletionY, double moveDistance) {
+    final currentSketch = currentPage.sketch;
+    final newLines = <SketchLine>[];
+    
+    for (final line in currentSketch.lines) {
+      // Check if line has any points below the deletion point
+      final hasPointsBelowDeletion = line.points.any((point) => 
+        point.y > deletionY,
+      );
+      
+      if (hasPointsBelowDeletion) {
+        // Move this line up by the specified distance
+        final movedPoints = line.points.map((point) {
+          return point.y > deletionY 
+              ? Point(point.x, point.y - moveDistance, pressure: point.pressure)
+              : point;
+        }).toList();
+        
+        newLines.add(line.copyWith(points: movedPoints));
+      } else {
+        // Keep lines above/at the deletion point unchanged
+        newLines.add(line);
+      }
+    }
+    
+    // Update sketch if there are changes
+    if (newLines.any((newLine) {
+      final originalIndex = currentSketch.lines.indexOf(
+        currentSketch.lines.firstWhere(
+          (orig) => orig.color == newLine.color && orig.width == newLine.width,
+          orElse: () => newLine,
+        ),
+      );
+      return originalIndex == -1 || currentSketch.lines[originalIndex] != newLine;
+    })) {
+      final newSketch = currentSketch.copyWith(lines: newLines);
+      final updatedPage = currentPage.copyWith(sketch: newSketch);
+      final updatedNotebook = currentNotebook.updateCurrentPage(updatedPage);
+      temporaryValue = value.copyWith(notebook: updatedNotebook);
+    }
+  }
+
+  /// Moves content up with animation.
+  Future<void> _moveContentUpAnimated(
+    double deletionY,
+    double moveDistance,
+    Duration duration,
+  ) async {
+    final currentSketch = currentPage.sketch;
+    
+    // Identify lines that will be moved
+    final linesToMove = <SketchLine>[];
+    final linesToKeep = <SketchLine>[];
+    
+    for (final line in currentSketch.lines) {
+      final hasPointsBelowDeletion = line.points.any((point) => 
+        point.y > deletionY,
+      );
+      
+      if (hasPointsBelowDeletion) {
+        linesToMove.add(line);
+      } else {
+        linesToKeep.add(line);
+      }
+    }
+    
+    // Animate the movement if there are lines to move
+    if (linesToMove.isNotEmpty) {
+      const animationSteps = 20;
+      final stepDelay = Duration(milliseconds: duration.inMilliseconds ~/ animationSteps);
+      final stepDistance = moveDistance / animationSteps;
+      
+      for (int step = 0; step < animationSteps; step++) {
+        final currentOffset = stepDistance * (step + 1);
+        final animatedLines = <SketchLine>[];
+        
+        // Add unmoved lines
+        animatedLines.addAll(linesToKeep);
+        
+        // Add animated lines
+        for (final line in linesToMove) {
+          final movedPoints = line.points.map((point) {
+            return point.y > deletionY 
+                ? Point(point.x, point.y - currentOffset, pressure: point.pressure)
+                : point;
+          }).toList();
+          
+          animatedLines.add(line.copyWith(points: movedPoints));
+        }
+        
+        final newSketch = currentSketch.copyWith(lines: animatedLines);
+        final updatedPage = currentPage.copyWith(sketch: newSketch);
+        final updatedNotebook = currentNotebook.updateCurrentPage(updatedPage);
+        
+        // Use temporaryValue for intermediate animation frames
+        temporaryValue = value.copyWith(notebook: updatedNotebook);
+        
+        // Wait for next frame
+        if (step < animationSteps - 1) {
+          await Future.delayed(stepDelay);
+        }
+      }
+    }
   }
 
   /// Erases all content within a specific row range on the current page (legacy method).

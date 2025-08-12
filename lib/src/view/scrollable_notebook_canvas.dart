@@ -11,8 +11,11 @@ import 'package:scribble/src/view/painting/row_line_painter.dart';
 import 'package:scribble/src/view/painting/dynamic_row_line_painter.dart';
 import 'package:scribble/src/view/painting/constrained_row_line_painter.dart';
 import 'package:scribble/src/view/painting/line_number_painter.dart';
+import 'package:scribble/src/view/painting/free_space_icon_painter.dart';
 import 'package:scribble/src/view/pan_gesture_catcher.dart';
 import 'package:scribble/src/view/state/notebook_state.dart';
+import 'package:scribble/src/domain/model/region/region_type.dart';
+import 'package:scribble/src/domain/model/region/page_region.dart';
 
 /// Enum for different row line display modes
 enum RowLineMode {
@@ -297,7 +300,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
         // Calculate optimal positioning to avoid hiding the row
         final screenSize = MediaQuery.of(context).size;
         final popupHeight = 64.0; // Estimated popup height
-        final popupWidth = 260.0; // Estimated popup width for two buttons
+        final popupWidth = 340.0; // Estimated popup width for three buttons
         
         // Determine if popup should appear above or below the tapped row
         final spaceBelow = screenSize.height - globalPosition.dy;
@@ -362,6 +365,17 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
                       ),
                       const SizedBox(width: 8),
                       FilledButton.tonalIcon(
+                        onPressed: () => _showFreeSpaceOptions(pageIndex, rowIndex, globalPosition),
+                        icon: const Icon(Icons.crop_free, size: 18),
+                        label: const Text('Free Space'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(88, 36),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.tonalIcon(
                         onPressed: () => _eraseRow(pageIndex, rowIndex),
                         icon: const Icon(Icons.delete_outline, size: 18),
                         label: const Text('Delete'),
@@ -403,6 +417,65 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
     Overlay.of(context).insert(_rowControlsOverlay!);
   }
 
+  /// Checks if a point is tapping directly on a visible line number.
+  /// Returns the row index if tapping on a line number, null otherwise.
+  int? _getLineNumberAtPoint(Offset point, NotebookPage page) {
+    // DEBUG: Print coordinates to understand what we're getting
+    print('DEBUG: Tap at coordinates: ${point.dx}, ${point.dy}');
+    
+    // TEMPORARY: Accept ALL coordinates in the gesture detector area to see what works
+    // We'll narrow this down once we understand the coordinate system
+    if (point.dx > 60.0) {
+      print('DEBUG: Outside gesture detector area (${point.dx} > 60.0)');
+      return null;
+    }
+    
+    // Calculate which row this Y coordinate corresponds to
+    const topMargin = 30.0;
+    if (point.dy < topMargin) {
+      print('DEBUG: Above top margin (${point.dy} < $topMargin)');
+      return null;
+    }
+    
+    final rowIndex = ((point.dy - topMargin) / _currentRowLineSpacing).floor();
+    if (rowIndex < 0) {
+      print('DEBUG: Negative row index: $rowIndex');
+      return null;
+    }
+    
+    // TEMPORARY: Use a VERY generous vertical hit area to see if we can get ANY hits
+    final rowCenterY = topMargin + (rowIndex * _currentRowLineSpacing);
+    print('DEBUG: Row $rowIndex center should be at Y: $rowCenterY, spacing: $_currentRowLineSpacing');
+    
+    // Accept taps anywhere in the row area for now
+    final rowTop = topMargin + (rowIndex * _currentRowLineSpacing) - (_currentRowLineSpacing / 2);
+    final rowBottom = topMargin + (rowIndex * _currentRowLineSpacing) + (_currentRowLineSpacing / 2);
+    
+    if (point.dy < rowTop || point.dy > rowBottom) {
+      print('DEBUG: Outside row area for row $rowIndex (${point.dy} not in $rowTop-$rowBottom)');
+      return null;
+    }
+    
+    // Check if this line number is visible (not in a free drawing region)
+    final freeDrawingRegions = page.regions
+        .where((region) => region.type == RegionType.freeDrawing)
+        .toList();
+    
+    for (final region in freeDrawingRegions) {
+      // If the line number center point falls within a free drawing region,
+      // it's not visible and shouldn't be tappable
+      if (region.bounds.top <= rowCenterY && 
+          rowCenterY <= region.bounds.bottom) {
+        print('DEBUG: Row $rowIndex hidden by free drawing region');
+        return null;
+      }
+    }
+    
+    print('DEBUG: Hit detected on row $rowIndex');
+    return rowIndex;
+  }
+
+
   /// Removes the row controls overlay.
   void _removeRowControls() {
     _rowControlsOverlay?.remove();
@@ -436,7 +509,303 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
     await widget.notifier.insertRowAboveAnimated(
       rowIndex,
       rowLineSpacing: _currentRowLineSpacing,
-      topMargin: 30.0,
+      topMargin: 30,
+    );
+  }
+
+  /// Shows options for inserting free drawing spaces.
+  void _showFreeSpaceOptions(int pageIndex, int rowIndex, Offset globalPosition) {
+    // Remove the current controls popup
+    _removeRowControls();
+    
+    // Show free space preset options
+    _showFreeSpacePresetsOverlay(pageIndex, rowIndex, globalPosition);
+  }
+
+  /// Shows the free space presets overlay.
+  void _showFreeSpacePresetsOverlay(int pageIndex, int rowIndex, Offset globalPosition) {
+    _selectedPageIndex = pageIndex;
+    _selectedRowIndex = rowIndex;
+    
+    _rowControlsOverlay = OverlayEntry(
+      builder: (context) {
+        final theme = Theme.of(context);
+        final colorScheme = theme.colorScheme;
+        
+        return Positioned(
+          left: globalPosition.dx - 150,
+          top: globalPosition.dy - 200,
+          child: Material(
+            type: MaterialType.card,
+            elevation: 6,
+            shadowColor: colorScheme.shadow,
+            surfaceTintColor: colorScheme.surfaceTint,
+            color: colorScheme.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              width: 300,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.crop_free, 
+                          size: 20, color: colorScheme.onSurface),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Add Free Drawing Space',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: _removeRowControls,
+                        icon: const Icon(Icons.close, size: 18),
+                        iconSize: 18,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ...FreeDrawingPreset.values.map((preset) =>
+                    _buildPresetTile(preset, pageIndex, rowIndex, theme)),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    
+    Overlay.of(context).insert(_rowControlsOverlay!);
+  }
+
+  /// Builds a preset tile for free drawing space options.
+  Widget _buildPresetTile(FreeDrawingPreset preset, int pageIndex, int rowIndex, ThemeData theme) {
+    final colorScheme = theme.colorScheme;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () => _insertFreeDrawingSpace(pageIndex, rowIndex, preset),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: _getPresetColor(preset).withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: _getPresetColor(preset), width: 1),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${preset.heightMultiplier.toInt()}x',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: _getPresetColor(preset),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        preset.displayName,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        preset.description,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurface.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  size: 14,
+                  color: colorScheme.onSurface.withOpacity(0.5),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Gets the color for a preset type.
+  Color _getPresetColor(FreeDrawingPreset preset) {
+    switch (preset) {
+      case FreeDrawingPreset.math:
+        return Colors.blue;
+      case FreeDrawingPreset.graph:
+        return Colors.green;
+      case FreeDrawingPreset.diagram:
+        return Colors.orange;
+      case FreeDrawingPreset.sketch:
+        return Colors.purple;
+      case FreeDrawingPreset.custom:
+        return Colors.grey;
+    }
+  }
+
+  /// Inserts a free drawing space with the specified preset.
+  Future<void> _insertFreeDrawingSpace(int pageIndex, int rowIndex, FreeDrawingPreset preset) async {
+    // Remove the overlay
+    _removeRowControls();
+    
+    // Get current paper dimensions for region calculation
+    final notebookState = widget.notifier.value;
+    final currentPage = notebookState.notebook.currentPage;
+    final paperSize = currentPage.paperSize;
+    
+    // Insert the actual free drawing region with animation
+    await widget.notifier.insertFreeDrawingRegionAnimated(
+      rowIndex: rowIndex,
+      preset: preset,
+      rowLineSpacing: _currentRowLineSpacing,
+      topMargin: 30,
+      paperWidth: paperSize.width,
+      leftMargin: widget.showLineNumbers ? 60 : 20,
+      rightMargin: 20,
+      duration: const Duration(milliseconds: 400),
+    );
+  }
+
+  /// Shows controls for an existing free space region.
+  void _showFreeSpaceControls(int pageIndex, PageRegion region, Offset globalPosition) {
+    _removeRowControls();
+    
+    _selectedPageIndex = pageIndex;
+    
+    _rowControlsOverlay = OverlayEntry(
+      builder: (context) {
+        final theme = Theme.of(context);
+        final colorScheme = theme.colorScheme;
+        
+        // Calculate optimal positioning to avoid hiding the region
+        final screenSize = MediaQuery.of(context).size;
+        const popupHeight = 64.0; // Estimated popup height
+        const popupWidth = 240.0; // Estimated popup width for delete button
+        
+        // Determine if popup should appear above or below the tapped region
+        final spaceBelow = screenSize.height - globalPosition.dy;
+        final spaceAbove = globalPosition.dy;
+        final showAbove = spaceBelow < popupHeight + 20 && spaceAbove > popupHeight + 20;
+        
+        // Calculate vertical position
+        final topPosition = showAbove 
+            ? globalPosition.dy - popupHeight - 8  // Above the region
+            : globalPosition.dy + 8;               // Below the region
+            
+        // Calculate horizontal position (ensure it stays on screen)
+        final leftPosition = (globalPosition.dx + popupWidth > screenSize.width)
+            ? screenSize.width - popupWidth - 16  // Move left to fit
+            : globalPosition.dx + 16;             // Normal right offset
+        
+        return Positioned(
+          left: leftPosition,
+          top: topPosition,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Arrow pointing to the region (shown above popup when below region)
+              if (!showAbove)
+                CustomPaint(
+                  painter: _TrianglePainter(
+                    color: colorScheme.surfaceContainerHigh,
+                    pointUp: true,
+                  ),
+                  size: const Size(16, 8),
+                ),
+              Material(
+                type: MaterialType.card,
+                elevation: 3,
+                shadowColor: colorScheme.shadow,
+                surfaceTintColor: colorScheme.surfaceTint,
+                color: colorScheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  constraints: const BoxConstraints(minHeight: 48),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${region.preset?.displayName ?? 'Free Space'}',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      FilledButton.tonalIcon(
+                        onPressed: () => _deleteFreeSpace(pageIndex, region),
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        label: const Text('Delete'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(72, 36),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filledTonal(
+                        onPressed: _removeRowControls,
+                        icon: const Icon(Icons.close, size: 18),
+                        tooltip: 'Close',
+                        style: IconButton.styleFrom(
+                          minimumSize: const Size(36, 36),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Arrow pointing to the region (shown below popup when above region)
+              if (showAbove)
+                CustomPaint(
+                  painter: _TrianglePainter(
+                    color: colorScheme.surfaceContainerHigh,
+                    pointUp: false,
+                  ),
+                  size: const Size(16, 8),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+    
+    Overlay.of(context).insert(_rowControlsOverlay!);
+  }
+
+  /// Deletes a free drawing region.
+  Future<void> _deleteFreeSpace(int pageIndex, PageRegion region) async {
+    // Remove the controls popup immediately
+    _removeRowControls();
+    
+    // Delete the free drawing region with animation
+    await widget.notifier.removeFreeDrawingRegionAnimated(
+      region,
+      duration: const Duration(milliseconds: 300),
     );
   }
 
@@ -685,6 +1054,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
                       isDynamic: widget.rowLineMode == RowLineMode.dynamic,
                       proximityRadius: 40,
                       fadeDistance: 80,
+                      regions: page.regions,
                     )
                   : null,
               child: RepaintBoundary(
@@ -699,6 +1069,17 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
                 ),
               ),
             ),
+            // Free space icon painter for showing icons in left margin
+            if (widget.showLineNumbers)
+              CustomPaint(
+                painter: FreeSpaceIconPainter(
+                  regions: page.regions,
+                  leftMargin: 60,
+                  iconColor: widget._lineNumberColor,
+                  iconSize: 16,
+                  iconOpacity: 0.6,
+                ),
+              ),
             // Line number tap detector
             if (widget.showLineNumbers && widget.showRowControls)
               Positioned(
@@ -709,10 +1090,33 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
                 child: GestureDetector(
                   onTapDown: (details) {
                     final localY = details.localPosition.dy;
-                    final rowIndex = ((localY - 30) / _currentRowLineSpacing).floor();
-                    if (rowIndex >= 0) {
+                    final localX = details.localPosition.dx;
+                    
+                    
+                    // Check if tap is on a free space icon first
+                    final freeSpaceIconPainter = FreeSpaceIconPainter(
+                      regions: page.regions,
+                      leftMargin: 60,
+                      iconColor: widget._lineNumberColor,
+                    );
+                    final tappedRegion = freeSpaceIconPainter.getRegionAtPoint(
+                      details.localPosition,
+                    );
+                    
+                    if (tappedRegion != null) {
+                      // Show free space controls for the tapped region
                       final globalPosition = details.globalPosition;
-                      _showRowControls(pageIndex, rowIndex, globalPosition);
+                      _showFreeSpaceControls(pageIndex, tappedRegion, globalPosition);
+                    } else {
+                      // Check if tap is precisely on a line number
+                      // Use gesture detector coordinates directly (localX, localY)
+                      final tappedRowIndex = _getLineNumberAtPoint(Offset(localX, localY), page);
+                      if (tappedRowIndex != null) {
+                        // Show row controls only when tapping directly on a line number
+                        final globalPosition = details.globalPosition;
+                        _showRowControls(pageIndex, tappedRowIndex, globalPosition);
+                      }
+                      // If not on a line number, ignore the tap completely
                     }
                   },
                   behavior: HitTestBehavior.translucent,
@@ -789,6 +1193,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
         proximityRadius: 40,
         fadeDistance: 80,
         isDynamic: widget.rowLineMode == RowLineMode.dynamic,
+        regions: page.regions,
       );
     }
 
@@ -807,6 +1212,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
         bottomMargin: bottomMargin,
         proximityRadius: 40,
         fadeDistance: 80,
+        regions: page.regions,
       );
     } else {
       return RowLinePainter(
@@ -819,6 +1225,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
         rightMargin: rightMargin,
         topMargin: topMargin,
         bottomMargin: bottomMargin,
+        regions: page.regions,
       );
     }
   }

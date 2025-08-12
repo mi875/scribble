@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:scribble/src/domain/model/region/page_region.dart';
 import 'package:scribble/src/domain/model/sketch/sketch.dart';
+import 'package:scribble/src/view/painting/region_aware_painter_mixin.dart';
 
 /// A custom painter that draws line numbers on the left margin of 
 /// notebook pages.
 ///
 /// This painter renders sequential line numbers in a vertical column on the 
 /// left side. In dynamic mode, line numbers appear only near content areas 
-/// and fade based on proximity.
-class LineNumberPainter extends CustomPainter {
+/// and fade based on proximity. It can skip numbers in free drawing regions.
+class LineNumberPainter extends CustomPainter with RegionAwarePainterMixin {
   /// Creates a new line number painter.
   const LineNumberPainter({
     required this.paperWidth,
@@ -24,6 +26,7 @@ class LineNumberPainter extends CustomPainter {
     this.isDynamic = false,
     this.proximityRadius = 50.0,
     this.fadeDistance = 100.0,
+    this.regions = const <PageRegion>[],
   });
 
   /// Width of the paper in logical pixels.
@@ -68,6 +71,10 @@ class LineNumberPainter extends CustomPainter {
   /// Distance over which numbers fade out.
   final double fadeDistance;
 
+  /// List of regions on the page that affect line number rendering.
+  @override
+  final List<PageRegion> regions;
+
   @override
   void paint(Canvas canvas, Size size) {
     // Calculate the drawing area height for line numbers
@@ -102,6 +109,9 @@ class LineNumberPainter extends CustomPainter {
 
       // Skip drawing if too transparent
       if (opacity < 0.01) continue;
+
+      // Skip drawing if line number position is in a free drawing region
+      if (isVerticalPositionInFreeDrawingRegion(betweenRowsY)) continue;
 
       // Set up text style with calculated opacity
       final textStyle = TextStyle(
@@ -214,6 +224,7 @@ class LineNumberPainter extends CustomPainter {
         sketch != oldDelegate.sketch ||
         isDynamic != oldDelegate.isDynamic ||
         proximityRadius != oldDelegate.proximityRadius ||
-        fadeDistance != oldDelegate.fadeDistance;
+        fadeDistance != oldDelegate.fadeDistance ||
+        regions != oldDelegate.regions;
   }
 }
