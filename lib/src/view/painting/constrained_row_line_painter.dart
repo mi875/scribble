@@ -17,8 +17,8 @@ class ConstrainedRowLinePainter extends CustomPainter {
     required this.topMargin,
     required this.bottomMargin,
     this.sketch,
-    this.proximityRadius = 40,
-    this.fadeDistance = 80,
+    this.proximityRadius = 50,
+    this.fadeDistance = 100,
     this.isDynamic = false,
   });
 
@@ -99,7 +99,15 @@ class ConstrainedRowLinePainter extends CustomPainter {
   double _calculateLineOpacity(double lineY) {
     if (sketch == null) return 1.0;
 
-    double minDistance = double.infinity;
+    // Calculate line index to implement first-lines logic
+    final lineIndex = ((lineY - topMargin) / lineSpacing).round();
+    
+    // Always show the first two lines at full opacity
+    if (lineIndex == 0 || lineIndex == 1) {
+      return 1.0;
+    }
+
+    var minDistance = double.infinity;
 
     // Find the minimum distance to any drawn point
     for (final line in sketch!.lines) {
@@ -111,19 +119,20 @@ class ConstrainedRowLinePainter extends CustomPainter {
       }
     }
 
-    // If no content exists, show lines with low opacity
+    // If no content exists, show lines with medium opacity (matching DynamicRowLinePainter)
     if (minDistance == double.infinity) {
-      return 0.1;
+      return 0.3;
     }
 
     // Calculate opacity based on proximity
     if (minDistance <= proximityRadius) {
       return 1.0;
     } else if (minDistance <= proximityRadius + fadeDistance) {
-      final fadeProgress = (minDistance - proximityRadius) / fadeDistance;
-      return ui.lerpDouble(1.0, 0.1, fadeProgress) ?? 0.1;
+      final fadeProgress = 
+          (minDistance - proximityRadius) / fadeDistance;
+      return ui.lerpDouble(1, 0.3, fadeProgress) ?? 0.3;
     } else {
-      return 0.1;
+      return 0.3;
     }
   }
 
