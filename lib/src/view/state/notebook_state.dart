@@ -44,8 +44,6 @@ sealed class NotebookState with _$NotebookState {
     /// The pan offset for the canvas when zoomed
     @Default(Offset.zero) Offset panOffset,
 
-    /// The currently active row index for line-by-line constraint mode
-    @Default(0) int activeRowIndex,
   }) = NotebookDrawing;
 
   /// Erasing state for the notebook.
@@ -77,8 +75,6 @@ sealed class NotebookState with _$NotebookState {
     /// The pan offset for the canvas when zoomed
     @Default(Offset.zero) Offset panOffset,
 
-    /// The currently active row index for line-by-line constraint mode
-    @Default(0) int activeRowIndex,
   }) = NotebookErasing;
 
   const NotebookState._();

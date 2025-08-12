@@ -28,8 +28,6 @@ enum RowConstraintMode {
   none,
   /// Users must write lines sequentially from top to bottom
   sequential,
-  /// Users can only write on the currently active line
-  current,
 }
 
 /// A scrollable canvas widget that renders all notebook pages vertically.
@@ -763,9 +761,6 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
         rightMargin: rightMargin,
         topMargin: topMargin,
         bottomMargin: bottomMargin,
-        activeRowIndex: state.activeRowIndex,
-        activeRowColor: const Color(0xFF2196F3),
-        activeRowOpacity: 0.1,
         sketch: widget.rowLineMode == RowLineMode.dynamic ? page.sketch : null,
         proximityRadius: 40,
         fadeDistance: 80,

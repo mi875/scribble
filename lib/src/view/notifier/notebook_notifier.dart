@@ -377,7 +377,6 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
       activePointerIds: value.activePointerIds,
       zoomLevel: value.zoomLevel,
       panOffset: value.panOffset,
-      activeRowIndex: value.activeRowIndex,
     );
   }
 
@@ -431,43 +430,16 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
     }
   }
 
-  /// Sets the active row index.
-  void setActiveRow(int rowIndex) {
-    temporaryValue = value.copyWith(activeRowIndex: rowIndex);
-  }
-
-  /// Advances to the next row.
-  void nextRow() {
-    temporaryValue = value.copyWith(activeRowIndex: value.activeRowIndex + 1);
-  }
-
-  /// Goes to the previous row.
-  void previousRow() {
-    if (value.activeRowIndex > 0) {
-      temporaryValue = value.copyWith(activeRowIndex: value.activeRowIndex - 1);
-    }
-  }
-
-  /// Returns the bounds of the current active row.
-  Rect getCurrentRowBounds() {
-    final rowIndex = value.activeRowIndex;
-    final rowTop = _topMargin + (rowIndex * _rowLineSpacing);
-    final rowBottom = rowTop + _rowLineSpacing;
-    return Rect.fromLTRB(0, rowTop, currentPaperSize.width, rowBottom);
-  }
 
   /// Checks if a drawing position is allowed based on the current constraint mode.
   bool isPositionAllowed(Offset position) {
     switch (_rowConstraintMode) {
       case RowConstraintMode.none:
         return true;
-      case RowConstraintMode.current:
-        final rowBounds = getCurrentRowBounds();
-        return rowBounds.contains(position);
       case RowConstraintMode.sequential:
-        final rowIndex = value.activeRowIndex;
         final maxAllowedRow = _findLastRowWithContent() + 1;
-        final positionRowIndex = ((position.dy - _topMargin) / _rowLineSpacing).floor();
+        final positionRowIndex = 
+            ((position.dy - _topMargin) / _rowLineSpacing).floor();
         return positionRowIndex <= maxAllowedRow && positionRowIndex >= 0;
     }
   }
@@ -488,24 +460,6 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
     return lastRowWithContent;
   }
 
-  /// Auto-advances to the next row if the current row has content.
-  void _autoAdvanceRowIfNeeded() {
-    if (_rowConstraintMode == RowConstraintMode.current) {
-      final currentRowBounds = getCurrentRowBounds();
-      final hasContentInCurrentRow = currentSketch.lines.any(
-        (line) => line.points.any(
-          (point) => currentRowBounds.contains(Offset(point.x, point.y)),
-        ),
-      );
-      
-      if (hasContentInCurrentRow) {
-        // Small delay to allow the current drawing to finish
-        Future.delayed(const Duration(milliseconds: 100), () {
-          nextRow();
-        });
-      }
-    }
-  }
 
   /// Sets the color of the pen.
   void setColor(Color color) {
@@ -518,7 +472,6 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
         scaleFactor: s.scaleFactor,
         zoomLevel: s.zoomLevel,
         panOffset: s.panOffset,
-        activeRowIndex: s.activeRowIndex,
       ),
       erasing: (s) => NotebookState.drawing(
         notebook: s.notebook,
@@ -529,7 +482,6 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
         activePointerIds: s.activePointerIds,
         zoomLevel: s.zoomLevel,
         panOffset: s.panOffset,
-        activeRowIndex: s.activeRowIndex,
       ),
     );
   }
@@ -656,9 +608,6 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
         activePointerIds:
             value.activePointerIds.where((id) => id != event.pointer).toList(),
       );
-      
-      // Auto-advance to next row if needed
-      _autoAdvanceRowIfNeeded();
     } else if (value is NotebookErasing) {
       value = _erasePoint(event).copyWith(
         pointerPosition: pos,

@@ -3,8 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:scribble/src/domain/model/sketch/sketch.dart';
 
-/// A custom painter that draws row lines with highlighting for the active row
-/// in constraint modes.
+/// A custom painter that draws row lines for constraint modes.
 class ConstrainedRowLinePainter extends CustomPainter {
   /// Creates a new constrained row line painter.
   const ConstrainedRowLinePainter({
@@ -17,9 +16,6 @@ class ConstrainedRowLinePainter extends CustomPainter {
     required this.rightMargin,
     required this.topMargin,
     required this.bottomMargin,
-    required this.activeRowIndex,
-    required this.activeRowColor,
-    required this.activeRowOpacity,
     this.sketch,
     this.proximityRadius = 40,
     this.fadeDistance = 80,
@@ -53,14 +49,6 @@ class ConstrainedRowLinePainter extends CustomPainter {
   /// The bottom margin for the row lines.
   final double bottomMargin;
 
-  /// The index of the currently active row.
-  final int activeRowIndex;
-
-  /// The color for highlighting the active row.
-  final Color activeRowColor;
-
-  /// The opacity for the active row highlight.
-  final double activeRowOpacity;
 
   /// Optional sketch for dynamic line behavior.
   final Sketch? sketch;
@@ -81,25 +69,9 @@ class ConstrainedRowLinePainter extends CustomPainter {
       ..strokeWidth = lineWidth
       ..style = PaintingStyle.stroke;
 
-    final activeRowPaint = Paint()
-      ..color = activeRowColor.withValues(alpha: activeRowOpacity)
-      ..style = PaintingStyle.fill;
-
     // Calculate the number of lines that can fit
     final availableHeight = paperHeight - topMargin - bottomMargin;
     final numberOfLines = (availableHeight / lineSpacing).floor();
-
-    // Draw active row highlight first (behind the lines)
-    if (activeRowIndex >= 0 && activeRowIndex < numberOfLines) {
-      final activeRowY = topMargin + (activeRowIndex * lineSpacing);
-      final highlightRect = Rect.fromLTRB(
-        leftMargin,
-        activeRowY - (lineSpacing / 2),
-        paperWidth - rightMargin,
-        activeRowY + (lineSpacing / 2),
-      );
-      canvas.drawRect(highlightRect, activeRowPaint);
-    }
 
     // Draw row lines
     for (int i = 0; i < numberOfLines; i++) {
@@ -112,14 +84,8 @@ class ConstrainedRowLinePainter extends CustomPainter {
         opacity = _calculateLineOpacity(y);
       }
 
-      // Make active row line slightly more prominent
-      if (i == activeRowIndex) {
-        linePaint.color = lineColor.withValues(alpha: opacity * 0.8);
-        linePaint.strokeWidth = lineWidth * 1.5;
-      } else {
-        linePaint.color = lineColor.withValues(alpha: opacity);
-        linePaint.strokeWidth = lineWidth;
-      }
+      linePaint.color = lineColor.withValues(alpha: opacity);
+      linePaint.strokeWidth = lineWidth;
 
       canvas.drawLine(
         Offset(leftMargin, y),
@@ -172,9 +138,6 @@ class ConstrainedRowLinePainter extends CustomPainter {
         rightMargin != oldDelegate.rightMargin ||
         topMargin != oldDelegate.topMargin ||
         bottomMargin != oldDelegate.bottomMargin ||
-        activeRowIndex != oldDelegate.activeRowIndex ||
-        activeRowColor != oldDelegate.activeRowColor ||
-        activeRowOpacity != oldDelegate.activeRowOpacity ||
         sketch != oldDelegate.sketch ||
         proximityRadius != oldDelegate.proximityRadius ||
         fadeDistance != oldDelegate.fadeDistance ||

@@ -71,553 +71,506 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
                     : 'Switch to Light Mode',
               ),
               // Drawing Tools
-          IconButton(
-            onPressed: () {
-              notifier.setColor(selectedColor);
-            },
-            icon: const Icon(Icons.edit),
-            tooltip: 'Draw',
-          ),
-          IconButton(
-            onPressed: notifier.setEraser,
-            icon: const Icon(Icons.auto_fix_high),
-            tooltip: 'Eraser',
-          ),
-          IconButton(
-            onPressed: notifier.clearCurrentPage,
-            icon: const Icon(Icons.clear),
-            tooltip: 'Clear Current Page',
-          ),
-          const SizedBox(width: 8),
+              IconButton(
+                onPressed: () {
+                  notifier.setColor(selectedColor);
+                },
+                icon: const Icon(Icons.edit),
+                tooltip: 'Draw',
+              ),
+              IconButton(
+                onPressed: notifier.setEraser,
+                icon: const Icon(Icons.auto_fix_high),
+                tooltip: 'Eraser',
+              ),
+              IconButton(
+                onPressed: notifier.clearCurrentPage,
+                icon: const Icon(Icons.clear),
+                tooltip: 'Clear Current Page',
+              ),
+              const SizedBox(width: 8),
 
-          // Undo/Redo
-          ValueListenableBuilder(
-            valueListenable: notifier,
-            builder: (context, state, _) => Row(
-              children: [
-                IconButton(
-                  onPressed: notifier.canUndo ? notifier.undo : null,
-                  icon: const Icon(Icons.undo),
-                  tooltip: 'Undo',
-                ),
-                IconButton(
-                  onPressed: notifier.canRedo ? notifier.redo : null,
-                  icon: const Icon(Icons.redo),
-                  tooltip: 'Redo',
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      body: Row(
-        children: [
-          // Left Panel - Controls
-          Container(
-            width: 200,
-            padding: const EdgeInsets.all(16),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Instructions
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Instructions',
-                            style: Theme.of(context).textTheme.titleSmall,
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            '• Scroll vertically to navigate between pages\n'
-                            '• Tap on a page to select it\n'
-                            '• Draw/erase only works on the active page\n'
-                            '• Use TWO FINGERS to zoom in/out at finger position\n'
-                            '• Pan with single finger when zoomed in\n'
-                            '• Row lines: Static mode shows all lines, Dynamic mode shows lines near content\n'
-                            '• Line numbers: Shows 1,2,3... in left margin, syncs with row spacing when enabled\n'
-                            '• Tap on line numbers to show row controls and delete specific rows\n'
-                            '• Adjust row spacing with the slider\n'
-                            '• Dynamic mode: Pages auto-add when writing near bottom\n'
-                            '• Writing Constraints: Force line-by-line writing behavior\n'
-                            '  - Current: Only write on highlighted active row\n'
-                            '  - Sequential: Write lines in order from top to bottom',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ],
-                      ),
+              // Undo/Redo
+              ValueListenableBuilder(
+                valueListenable: notifier,
+                builder: (context, state, _) => Row(
+                  children: [
+                    IconButton(
+                      onPressed: notifier.canUndo ? notifier.undo : null,
+                      icon: const Icon(Icons.undo),
+                      tooltip: 'Undo',
                     ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Page Info
-                  ValueListenableBuilder(
-                    valueListenable: notifier,
-                    builder: (context, state, _) {
-                      final notebook = state.notebook;
-                      return Card(
+                    IconButton(
+                      onPressed: notifier.canRedo ? notifier.redo : null,
+                      icon: const Icon(Icons.redo),
+                      tooltip: 'Redo',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          body: Row(
+            children: [
+              // Left Panel - Controls
+              Container(
+                width: 200,
+                padding: const EdgeInsets.all(16),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Instructions
+                      Card(
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Page Info',
+                                'Instructions',
                                 style: Theme.of(context).textTheme.titleSmall,
                               ),
                               const SizedBox(height: 8),
-                              Text(
-                                'Current: ${notebook.currentPageIndex + 1} / '
-                                '${notebook.pages.length}',
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Size: ${notebook.currentPage.paperSize.name}',
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Zoom: ${(state.zoomLevel * 100).round()}%',
-                                style: TextStyle(
-                                  color: state.zoomLevel != 1.0
-                                      ? Colors.blue
-                                      : null,
-                                  fontWeight: state.zoomLevel != 1.0
-                                      ? FontWeight.bold
-                                      : null,
-                                ),
+                              const Text(
+                                '• Scroll vertically to navigate between pages\n'
+                                '• Tap on a page to select it\n'
+                                '• Draw/erase only works on the active page\n'
+                                '• Use TWO FINGERS to zoom in/out at finger position\n'
+                                '• Pan with single finger when zoomed in\n'
+                                '• Row lines: Static mode shows all lines, Dynamic mode shows lines near content\n'
+                                '• Line numbers: Shows 1,2,3... in left margin, syncs with row spacing when enabled\n'
+                                '• Tap on line numbers to show row controls and delete specific rows\n'
+                                '• Adjust row spacing with the slider\n'
+                                '• Dynamic mode: Pages auto-add when writing near bottom\n'
+                                '• Writing Constraints: Force line-by-line writing behavior\n'
+                                '  - Current: Only write on highlighted active row\n'
+                                '  - Sequential: Write lines in order from top to bottom',
+                                style: TextStyle(fontSize: 12),
                               ),
                             ],
                           ),
                         ),
-                      );
-                    },
-                  ),
+                      ),
 
-                  const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-                  // Page Management
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Page Management',
-                            style: Theme.of(context).textTheme.titleSmall,
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: () => notifier.addPage(),
-                                  child: const Text('Add Page'),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              ValueListenableBuilder(
-                                valueListenable: notifier,
-                                builder: (context, state, _) {
-                                  final canRemove =
-                                      state.notebook.pages.length > 1;
-                                  return Expanded(
-                                    child: ElevatedButton(
-                                      onPressed: canRemove
-                                          ? () => notifier.removePage(
-                                                state.notebook.currentPageIndex,
-                                              )
+                      // Page Info
+                      ValueListenableBuilder(
+                        valueListenable: notifier,
+                        builder: (context, state, _) {
+                          final notebook = state.notebook;
+                          return Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Page Info',
+                                    style:
+                                        Theme.of(context).textTheme.titleSmall,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Current: ${notebook.currentPageIndex + 1} / '
+                                    '${notebook.pages.length}',
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Size: ${notebook.currentPage.paperSize.name}',
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Zoom: ${(state.zoomLevel * 100).round()}%',
+                                    style: TextStyle(
+                                      color: state.zoomLevel != 1.0
+                                          ? Colors.blue
                                           : null,
-                                      child: const Text('Remove'),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Color Picker
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Pen Color',
-                            style: Theme.of(context).textTheme.titleSmall,
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              Colors.black,
-                              Colors.red,
-                              Colors.blue,
-                              Colors.green,
-                              Colors.purple,
-                              Colors.orange,
-                            ].map((color) {
-                              return GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    selectedColor = color;
-                                  });
-                                  notifier.setColor(color);
-                                },
-                                child: Container(
-                                  width: 30,
-                                  height: 30,
-                                  decoration: BoxDecoration(
-                                    color: color,
-                                    shape: BoxShape.circle,
-                                    border: selectedColor == color
-                                        ? Border.all(
-                                            color: Colors.grey.shade800,
-                                            width: 3,
-                                          )
-                                        : Border.all(
-                                            color: Colors.grey.shade300,
-                                          ),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Row Line Controls
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Row Lines',
-                            style: Theme.of(context).textTheme.titleSmall,
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Switch(
-                                value: showRowLines,
-                                onChanged: (value) {
-                                  setState(() {
-                                    showRowLines = value;
-                                  });
-                                },
-                              ),
-                              const SizedBox(width: 8),
-                              const Text('Show Lines'),
-                            ],
-                          ),
-                          if (showRowLines) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              'Spacing: ${rowLineSpacing.round()}px',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            Slider(
-                              value: rowLineSpacing,
-                              min: 12.0,
-                              max: 48.0,
-                              divisions: 18,
-                              onChanged: (value) {
-                                setState(() {
-                                  rowLineSpacing = value;
-                                });
-                              },
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: RadioListTile<RowLineMode>(
-                                    title: const Text('Static'),
-                                    value: RowLineMode.static,
-                                    groupValue: rowLineMode,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        rowLineMode = value!;
-                                      });
-                                    },
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: RadioListTile<RowLineMode>(
-                                    title: const Text('Dynamic'),
-                                    value: RowLineMode.dynamic,
-                                    groupValue: rowLineMode,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        rowLineMode = value!;
-                                      });
-                                    },
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Switch(
-                                value: showLineNumbers,
-                                onChanged: (value) {
-                                  setState(() {
-                                    showLineNumbers = value;
-                                  });
-                                },
-                              ),
-                              const SizedBox(width: 8),
-                              const Text('Line Numbers'),
-                            ],
-                          ),
-                          if (showRowLines) ...[
-                            const SizedBox(height: 16),
-                            Text(
-                              'Line Appearance',
-                              style: Theme.of(context).textTheme.titleSmall,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Width: ${rowLineWidth.toStringAsFixed(1)}px',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            Slider(
-                              value: rowLineWidth,
-                              min: 0.5,
-                              max: 3.0,
-                              divisions: 10,
-                              onChanged: (value) {
-                                setState(() {
-                                  rowLineWidth = value;
-                                });
-                              },
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Color:',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            const SizedBox(height: 4),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                const Color(0xFFBDBDBD), // Gray (default)
-                                const Color(0xFFE3F2FD), // Light Blue
-                                const Color(0xFFE8F5E8), // Light Green
-                                const Color(0xFFFFF3E0), // Light Orange
-                                const Color(0xFFE1F5FE), // Light Cyan
-                                const Color(0xFFF3E5F5), // Light Purple
-                              ].map((color) {
-                                return GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      rowLineColor = color;
-                                    });
-                                  },
-                                  child: Container(
-                                    width: 30,
-                                    height: 30,
-                                    decoration: BoxDecoration(
-                                      color: color,
-                                      shape: BoxShape.circle,
-                                      border: rowLineColor == color
-                                          ? Border.all(
-                                              color: Colors.grey.shade800,
-                                              width: 3,
-                                            )
-                                          : Border.all(
-                                              color: Colors.grey.shade300,
-                                            ),
+                                      fontWeight: state.zoomLevel != 1.0
+                                          ? FontWeight.bold
+                                          : null,
                                     ),
                                   ),
-                                );
-                              }).toList(),
+                                ],
+                              ),
                             ),
-                          ],
-                        ],
+                          );
+                        },
                       ),
-                    ),
-                  ),
 
-                  const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-                  // Row Constraint Controls
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Writing Constraints',
-                            style: Theme.of(context).textTheme.titleSmall,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Force line-by-line writing',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          const SizedBox(height: 8),
-                          SegmentedButton<RowConstraintMode>(
-                            segments: const [
-                              ButtonSegment(
-                                value: RowConstraintMode.none,
-                                label: Text('None'),
-                                tooltip: 'No constraints - write anywhere',
+                      // Page Management
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Page Management',
+                                style: Theme.of(context).textTheme.titleSmall,
                               ),
-                              ButtonSegment(
-                                value: RowConstraintMode.current,
-                                label: Text('Current'),
-                                tooltip: 'Only write on current active line',
-                              ),
-                              ButtonSegment(
-                                value: RowConstraintMode.sequential,
-                                label: Text('Sequential'),
-                                tooltip: 'Write lines in sequential order',
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton(
+                                      onPressed: () => notifier.addPage(),
+                                      child: const Text('Add Page'),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ValueListenableBuilder(
+                                    valueListenable: notifier,
+                                    builder: (context, state, _) {
+                                      final canRemove =
+                                          state.notebook.pages.length > 1;
+                                      return Expanded(
+                                        child: ElevatedButton(
+                                          onPressed: canRemove
+                                              ? () => notifier.removePage(
+                                                    state.notebook
+                                                        .currentPageIndex,
+                                                  )
+                                              : null,
+                                          child: const Text('Remove'),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
                               ),
                             ],
-                            selected: {rowConstraintMode},
-                            onSelectionChanged: (Set<RowConstraintMode> selection) {
-                              setState(() {
-                                rowConstraintMode = selection.first;
-                              });
-                            },
                           ),
-                          if (rowConstraintMode != RowConstraintMode.none) ...[
-                            const SizedBox(height: 12),
-                            ValueListenableBuilder(
-                              valueListenable: notifier,
-                              builder: (context, state, _) {
-                                return Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Active Row: ${state.activeRowIndex + 1}',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Color Picker
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Pen Color',
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  Colors.black,
+                                  Colors.red,
+                                  Colors.blue,
+                                  Colors.green,
+                                  Colors.purple,
+                                  Colors.orange,
+                                ].map((color) {
+                                  return GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        selectedColor = color;
+                                      });
+                                      notifier.setColor(color);
+                                    },
+                                    child: Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: BoxDecoration(
+                                        color: color,
+                                        shape: BoxShape.circle,
+                                        border: selectedColor == color
+                                            ? Border.all(
+                                                color: Colors.grey.shade800,
+                                                width: 3,
+                                              )
+                                            : Border.all(
+                                                color: Colors.grey.shade300,
+                                              ),
                                       ),
                                     ),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        IconButton(
-                                          onPressed: state.activeRowIndex > 0
-                                              ? () => notifier.previousRow()
-                                              : null,
-                                          icon: const Icon(Icons.keyboard_arrow_up, size: 20),
-                                          tooltip: 'Previous Row',
-                                          constraints: const BoxConstraints.tightFor(
-                                            width: 32,
-                                            height: 32,
-                                          ),
-                                        ),
-                                        IconButton(
-                                          onPressed: () => notifier.nextRow(),
-                                          icon: const Icon(Icons.keyboard_arrow_down, size: 20),
-                                          tooltip: 'Next Row',
-                                          constraints: const BoxConstraints.tightFor(
-                                            width: 32,
-                                            height: 32,
-                                          ),
-                                        ),
-                                      ],
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Row Line Controls
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Row Lines',
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Switch(
+                                    value: showRowLines,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        showRowLines = value;
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text('Show Lines'),
+                                ],
+                              ),
+                              if (showRowLines) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Spacing: ${rowLineSpacing.round()}px',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                                Slider(
+                                  value: rowLineSpacing,
+                                  min: 12.0,
+                                  max: 48.0,
+                                  divisions: 18,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      rowLineSpacing = value;
+                                    });
+                                  },
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: RadioListTile<RowLineMode>(
+                                        title: const Text('Static'),
+                                        value: RowLineMode.static,
+                                        groupValue: rowLineMode,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            rowLineMode = value!;
+                                          });
+                                        },
+                                        contentPadding: EdgeInsets.zero,
+                                      ),
                                     ),
                                   ],
-                                );
-                              },
-                            ),
-                          ],
-                        ],
+                                ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: RadioListTile<RowLineMode>(
+                                        title: const Text('Dynamic'),
+                                        value: RowLineMode.dynamic,
+                                        groupValue: rowLineMode,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            rowLineMode = value!;
+                                          });
+                                        },
+                                        contentPadding: EdgeInsets.zero,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Switch(
+                                    value: showLineNumbers,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        showLineNumbers = value;
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text('Line Numbers'),
+                                ],
+                              ),
+                              if (showRowLines) ...[
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Line Appearance',
+                                  style: Theme.of(context).textTheme.titleSmall,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Width: ${rowLineWidth.toStringAsFixed(1)}px',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                                Slider(
+                                  value: rowLineWidth,
+                                  min: 0.5,
+                                  max: 3.0,
+                                  divisions: 10,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      rowLineWidth = value;
+                                    });
+                                  },
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Color:',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                                const SizedBox(height: 4),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    const Color(0xFFBDBDBD), // Gray (default)
+                                    const Color(0xFFE3F2FD), // Light Blue
+                                    const Color(0xFFE8F5E8), // Light Green
+                                    const Color(0xFFFFF3E0), // Light Orange
+                                    const Color(0xFFE1F5FE), // Light Cyan
+                                    const Color(0xFFF3E5F5), // Light Purple
+                                  ].map((color) {
+                                    return GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          rowLineColor = color;
+                                        });
+                                      },
+                                      child: Container(
+                                        width: 30,
+                                        height: 30,
+                                        decoration: BoxDecoration(
+                                          color: color,
+                                          shape: BoxShape.circle,
+                                          border: rowLineColor == color
+                                              ? Border.all(
+                                                  color: Colors.grey.shade800,
+                                                  width: 3,
+                                                )
+                                              : Border.all(
+                                                  color: Colors.grey.shade300,
+                                                ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
+
+                      const SizedBox(height: 16),
+
+                      // Row Constraint Controls
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Writing Constraints',
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Force line-by-line writing',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              const SizedBox(height: 8),
+                              SegmentedButton<RowConstraintMode>(
+                                segments: const [
+                                  ButtonSegment(
+                                    value: RowConstraintMode.none,
+                                    label: Text('None'),
+                                    tooltip: 'No constraints - write anywhere',
+                                  ),
+                                  ButtonSegment(
+                                    value: RowConstraintMode.sequential,
+                                    label: Text('Sequential'),
+                                    tooltip: 'Write lines in sequential order',
+                                  ),
+                                ],
+                                selected: {rowConstraintMode},
+                                onSelectionChanged:
+                                    (Set<RowConstraintMode> selection) {
+                                  setState(() {
+                                    rowConstraintMode = selection.first;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Zoom Controls
+                      ZoomControls(
+                        notifier: notifier,
+                        theme: theme,
+                      ),
+                    ],
                   ),
+                ),
+              ),
 
-                  const SizedBox(height: 16),
-
-                  // Zoom Controls
-                  ZoomControls(
-                    notifier: notifier,
+              // Right Panel - Scrollable Canvas
+              Expanded(
+                child: Container(
+                  color: theme.paperShadowColor.withValues(alpha: 0.1),
+                  child: ScrollableNotebookCanvas(
                     theme: theme,
+                    simulatePressure: false,
+                    notifier: notifier,
+                    showPaperShadow: true,
+                    showPaperBorder: true,
+                    pageSpacing: 40,
+                    showRowLines: showRowLines,
+                    rowLineSpacing: rowLineSpacing,
+                    rowLineColor: rowLineColor,
+                    rowLineWidth: rowLineWidth,
+                    rowLineMode: rowLineMode,
+                    rowConstraintMode: rowConstraintMode,
+                    showLineNumbers: showLineNumbers,
+                    showRowControls: showLineNumbers,
+                    autoAddPages: true,
+                    bottomMarginThreshold: 50.0,
+                    onRowLineSpacingChanged: (newSpacing) {
+                      setState(() {
+                        rowLineSpacing = newSpacing;
+                      });
+                    },
+                    onEraseRow: (rowIndex) {
+                      // Row deleted silently - no notification needed
+                    },
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-
-          // Right Panel - Scrollable Canvas
-          Expanded(
-            child: Container(
-              color: theme.paperShadowColor.withValues(alpha: 0.1),
-              child: ScrollableNotebookCanvas(
-                theme: theme,
-                simulatePressure: false,
-                notifier: notifier,
-                showPaperShadow: true,
-                showPaperBorder: true,
-                pageSpacing: 40,
-                showRowLines: showRowLines,
-                rowLineSpacing: rowLineSpacing,
-                rowLineColor: rowLineColor,
-                rowLineWidth: rowLineWidth,
-                rowLineMode: rowLineMode,
-                rowConstraintMode: rowConstraintMode,
-                showLineNumbers: showLineNumbers,
-                showRowControls: showLineNumbers,
-                autoAddPages: true,
-                bottomMarginThreshold: 50.0,
-                onRowLineSpacingChanged: (newSpacing) {
-                  setState(() {
-                    rowLineSpacing = newSpacing;
-                  });
-                },
-                onEraseRow: (rowIndex) {
-                  // Row deleted silently - no notification needed
-                },
+          floatingActionButton: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              FloatingActionButton(
+                heroTag: 'export',
+                onPressed: () => _exportCurrentPage(),
+                tooltip: 'Export Current Page',
+                child: const Icon(Icons.download),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            heroTag: 'export',
-            onPressed: () => _exportCurrentPage(),
-            tooltip: 'Export Current Page',
-            child: const Icon(Icons.download),
-          ),
-        ],
-      ),
         );
       },
     );
