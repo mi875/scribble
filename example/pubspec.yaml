@@ -12,6 +12,9 @@ dependencies:
   scribble:
     path: ..
   value_notifier_tools: ^0.1.2
+  http: ^1.2.1
+  path_provider: ^2.1.3
+  flutter_pdfview: ^1.3.2
 
 dev_dependencies:
   flutter_test:
