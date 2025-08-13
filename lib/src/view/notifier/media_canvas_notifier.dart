@@ -7,7 +7,9 @@ class MediaCanvasNotifier extends ValueNotifier<ScribbleState> {
     List<MediaPage>? pages,
   })  : _pages = pages ?? [],
         super(ScribbleState.drawing(
-          sketch: pages?.first.sketch ?? const Sketch(lines: []),
+          sketch: (pages != null && pages.isNotEmpty)
+              ? pages.first.sketch
+              : const Sketch(lines: []),
         ));
 
   final List<MediaPage> _pages;

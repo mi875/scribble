@@ -62,8 +62,12 @@ class _ScrollableMediaCanvasState extends State<ScrollableMediaCanvas> {
                       height: page.size.height,
                     )
                   else if (page.mediaType == MediaType.pdf && page.pdfPath != null)
-                    PDFView(
-                      filePath: page.pdfPath,
+                    SizedBox(
+                      width: page.size.width,
+                      height: page.size.height,
+                      child: PDFView(
+                        filePath: page.pdfPath,
+                      ),
                     ),
                   SizedBox(
                     width: page.size.width,
