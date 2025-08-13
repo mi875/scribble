@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:scribble/src/domain/model/region/page_region.dart';
-import 'package:scribble/src/view/painting/region_aware_painter_mixin.dart';
 
-/// A custom painter that draws horizontal row lines on notebook pages.
+/// A basic custom painter that draws row lines on paper.
 /// 
-/// This painter is designed to render evenly spaced horizontal lines
-/// across the width of the paper, similar to ruled notebook paper.
-/// It can skip lines in free drawing regions when regions are provided.
-class RowLinePainter extends CustomPainter with RegionAwarePainterMixin {
+/// This painter draws evenly spaced horizontal lines across the paper,
+/// useful for lined notebook paper effects.
+class RowLinePainter extends CustomPainter {
   /// Creates a new row line painter.
   const RowLinePainter({
     required this.paperWidth,
@@ -19,13 +16,13 @@ class RowLinePainter extends CustomPainter with RegionAwarePainterMixin {
     this.rightMargin = 0.0,
     this.topMargin = 0.0,
     this.bottomMargin = 0.0,
-    this.regions = const <PageRegion>[],
+    this.regions = const [],
   });
 
   /// Width of the paper in logical pixels.
   final double paperWidth;
 
-  /// Height of the paper in logical pixels.  
+  /// Height of the paper in logical pixels.
   final double paperHeight;
 
   /// Spacing between row lines in logical pixels.
@@ -37,30 +34,24 @@ class RowLinePainter extends CustomPainter with RegionAwarePainterMixin {
   /// Width of the row lines in logical pixels.
   final double lineWidth;
 
-  /// Left margin where lines should not be drawn.
+  /// Left margin in logical pixels.
   final double leftMargin;
 
-  /// Right margin where lines should not be drawn.
+  /// Right margin in logical pixels.
   final double rightMargin;
 
-  /// Top margin where lines should not be drawn.
+  /// Top margin in logical pixels.
   final double topMargin;
 
-  /// Bottom margin where lines should not be drawn.
+  /// Bottom margin in logical pixels.
   final double bottomMargin;
 
-  /// List of regions on the page that affect line rendering.
-  @override
-  final List<PageRegion> regions;
+  /// List of regions (unused in simplified version, kept for compatibility).
+  final List regions;
 
   @override
   void paint(Canvas canvas, Size size) {
     if (lineSpacing <= 0) return;
-
-    final paint = Paint()
-      ..color = lineColor
-      ..strokeWidth = lineWidth
-      ..style = PaintingStyle.stroke;
 
     // Calculate drawing bounds with margins
     final drawingLeft = leftMargin;
@@ -71,56 +62,39 @@ class RowLinePainter extends CustomPainter with RegionAwarePainterMixin {
     // Don't draw if margins make drawing area invalid
     if (drawingLeft >= drawingRight || drawingTop >= drawingBottom) return;
 
+    // Create paint for the lines
+    final paint = Paint()
+      ..color = lineColor
+      ..strokeWidth = lineWidth
+      ..style = PaintingStyle.stroke;
+
     // Calculate the number of lines that fit within the drawing area
     final availableHeight = drawingBottom - drawingTop;
     final numberOfLines = (availableHeight / lineSpacing).floor();
 
-    // Draw horizontal lines
-    for (var i = 0; i <= numberOfLines; i++) {
+    // Draw each row line
+    for (int i = 0; i < numberOfLines; i++) {
       final y = drawingTop + (i * lineSpacing);
-      
-      // Don't draw lines beyond the bottom margin
       if (y > drawingBottom) break;
-      
-      // If there are no regions or no free drawing regions, draw the full line
-      if (!hasFreeDrawingRegions) {
-        canvas.drawLine(
-          Offset(drawingLeft, y),
-          Offset(drawingRight, y),
-          paint,
-        );
-      } else {
-        // Draw line segments that don't intersect with free drawing regions
-        final segments = getDrawableLineSegments(
-          lineY: y,
-          fullStartX: drawingLeft,
-          fullEndX: drawingRight,
-        );
-        
-        for (final (startX, endX) in segments) {
-          if (endX > startX) {
-            canvas.drawLine(
-              Offset(startX, y),
-              Offset(endX, y),
-              paint,
-            );
-          }
-        }
-      }
+
+      canvas.drawLine(
+        Offset(drawingLeft, y),
+        Offset(drawingRight, y),
+        paint,
+      );
     }
   }
 
   @override
   bool shouldRepaint(RowLinePainter oldDelegate) {
-    return paperWidth != oldDelegate.paperWidth ||
-           paperHeight != oldDelegate.paperHeight ||
-           lineSpacing != oldDelegate.lineSpacing ||
-           lineColor != oldDelegate.lineColor ||
-           lineWidth != oldDelegate.lineWidth ||
-           leftMargin != oldDelegate.leftMargin ||
-           rightMargin != oldDelegate.rightMargin ||
-           topMargin != oldDelegate.topMargin ||
-           bottomMargin != oldDelegate.bottomMargin ||
-           regions != oldDelegate.regions;
+    return oldDelegate.paperWidth != paperWidth ||
+        oldDelegate.paperHeight != paperHeight ||
+        oldDelegate.lineSpacing != lineSpacing ||
+        oldDelegate.lineColor != lineColor ||
+        oldDelegate.lineWidth != lineWidth ||
+        oldDelegate.leftMargin != leftMargin ||
+        oldDelegate.rightMargin != rightMargin ||
+        oldDelegate.topMargin != topMargin ||
+        oldDelegate.bottomMargin != bottomMargin;
   }
 }

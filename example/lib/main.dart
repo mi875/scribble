@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:example/scrollable_notebook_demo.dart';
+import 'package:example/line_by_line_demo.dart';
 import 'package:example/simple_scrollable_notebook_demo.dart';
 import 'package:flutter/material.dart';
 import 'package:scribble/scribble.dart';
@@ -139,19 +139,19 @@ class _HomePageState extends State<HomePage> {
                     ],
                   ),
                   const Divider(height: 32),
-                  // Scrollable Notebook Demo
+                  // Line-by-Line Demo
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (context) => const ScrollableNotebookDemo(),
+                          builder: (context) => const LineByLineDemo(),
                         ),
                       ),
-                      icon: const Icon(Icons.view_stream),
-                      label: const Text('Complex Notebook Demo'),
+                      icon: const Icon(Icons.edit),
+                      label: const Text('Line-by-Line Writing Demo'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
+                        backgroundColor: Colors.purple,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.all(16),
                       ),

@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:scribble/src/domain/model/region/page_region.dart';
 import 'package:scribble/src/domain/model/sketch/sketch.dart';
-import 'package:scribble/src/view/painting/region_aware_painter_mixin.dart';
 
 /// A custom painter that draws dynamic row lines based on writing activity.
 /// 
 /// This painter shows lines that appear near content areas and fade based
-/// on proximity to drawn content. It can skip lines in free drawing regions.
-class DynamicRowLinePainter extends CustomPainter with RegionAwarePainterMixin {
+/// on proximity to drawn content.
+class DynamicRowLinePainter extends CustomPainter {
   /// Creates a new dynamic row line painter.
   const DynamicRowLinePainter({
     required this.paperWidth,
@@ -22,13 +20,13 @@ class DynamicRowLinePainter extends CustomPainter with RegionAwarePainterMixin {
     this.bottomMargin = 0.0,
     this.proximityRadius = 50.0,
     this.fadeDistance = 100.0,
-    this.regions = const <PageRegion>[],
+    this.regions = const [],
   });
 
   /// Width of the paper in logical pixels.
   final double paperWidth;
 
-  /// Height of the paper in logical pixels.  
+  /// Height of the paper in logical pixels.
   final double paperHeight;
 
   /// Spacing between row lines in logical pixels.
@@ -41,18 +39,18 @@ class DynamicRowLinePainter extends CustomPainter with RegionAwarePainterMixin {
   final double lineWidth;
 
   /// The sketch containing drawn content.
-  final Sketch sketch;
+  final Sketch? sketch;
 
-  /// Left margin where lines should not be drawn.
+  /// Left margin in logical pixels.
   final double leftMargin;
 
-  /// Right margin where lines should not be drawn.
+  /// Right margin in logical pixels.
   final double rightMargin;
 
-  /// Top margin where lines should not be drawn.
+  /// Top margin in logical pixels.
   final double topMargin;
 
-  /// Bottom margin where lines should not be drawn.
+  /// Bottom margin in logical pixels.
   final double bottomMargin;
 
   /// Radius around content where lines appear at full opacity.
@@ -61,9 +59,8 @@ class DynamicRowLinePainter extends CustomPainter with RegionAwarePainterMixin {
   /// Distance over which lines fade out.
   final double fadeDistance;
 
-  /// List of regions on the page that affect line rendering.
-  @override
-  final List<PageRegion> regions;
+  /// List of regions (unused in simplified version, kept for compatibility).
+  final List regions;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -85,134 +82,80 @@ class DynamicRowLinePainter extends CustomPainter with RegionAwarePainterMixin {
     final availableHeight = drawingBottom - drawingTop;
     final numberOfLines = (availableHeight / lineSpacing).floor();
 
-    // Draw horizontal lines with dynamic opacity
-    for (var i = 0; i <= numberOfLines; i++) {
+    // Draw each row line with dynamic opacity
+    for (int i = 0; i < numberOfLines; i++) {
       final y = drawingTop + (i * lineSpacing);
-      
-      // Don't draw lines beyond the bottom margin
       if (y > drawingBottom) break;
 
-      // Calculate opacity based on proximity to content and line progression
-      final opacity = _calculateLineOpacity(y, contentPoints, i);
+      // Calculate opacity based on proximity to content
+      final opacity = _calculateLineOpacity(y, contentPoints);
       
-      if (opacity > 0.01) {  // Only draw if visible enough
+      if (opacity > 0.01) { // Only draw visible lines
         final paint = Paint()
           ..color = lineColor.withValues(alpha: opacity)
           ..strokeWidth = lineWidth
           ..style = PaintingStyle.stroke;
-        
-        // If there are no free drawing regions, draw the full line
-        if (!hasFreeDrawingRegions) {
-          canvas.drawLine(
-            Offset(drawingLeft, y),
-            Offset(drawingRight, y),
-            paint,
-          );
-        } else {
-          // Draw line segments that don't intersect with free drawing regions
-          final segments = getDrawableLineSegments(
-            lineY: y,
-            fullStartX: drawingLeft,
-            fullEndX: drawingRight,
-          );
-          
-          for (final (startX, endX) in segments) {
-            if (endX > startX) {
-              canvas.drawLine(
-                Offset(startX, y),
-                Offset(endX, y),
-                paint,
-              );
-            }
-          }
-        }
+
+        canvas.drawLine(
+          Offset(drawingLeft, y),
+          Offset(drawingRight, y),
+          paint,
+        );
       }
     }
   }
 
-  /// Extracts all points from the sketch for proximity calculations.
+  /// Gets all content points from the sketch.
   List<Offset> _getContentPoints() {
     final points = <Offset>[];
-    
-    for (final line in sketch.lines) {
+    if (sketch == null) return points;
+
+    for (final line in sketch!.lines) {
       for (final point in line.points) {
         points.add(Offset(point.x, point.y));
       }
     }
-    
     return points;
   }
 
-  /// Calculates line opacity based on proximity to content and progressive appearance.
-  double _calculateLineOpacity(double lineY, List<Offset> contentPoints, int lineIndex) {
-    // Always show the first two row lines at full opacity initially
-    if (lineIndex == 0) {
-      return 1;
-    }
-    if (lineIndex == 1) {
-      return 1;
-    }
+  /// Calculates the opacity for a line based on proximity to content.
+  double _calculateLineOpacity(double lineY, List<Offset> contentPoints) {
+    if (contentPoints.isEmpty) return 0.1; // Very faint when no content
 
-    if (contentPoints.isEmpty) {
-      // If no content, only show the first two lines
-      return 0;
-    }
-
-    // Find the lowest content point (highest Y value) to determine progression
-    var maxContentY = contentPoints.isEmpty ? 0.0 : contentPoints.first.dy;
+    // Find the minimum distance to any content point
+    double minDistance = double.infinity;
     for (final point in contentPoints) {
-      if (point.dy > maxContentY) {
-        maxContentY = point.dy;
+      final distance = (point.dy - lineY).abs();
+      if (distance < minDistance) {
+        minDistance = distance;
       }
     }
 
-    // Calculate which line this content has reached based on progression
-    final contentLineIndex = ((maxContentY - topMargin) / lineSpacing).floor();
-    
-    // Show lines progressively: if content has reached line N, show lines 0 through N+2
-    if (lineIndex <= contentLineIndex + 2) {
-      // Find the closest content point to this specific line
-      var minDistance = double.infinity;
-      
-      for (final point in contentPoints) {
-        final distance = (point.dy - lineY).abs();
-        if (distance < minDistance) {
-          minDistance = distance;
-        }
-      }
-
-      // Calculate opacity based on distance for visible lines
-      if (minDistance <= proximityRadius) {
-        // Full opacity near content
-        return 1;
-      } else if (minDistance <= proximityRadius + fadeDistance) {
-        // Fade out over distance
-        final fadeProgress = (minDistance - proximityRadius) / fadeDistance;
-        return (1.0 - fadeProgress).clamp(0.3, 1.0);
-      } else {
-        // Medium opacity for distant but revealed lines
-        return 0.3;
-      }
+    // Calculate opacity based on distance
+    if (minDistance <= proximityRadius) {
+      return 1.0; // Full opacity near content
+    } else if (minDistance <= proximityRadius + fadeDistance) {
+      // Fade out over distance
+      final fadeProgress = (minDistance - proximityRadius) / fadeDistance;
+      return (1.0 - fadeProgress).clamp(0.1, 1.0);
     } else {
-      // Lines beyond the progression are not shown
-      return 0;
+      return 0.1; // Minimum visibility for distant lines
     }
   }
 
   @override
   bool shouldRepaint(DynamicRowLinePainter oldDelegate) {
-    return paperWidth != oldDelegate.paperWidth ||
-           paperHeight != oldDelegate.paperHeight ||
-           lineSpacing != oldDelegate.lineSpacing ||
-           lineColor != oldDelegate.lineColor ||
-           lineWidth != oldDelegate.lineWidth ||
-           sketch != oldDelegate.sketch ||
-           leftMargin != oldDelegate.leftMargin ||
-           rightMargin != oldDelegate.rightMargin ||
-           topMargin != oldDelegate.topMargin ||
-           bottomMargin != oldDelegate.bottomMargin ||
-           proximityRadius != oldDelegate.proximityRadius ||
-           fadeDistance != oldDelegate.fadeDistance ||
-           regions != oldDelegate.regions;
+    return oldDelegate.paperWidth != paperWidth ||
+        oldDelegate.paperHeight != paperHeight ||
+        oldDelegate.lineSpacing != lineSpacing ||
+        oldDelegate.lineColor != lineColor ||
+        oldDelegate.lineWidth != lineWidth ||
+        oldDelegate.sketch != sketch ||
+        oldDelegate.leftMargin != leftMargin ||
+        oldDelegate.rightMargin != rightMargin ||
+        oldDelegate.topMargin != topMargin ||
+        oldDelegate.bottomMargin != bottomMargin ||
+        oldDelegate.proximityRadius != proximityRadius ||
+        oldDelegate.fadeDistance != fadeDistance;
   }
 }
