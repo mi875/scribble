@@ -7,11 +7,8 @@ import 'package:scribble/src/domain/model/page/page.dart';
 import 'package:scribble/src/view/notifier/notebook_notifier.dart';
 import 'package:scribble/src/view/painting/scribble_editing_painter.dart';
 import 'package:scribble/src/view/painting/scribble_painter.dart';
-import 'package:scribble/src/view/painting/row_line_painter.dart';
 import 'package:scribble/src/view/painting/dynamic_row_line_painter.dart';
 import 'package:scribble/src/view/painting/constrained_row_line_painter.dart';
-import 'package:scribble/src/view/painting/line_number_painter.dart';
-import 'package:scribble/src/view/painting/free_space_icon_painter.dart';
 import 'package:scribble/src/view/pan_gesture_catcher.dart';
 import 'package:scribble/src/view/state/notebook_state.dart';
 import 'package:scribble/src/domain/model/region/region_type.dart';
@@ -79,9 +76,6 @@ class ScrollableNotebookCanvas extends StatefulWidget {
     /// Spacing between pages in logical pixels.
     this.pageSpacing = 32,
 
-    /// Whether to show row lines on pages.
-    this.showRowLines = false,
-
     /// Spacing between row lines in logical pixels.
     this.rowLineSpacing = 24.0,
 
@@ -92,17 +86,8 @@ class ScrollableNotebookCanvas extends StatefulWidget {
     /// Width of the row lines in logical pixels.
     this.rowLineWidth = 1.0,
 
-    /// Mode for displaying row lines.
-    this.rowLineMode = RowLineMode.static,
-
     /// Mode for constraining writing to specific rows.
     this.rowConstraintMode = RowConstraintMode.none,
-
-    /// Callback when row line spacing changes through gestures.
-    this.onRowLineSpacingChanged,
-
-    /// Whether to show line numbers on the left side.
-    this.showLineNumbers = false,
 
     /// Color for the line numbers.
     /// Ignored if [theme] is provided.
@@ -117,8 +102,6 @@ class ScrollableNotebookCanvas extends StatefulWidget {
     /// Distance from bottom edge that triggers new page creation.
     this.bottomMarginThreshold = 50.0,
 
-    /// Whether to show row controls when tapping line numbers.
-    this.showRowControls = false,
 
     /// Callback when a row should be erased.
     this.onEraseRow,
@@ -161,9 +144,6 @@ class ScrollableNotebookCanvas extends StatefulWidget {
   /// Spacing between pages in logical pixels.
   final double pageSpacing;
 
-  /// Whether to show row lines on pages.
-  final bool showRowLines;
-
   /// Spacing between row lines in logical pixels.
   final double rowLineSpacing;
 
@@ -173,17 +153,8 @@ class ScrollableNotebookCanvas extends StatefulWidget {
   /// Width of the row lines in logical pixels.
   final double rowLineWidth;
 
-  /// Mode for displaying row lines.
-  final RowLineMode rowLineMode;
-
   /// Mode for constraining writing to specific rows.
   final RowConstraintMode rowConstraintMode;
-
-  /// Callback when row line spacing changes through gestures.
-  final ValueChanged<double>? onRowLineSpacingChanged;
-
-  /// Whether to show line numbers on the left side.
-  final bool showLineNumbers;
 
   /// Color for the line numbers.
   final Color lineNumberColor;
@@ -197,8 +168,6 @@ class ScrollableNotebookCanvas extends StatefulWidget {
   /// Distance from bottom edge that triggers new page creation.
   final double bottomMarginThreshold;
 
-  /// Whether to show row controls when tapping line numbers.
-  final bool showRowControls;
 
   /// Callback when a row should be erased.
   final void Function(int rowIndex)? onEraseRow;
@@ -224,12 +193,10 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
   final Map<int, GlobalKey> _pageKeys = {};
   final GlobalKey _containerKey = GlobalKey();
   double _currentRowLineSpacing = 24.0;
-  bool _isAdjustingRowLines = false;
   
   // Row controls state
   OverlayEntry? _rowControlsOverlay;
-  int? _selectedRowIndex;
-  int? _selectedPageIndex;
+  
 
   @override
   void initState() {
@@ -237,8 +204,8 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
     _transformationController.addListener(_onTransformationChanged);
     _currentRowLineSpacing = widget.rowLineSpacing;
     
-    // Enable auto-page addition if configured and in dynamic mode
-    if (widget.autoAddPages && widget.rowLineMode == RowLineMode.dynamic) {
+    // Enable auto-page addition - always enabled in dynamic mode
+    if (widget.autoAddPages) {
       widget.notifier.setAutoAddPages(true, bottomThreshold: widget.bottomMarginThreshold);
     }
     
@@ -259,10 +226,8 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
     
     // Update auto-page settings if they changed
     if (oldWidget.autoAddPages != widget.autoAddPages ||
-        oldWidget.rowLineMode != widget.rowLineMode ||
         oldWidget.bottomMarginThreshold != widget.bottomMarginThreshold) {
-      final shouldEnable = widget.autoAddPages && widget.rowLineMode == RowLineMode.dynamic;
-      widget.notifier.setAutoAddPages(shouldEnable, bottomThreshold: widget.bottomMarginThreshold);
+      widget.notifier.setAutoAddPages(widget.autoAddPages, bottomThreshold: widget.bottomMarginThreshold);
     }
     
     // Update constraint mode settings if they changed
@@ -285,203 +250,333 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
     super.dispose();
   }
 
-  /// Shows row controls at the specified position.
-  void _showRowControls(int pageIndex, int rowIndex, Offset globalPosition) {
-    _removeRowControls();
-    
-    _selectedPageIndex = pageIndex;
-    _selectedRowIndex = rowIndex;
-    
-    _rowControlsOverlay = OverlayEntry(
-      builder: (context) {
-        final theme = Theme.of(context);
-        final colorScheme = theme.colorScheme;
-        
-        // Calculate optimal positioning to avoid hiding the row
-        final screenSize = MediaQuery.of(context).size;
-        final popupHeight = 64.0; // Estimated popup height
-        final popupWidth = 340.0; // Estimated popup width for three buttons
-        
-        // Determine if popup should appear above or below the tapped row
-        final spaceBelow = screenSize.height - globalPosition.dy;
-        final spaceAbove = globalPosition.dy;
-        final showAbove = spaceBelow < popupHeight + 20 && spaceAbove > popupHeight + 20;
-        
-        // Calculate vertical position
-        final topPosition = showAbove 
-            ? globalPosition.dy - popupHeight - 8  // Above the row
-            : globalPosition.dy + 8;               // Below the row
-            
-        // Calculate horizontal position (ensure it stays on screen)
-        final leftPosition = (globalPosition.dx + popupWidth > screenSize.width)
-            ? screenSize.width - popupWidth - 16  // Move left to fit
-            : globalPosition.dx + 16;             // Normal right offset
-        
-        return Positioned(
-          left: leftPosition,
-          top: topPosition,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Arrow pointing to the row (shown above popup when below row)
-              if (!showAbove)
-                CustomPaint(
-                  painter: _TrianglePainter(
-                    color: colorScheme.surfaceContainerHigh,
-                    pointUp: true,
-                  ),
-                  size: const Size(16, 8),
-                ),
-              Material(
-                type: MaterialType.card,
-                elevation: 3,
-                shadowColor: colorScheme.shadow,
-                surfaceTintColor: colorScheme.surfaceTint,
-                color: colorScheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  constraints: const BoxConstraints(minHeight: 48),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Row ${rowIndex + 1}',
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: colorScheme.onSurface,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      FilledButton.tonalIcon(
-                        onPressed: () => _insertRowAbove(pageIndex, rowIndex),
-                        icon: const Icon(Icons.add_circle_outline, size: 18),
-                        label: const Text('Insert'),
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size(72, 36),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton.tonalIcon(
-                        onPressed: () => _showFreeSpaceOptions(pageIndex, rowIndex, globalPosition),
-                        icon: const Icon(Icons.crop_free, size: 18),
-                        label: const Text('Free Space'),
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size(88, 36),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton.tonalIcon(
-                        onPressed: () => _eraseRow(pageIndex, rowIndex),
-                        icon: const Icon(Icons.delete_outline, size: 18),
-                        label: const Text('Delete'),
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size(72, 36),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton.filledTonal(
-                        onPressed: _removeRowControls,
-                        icon: const Icon(Icons.close, size: 18),
-                        tooltip: 'Close',
-                        style: IconButton.styleFrom(
-                          minimumSize: const Size(36, 36),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              // Arrow pointing to the row (shown below popup when above row)
-              if (showAbove)
-                CustomPaint(
-                  painter: _TrianglePainter(
-                    color: colorScheme.surfaceContainerHigh,
-                    pointUp: false,
-                  ),
-                  size: const Size(16, 8),
-                ),
-            ],
-          ),
-        );
-      },
-    );
-    
-    Overlay.of(context).insert(_rowControlsOverlay!);
-  }
 
   /// Checks if a point is tapping directly on a visible line number.
   /// Returns the row index if tapping on a line number, null otherwise.
-  int? _getLineNumberAtPoint(Offset point, NotebookPage page) {
-    // DEBUG: Print coordinates to understand what we're getting
-    print('DEBUG: Tap at coordinates: ${point.dx}, ${point.dy}');
-    
-    // TEMPORARY: Accept ALL coordinates in the gesture detector area to see what works
-    // We'll narrow this down once we understand the coordinate system
-    if (point.dx > 60.0) {
-      print('DEBUG: Outside gesture detector area (${point.dx} > 60.0)');
-      return null;
-    }
-    
-    // Calculate which row this Y coordinate corresponds to
-    const topMargin = 30.0;
-    if (point.dy < topMargin) {
-      print('DEBUG: Above top margin (${point.dy} < $topMargin)');
-      return null;
-    }
-    
-    final rowIndex = ((point.dy - topMargin) / _currentRowLineSpacing).floor();
-    if (rowIndex < 0) {
-      print('DEBUG: Negative row index: $rowIndex');
-      return null;
-    }
-    
-    // TEMPORARY: Use a VERY generous vertical hit area to see if we can get ANY hits
-    final rowCenterY = topMargin + (rowIndex * _currentRowLineSpacing);
-    print('DEBUG: Row $rowIndex center should be at Y: $rowCenterY, spacing: $_currentRowLineSpacing');
-    
-    // Accept taps anywhere in the row area for now
-    final rowTop = topMargin + (rowIndex * _currentRowLineSpacing) - (_currentRowLineSpacing / 2);
-    final rowBottom = topMargin + (rowIndex * _currentRowLineSpacing) + (_currentRowLineSpacing / 2);
-    
-    if (point.dy < rowTop || point.dy > rowBottom) {
-      print('DEBUG: Outside row area for row $rowIndex (${point.dy} not in $rowTop-$rowBottom)');
-      return null;
-    }
-    
-    // Check if this line number is visible (not in a free drawing region)
-    final freeDrawingRegions = page.regions
-        .where((region) => region.type == RegionType.freeDrawing)
-        .toList();
-    
-    for (final region in freeDrawingRegions) {
-      // If the line number center point falls within a free drawing region,
-      // it's not visible and shouldn't be tappable
-      if (region.bounds.top <= rowCenterY && 
-          rowCenterY <= region.bounds.bottom) {
-        print('DEBUG: Row $rowIndex hidden by free drawing region');
-        return null;
-      }
-    }
-    
-    print('DEBUG: Hit detected on row $rowIndex');
-    return rowIndex;
-  }
 
 
   /// Removes the row controls overlay.
   void _removeRowControls() {
     _rowControlsOverlay?.remove();
     _rowControlsOverlay = null;
-    _selectedRowIndex = null;
-    _selectedPageIndex = null;
+  }
+
+  /// Builds the line number buttons positioned over the canvas.
+  List<Widget> _buildLineNumberButtons(int pageIndex, NotebookPage page, Size paperSize) {
+    const leftMargin = 20.0;
+    const topMargin = 30.0;
+    const bottomMargin = 30.0;
+    // Remove unused variable
+    
+    final drawingTop = topMargin;
+    final drawingBottom = paperSize.height - bottomMargin;
+    final availableHeight = drawingBottom - drawingTop;
+    
+    if (drawingTop >= drawingBottom || availableHeight <= 0) return [];
+    
+    final lineSpacing = _currentRowLineSpacing;
+    final maxLines = (availableHeight / lineSpacing).floor();
+    
+    // Get content points for dynamic visibility
+    final contentPoints = _getContentPoints(page.sketch);
+    
+    final buttons = <Widget>[];
+    
+    for (int i = 0; i < maxLines; i++) {
+      final currentLine = 1 + i;
+      final betweenRowsY = drawingTop + (i * lineSpacing) + (lineSpacing / 2);
+      
+      if (betweenRowsY > drawingBottom) break;
+      
+      // Calculate opacity for dynamic mode
+      final opacity = _calculateNumberOpacity(betweenRowsY, contentPoints, i);
+      
+      // Skip if too transparent
+      if (opacity < 0.01) continue;
+      
+      // Skip if line number position is in a free drawing region
+      if (_isVerticalPositionInFreeDrawingRegion(betweenRowsY, page.regions)) continue;
+      
+      // Position the button (centered in left margin)
+      final buttonX = leftMargin + 4; // Center horizontally in margin
+      final buttonY = betweenRowsY - 16; // Center button vertically
+      
+      buttons.add(
+        Positioned(
+          left: buttonX,
+          top: buttonY,
+          width: 32,
+          height: 32,
+          child: Opacity(
+            opacity: opacity,
+            child: PopupMenuButton<String>(
+              offset: const Offset(0, 32),
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'insert',
+                  child: Row(
+                    children: [
+                      Icon(Icons.add_circle_outline, size: 16),
+                      SizedBox(width: 8),
+                      Text('Insert Row Above'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'free_space',
+                  child: Row(
+                    children: [
+                      Icon(Icons.crop_free, size: 16),
+                      SizedBox(width: 8),
+                      Text('Add Drawing Space'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_outline, size: 16),
+                      SizedBox(width: 8),
+                      Text('Delete Row'),
+                    ],
+                  ),
+                ),
+              ],
+              onSelected: (value) => _handleRowAction(value, pageIndex, i),
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: widget._lineNumberColor.withValues(alpha: 0.5),
+                    width: 1,
+                  ),
+                  color: Colors.transparent,
+                ),
+                child: Center(
+                  child: Text(
+                    currentLine.toString(),
+                    style: TextStyle(
+                      fontSize: widget.lineNumberFontSize - 1,
+                      fontWeight: FontWeight.w500,
+                      color: widget._lineNumberColor,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    
+    return buttons;
+  }
+  
+  /// Gets content points from sketch for proximity calculations.
+  List<Offset> _getContentPoints(Sketch? sketch) {
+    if (sketch == null) return [];
+    
+    final points = <Offset>[];
+    for (final line in sketch.lines) {
+      for (final point in line.points) {
+        points.add(Offset(point.x, point.y));
+      }
+    }
+    return points;
+  }
+  
+  /// Calculates line number opacity based on proximity to content.
+  double _calculateNumberOpacity(double numberY, List<Offset> contentPoints, int lineIndex) {
+    // Always show the first two line numbers at full opacity initially
+    if (lineIndex == 0 || lineIndex == 1) {
+      return 1.0;
+    }
+
+    if (contentPoints.isEmpty) {
+      // If no content, only show the first two line numbers
+      return 0.0;
+    }
+
+    // Find the lowest content point (highest Y value) to determine progression
+    double maxContentY = contentPoints.isEmpty ? 0.0 : contentPoints.first.dy;
+    for (final point in contentPoints) {
+      if (point.dy > maxContentY) {
+        maxContentY = point.dy;
+      }
+    }
+
+    // Calculate which line the content has reached based on progression
+    const topMargin = 30.0;
+    final lineSpacing = _currentRowLineSpacing;
+    final contentLineIndex = ((maxContentY - topMargin) / lineSpacing).floor();
+    
+    // Show line numbers progressively: if content has reached line N, show numbers 1 through N+2
+    if (lineIndex <= contentLineIndex + 2) {
+      // Find the closest content point to this line number
+      var minDistance = double.infinity;
+      
+      for (final point in contentPoints) {
+        final distance = (point.dy - numberY).abs();
+        if (distance < minDistance) {
+          minDistance = distance;
+        }
+      }
+
+      // Calculate opacity based on distance for visible line numbers
+      const proximityRadius = 40.0;
+      const fadeDistance = 80.0;
+      
+      if (minDistance <= proximityRadius) {
+        // Full opacity near content
+        return 1.0;
+      } else if (minDistance <= proximityRadius + fadeDistance) {
+        // Fade out over distance
+        final fadeProgress = (minDistance - proximityRadius) / fadeDistance;
+        return (1 - fadeProgress).clamp(0.3, 1.0);
+      } else {
+        // Medium opacity for distant but revealed line numbers
+        return 0.3;
+      }
+    } else {
+      // Line numbers beyond the progression are not shown
+      return 0.0;
+    }
+  }
+  
+  /// Checks if a vertical position is within a free drawing region.
+  bool _isVerticalPositionInFreeDrawingRegion(double y, List<PageRegion> regions) {
+    final freeDrawingRegions = regions
+        .where((region) => region.type == RegionType.freeDrawing)
+        .toList();
+    
+    for (final region in freeDrawingRegions) {
+      if (region.bounds.top <= y && y <= region.bounds.bottom) {
+        return true;
+      }
+    }
+    return false;
+  }
+  
+  /// Handles row action selection from popup menu.
+  void _handleRowAction(String action, int pageIndex, int rowIndex) {
+    switch (action) {
+      case 'insert':
+        _insertRowAbove(pageIndex, rowIndex);
+        break;
+      case 'free_space':
+        // Directly add a generous free drawing space
+        _insertFreeDrawingSpace(pageIndex, rowIndex, FreeDrawingPreset.sketch);
+        break;
+      case 'delete':
+        _eraseRow(pageIndex, rowIndex);
+        break;
+    }
+  }
+  
+  /// Builds free space icon buttons for existing free drawing regions.
+  List<Widget> _buildFreeSpaceButtons(int pageIndex, NotebookPage page, Size paperSize) {
+    final buttons = <Widget>[];
+    
+    // Get only free drawing regions
+    final freeDrawingRegions = page.regions
+        .where((region) => region.type == RegionType.freeDrawing)
+        .toList();
+    
+    for (final region in freeDrawingRegions) {
+      final bounds = region.bounds;
+      
+      // Position button in the center of the region vertically, in left margin
+      final buttonX = 30.0 - 16; // Center in 60px left margin
+      final buttonY = bounds.center.dy - 16; // Center vertically in region
+      
+      // Get icon for the preset type
+      final icon = _getPresetIcon(region.preset);
+      final color = _getPresetColor(region.preset ?? FreeDrawingPreset.custom);
+      
+      buttons.add(
+        Positioned(
+          left: buttonX,
+          top: buttonY,
+          width: 32,
+          height: 32,
+          child: PopupMenuButton<String>(
+            offset: const Offset(32, 0),
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'extend',
+                child: Row(
+                  children: [
+                    Icon(Icons.expand_more, size: 16),
+                    SizedBox(width: 8),
+                    Text('Extend Space'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_outline, size: 16),
+                    SizedBox(width: 8),
+                    Text('Delete Free Space'),
+                  ],
+                ),
+              ),
+            ],
+            onSelected: (value) => _handleFreeSpaceAction(value, pageIndex, region),
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: color.withValues(alpha: 0.5),
+                  width: 1,
+                ),
+                color: color.withValues(alpha: 0.1),
+              ),
+              child: Center(
+                child: Icon(
+                  icon,
+                  size: 16,
+                  color: color,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      
+      // No resize handles needed - using extend button instead
+    }
+    
+    return buttons;
+  }
+  
+  /// Gets the appropriate icon for a free drawing preset.
+  IconData _getPresetIcon(FreeDrawingPreset? preset) {
+    // Since we only use one type now, show a generic free drawing icon
+    return Icons.crop_free;
+  }
+  
+  /// Gets the appropriate color for a free drawing preset.
+  Color _getPresetColor(FreeDrawingPreset preset) {
+    // Since we only use 'sketch' preset now, return a neutral color for all free spaces
+    return Colors.blue.shade300;
+  }
+  
+  
+  /// Handles free space action selection from popup menu.
+  void _handleFreeSpaceAction(String action, int pageIndex, PageRegion region) {
+    switch (action) {
+      case 'extend':
+        _extendFreeSpace(pageIndex, region);
+      case 'delete':
+        _deleteFreeSpace(pageIndex, region);
+    }
   }
 
   /// Deletes the specified row with animation.
@@ -513,157 +608,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
     );
   }
 
-  /// Shows options for inserting free drawing spaces.
-  void _showFreeSpaceOptions(int pageIndex, int rowIndex, Offset globalPosition) {
-    // Remove the current controls popup
-    _removeRowControls();
-    
-    // Show free space preset options
-    _showFreeSpacePresetsOverlay(pageIndex, rowIndex, globalPosition);
-  }
 
-  /// Shows the free space presets overlay.
-  void _showFreeSpacePresetsOverlay(int pageIndex, int rowIndex, Offset globalPosition) {
-    _selectedPageIndex = pageIndex;
-    _selectedRowIndex = rowIndex;
-    
-    _rowControlsOverlay = OverlayEntry(
-      builder: (context) {
-        final theme = Theme.of(context);
-        final colorScheme = theme.colorScheme;
-        
-        return Positioned(
-          left: globalPosition.dx - 150,
-          top: globalPosition.dy - 200,
-          child: Material(
-            type: MaterialType.card,
-            elevation: 6,
-            shadowColor: colorScheme.shadow,
-            surfaceTintColor: colorScheme.surfaceTint,
-            color: colorScheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
-              width: 300,
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.crop_free, 
-                          size: 20, color: colorScheme.onSurface),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Add Free Drawing Space',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        onPressed: _removeRowControls,
-                        icon: const Icon(Icons.close, size: 18),
-                        iconSize: 18,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  ...FreeDrawingPreset.values.map((preset) =>
-                    _buildPresetTile(preset, pageIndex, rowIndex, theme)),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-    
-    Overlay.of(context).insert(_rowControlsOverlay!);
-  }
-
-  /// Builds a preset tile for free drawing space options.
-  Widget _buildPresetTile(FreeDrawingPreset preset, int pageIndex, int rowIndex, ThemeData theme) {
-    final colorScheme = theme.colorScheme;
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: () => _insertFreeDrawingSpace(pageIndex, rowIndex, preset),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: _getPresetColor(preset).withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: _getPresetColor(preset), width: 1),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${preset.heightMultiplier.toInt()}x',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: _getPresetColor(preset),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        preset.displayName,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Text(
-                        preset.description,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurface.withOpacity(0.7),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  size: 14,
-                  color: colorScheme.onSurface.withOpacity(0.5),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Gets the color for a preset type.
-  Color _getPresetColor(FreeDrawingPreset preset) {
-    switch (preset) {
-      case FreeDrawingPreset.math:
-        return Colors.blue;
-      case FreeDrawingPreset.graph:
-        return Colors.green;
-      case FreeDrawingPreset.diagram:
-        return Colors.orange;
-      case FreeDrawingPreset.sketch:
-        return Colors.purple;
-      case FreeDrawingPreset.custom:
-        return Colors.grey;
-    }
-  }
 
   /// Inserts a free drawing space with the specified preset.
   Future<void> _insertFreeDrawingSpace(int pageIndex, int rowIndex, FreeDrawingPreset preset) async {
@@ -682,121 +627,34 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
       rowLineSpacing: _currentRowLineSpacing,
       topMargin: 30,
       paperWidth: paperSize.width,
-      leftMargin: widget.showLineNumbers ? 60 : 20,
+      leftMargin: 60,
       rightMargin: 20,
       duration: const Duration(milliseconds: 400),
     );
   }
 
-  /// Shows controls for an existing free space region.
-  void _showFreeSpaceControls(int pageIndex, PageRegion region, Offset globalPosition) {
+
+  /// Extends a free drawing space by adding more height.
+  void _extendFreeSpace(int pageIndex, PageRegion region) {
+    // Remove the controls popup immediately
     _removeRowControls();
     
-    _selectedPageIndex = pageIndex;
+    // Calculate extension amount (equivalent to 4 row lines)
+    final extensionHeight = _currentRowLineSpacing * 4;
     
-    _rowControlsOverlay = OverlayEntry(
-      builder: (context) {
-        final theme = Theme.of(context);
-        final colorScheme = theme.colorScheme;
-        
-        // Calculate optimal positioning to avoid hiding the region
-        final screenSize = MediaQuery.of(context).size;
-        const popupHeight = 64.0; // Estimated popup height
-        const popupWidth = 240.0; // Estimated popup width for delete button
-        
-        // Determine if popup should appear above or below the tapped region
-        final spaceBelow = screenSize.height - globalPosition.dy;
-        final spaceAbove = globalPosition.dy;
-        final showAbove = spaceBelow < popupHeight + 20 && spaceAbove > popupHeight + 20;
-        
-        // Calculate vertical position
-        final topPosition = showAbove 
-            ? globalPosition.dy - popupHeight - 8  // Above the region
-            : globalPosition.dy + 8;               // Below the region
-            
-        // Calculate horizontal position (ensure it stays on screen)
-        final leftPosition = (globalPosition.dx + popupWidth > screenSize.width)
-            ? screenSize.width - popupWidth - 16  // Move left to fit
-            : globalPosition.dx + 16;             // Normal right offset
-        
-        return Positioned(
-          left: leftPosition,
-          top: topPosition,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Arrow pointing to the region (shown above popup when below region)
-              if (!showAbove)
-                CustomPaint(
-                  painter: _TrianglePainter(
-                    color: colorScheme.surfaceContainerHigh,
-                    pointUp: true,
-                  ),
-                  size: const Size(16, 8),
-                ),
-              Material(
-                type: MaterialType.card,
-                elevation: 3,
-                shadowColor: colorScheme.shadow,
-                surfaceTintColor: colorScheme.surfaceTint,
-                color: colorScheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  constraints: const BoxConstraints(minHeight: 48),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${region.preset?.displayName ?? 'Free Space'}',
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: colorScheme.onSurface,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      FilledButton.tonalIcon(
-                        onPressed: () => _deleteFreeSpace(pageIndex, region),
-                        icon: const Icon(Icons.delete_outline, size: 18),
-                        label: const Text('Delete'),
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size(72, 36),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton.filledTonal(
-                        onPressed: _removeRowControls,
-                        icon: const Icon(Icons.close, size: 18),
-                        tooltip: 'Close',
-                        style: IconButton.styleFrom(
-                          minimumSize: const Size(36, 36),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              // Arrow pointing to the region (shown below popup when above region)
-              if (showAbove)
-                CustomPaint(
-                  painter: _TrianglePainter(
-                    color: colorScheme.surfaceContainerHigh,
-                    pointUp: false,
-                  ),
-                  size: const Size(16, 8),
-                ),
-            ],
-          ),
-        );
-      },
+    // Create new bounds with extended height
+    final newBounds = Rect.fromLTRB(
+      region.bounds.left,
+      region.bounds.top,
+      region.bounds.right,
+      region.bounds.bottom + extensionHeight,
     );
     
-    Overlay.of(context).insert(_rowControlsOverlay!);
+    // Update the region with new bounds
+    final updatedRegion = region.copyWith(bounds: newBounds);
+    widget.notifier.updateRegionBounds(region, updatedRegion);
   }
-
+  
   /// Deletes a free drawing region.
   Future<void> _deleteFreeSpace(int pageIndex, PageRegion region) async {
     // Remove the controls popup immediately
@@ -823,25 +681,6 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
     _updateCurrentPageFromTransformation();
   }
 
-  /// Handles row line spacing gesture adjustments.
-  void _handleRowLineGesture(ScaleUpdateDetails details) {
-    if (!widget.showRowLines || widget.onRowLineSpacingChanged == null) return;
-
-    if (details.pointerCount == 2) {
-      // Calculate vertical distance between the two pointers
-      final delta1 = details.localFocalPoint;
-      final scale = details.scale;
-      
-      // Use scale to adjust row line spacing
-      if (_isAdjustingRowLines) {
-        final newSpacing = (_currentRowLineSpacing * scale).clamp(12.0, 48.0);
-        setState(() {
-          _currentRowLineSpacing = newSpacing;
-        });
-        widget.onRowLineSpacingChanged!(newSpacing);
-      }
-    }
-  }
 
   /// Updates the current page based on the visible area in the transformation
   void _updateCurrentPageFromTransformation() {
@@ -1026,9 +865,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
             : null,
       ),
       child: CustomPaint(
-        painter: widget.showRowLines
-            ? _getRowLinePainter(Size(paperSize.width, paperSize.height), page, state)
-            : null,
+        painter: _getRowLinePainter(Size(paperSize.width, paperSize.height), page, state),
         foregroundPainter: isCurrentPage ? ScribbleEditingPainter(
           state: _convertToScribbleState(state),
           drawPointer: widget.drawPen,
@@ -1038,90 +875,21 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
         ) : null,
         child: Stack(
           children: [
-            CustomPaint(
-              painter: widget.showLineNumbers
-                  ? LineNumberPainter(
-                      paperWidth: paperSize.width,
-                      paperHeight: paperSize.height,
-                      textColor: widget._lineNumberColor,
-                      fontSize: widget.lineNumberFontSize,
-                      leftMargin: 20,
-                      topMargin: 30,
-                      bottomMargin: 30,
-                      rowLineSpacing: widget.showRowLines ? _currentRowLineSpacing : null,
-                      sketch: widget.rowLineMode == RowLineMode.dynamic 
-                          ? page.sketch : null,
-                      isDynamic: widget.rowLineMode == RowLineMode.dynamic,
-                      proximityRadius: 40,
-                      fadeDistance: 80,
-                      regions: page.regions,
-                    )
-                  : null,
-              child: RepaintBoundary(
-                key: isCurrentPage ? widget.notifier.repaintBoundaryKey : null,
-                child: CustomPaint(
-                  painter: ScribblePainter(
-                    sketch: page.sketch,
-                    scaleFactor: state.scaleFactor,
-                    simulatePressure: widget.simulatePressure,
-                    theme: widget.theme,
-                  ),
+            RepaintBoundary(
+              key: isCurrentPage ? widget.notifier.repaintBoundaryKey : null,
+              child: CustomPaint(
+                painter: ScribblePainter(
+                  sketch: page.sketch,
+                  scaleFactor: state.scaleFactor,
+                  simulatePressure: widget.simulatePressure,
+                  theme: widget.theme,
                 ),
               ),
             ),
-            // Free space icon painter for showing icons in left margin
-            if (widget.showLineNumbers)
-              CustomPaint(
-                painter: FreeSpaceIconPainter(
-                  regions: page.regions,
-                  leftMargin: 60,
-                  iconColor: widget._lineNumberColor,
-                  iconSize: 16,
-                  iconOpacity: 0.6,
-                ),
-              ),
-            // Line number tap detector
-            if (widget.showLineNumbers && widget.showRowControls)
-              Positioned(
-                left: 0,
-                top: 0,
-                width: 60, // Cover line number area
-                height: paperSize.height,
-                child: GestureDetector(
-                  onTapDown: (details) {
-                    final localY = details.localPosition.dy;
-                    final localX = details.localPosition.dx;
-                    
-                    
-                    // Check if tap is on a free space icon first
-                    final freeSpaceIconPainter = FreeSpaceIconPainter(
-                      regions: page.regions,
-                      leftMargin: 60,
-                      iconColor: widget._lineNumberColor,
-                    );
-                    final tappedRegion = freeSpaceIconPainter.getRegionAtPoint(
-                      details.localPosition,
-                    );
-                    
-                    if (tappedRegion != null) {
-                      // Show free space controls for the tapped region
-                      final globalPosition = details.globalPosition;
-                      _showFreeSpaceControls(pageIndex, tappedRegion, globalPosition);
-                    } else {
-                      // Check if tap is precisely on a line number
-                      // Use gesture detector coordinates directly (localX, localY)
-                      final tappedRowIndex = _getLineNumberAtPoint(Offset(localX, localY), page);
-                      if (tappedRowIndex != null) {
-                        // Show row controls only when tapping directly on a line number
-                        final globalPosition = details.globalPosition;
-                        _showRowControls(pageIndex, tappedRowIndex, globalPosition);
-                      }
-                      // If not on a line number, ignore the tap completely
-                    }
-                  },
-                  behavior: HitTestBehavior.translucent,
-                ),
-              ),
+            // Free space icon buttons positioned individually
+            ..._buildFreeSpaceButtons(pageIndex, page, Size(paperSize.width, paperSize.height)),
+            // Line number buttons positioned individually
+            ..._buildLineNumberButtons(pageIndex, page, Size(paperSize.width, paperSize.height)),
           ],
         ),
       ),
@@ -1172,7 +940,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
 
   /// Gets the appropriate row line painter based on configuration.
   CustomPainter _getRowLinePainter(Size paperSize, NotebookPage page, NotebookState state) {
-    final leftMargin = widget.showLineNumbers ? 60.0 : 20.0;
+    const leftMargin = 60.0;
     final rightMargin = 20.0;
     final topMargin = 30.0;
     final bottomMargin = 30.0;
@@ -1189,45 +957,30 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
         rightMargin: rightMargin,
         topMargin: topMargin,
         bottomMargin: bottomMargin,
-        sketch: widget.rowLineMode == RowLineMode.dynamic ? page.sketch : null,
+        sketch: page.sketch,
         proximityRadius: 40,
         fadeDistance: 80,
-        isDynamic: widget.rowLineMode == RowLineMode.dynamic,
+        isDynamic: true,
         regions: page.regions,
       );
     }
 
-    // Use regular painters if no constraint mode
-    if (widget.rowLineMode == RowLineMode.dynamic) {
-      return DynamicRowLinePainter(
-        paperWidth: paperSize.width,
-        paperHeight: paperSize.height,
-        lineSpacing: _currentRowLineSpacing,
-        lineColor: widget._rowLineColor,
-        lineWidth: widget.rowLineWidth,
-        sketch: page.sketch,
-        leftMargin: leftMargin,
-        rightMargin: rightMargin,
-        topMargin: topMargin,
-        bottomMargin: bottomMargin,
-        proximityRadius: 40,
-        fadeDistance: 80,
-        regions: page.regions,
-      );
-    } else {
-      return RowLinePainter(
-        paperWidth: paperSize.width,
-        paperHeight: paperSize.height,
-        lineSpacing: _currentRowLineSpacing,
-        lineColor: widget._rowLineColor,
-        lineWidth: widget.rowLineWidth,
-        leftMargin: leftMargin,
-        rightMargin: rightMargin,
-        topMargin: topMargin,
-        bottomMargin: bottomMargin,
-        regions: page.regions,
-      );
-    }
+    // Always use dynamic row line painter
+    return DynamicRowLinePainter(
+      paperWidth: paperSize.width,
+      paperHeight: paperSize.height,
+      lineSpacing: _currentRowLineSpacing,
+      lineColor: widget._rowLineColor,
+      lineWidth: widget.rowLineWidth,
+      sketch: page.sketch,
+      leftMargin: leftMargin,
+      rightMargin: rightMargin,
+      topMargin: topMargin,
+      bottomMargin: bottomMargin,
+      proximityRadius: 40,
+      fadeDistance: 80,
+      regions: page.regions,
+    );
   }
 
   /// Converts NotebookState to ScribbleState for compatibility.
@@ -1257,42 +1010,4 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
   }
 }
 
-/// A custom painter that draws a small triangle pointer.
-class _TrianglePainter extends CustomPainter {
-  const _TrianglePainter({
-    required this.color,
-    required this.pointUp,
-  });
 
-  final Color color;
-  final bool pointUp;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    final path = Path();
-    
-    if (pointUp) {
-      // Triangle pointing up (for popup below row)
-      path.moveTo(size.width / 2, 0); // Top point
-      path.lineTo(0, size.height); // Bottom left
-      path.lineTo(size.width, size.height); // Bottom right
-    } else {
-      // Triangle pointing down (for popup above row)
-      path.moveTo(0, 0); // Top left
-      path.lineTo(size.width, 0); // Top right
-      path.lineTo(size.width / 2, size.height); // Bottom point
-    }
-    
-    path.close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(_TrianglePainter oldDelegate) {
-    return color != oldDelegate.color || pointUp != oldDelegate.pointUp;
-  }
-}

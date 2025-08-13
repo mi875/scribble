@@ -100,6 +100,12 @@ class NotebookPage {
     return copyWith(regions: newRegions);
   }
 
+  /// Creates a copy of this page with an updated region.
+  NotebookPage withUpdatedRegion(PageRegion oldRegion, PageRegion newRegion) {
+    final newRegions = regions.map((r) => r == oldRegion ? newRegion : r).toList();
+    return copyWith(regions: newRegions);
+  }
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;

@@ -1191,4 +1191,13 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
     }
     return s;
   }
+
+  /// Updates the bounds of a region on the current page.
+  void updateRegionBounds(PageRegion oldRegion, PageRegion newRegion) {
+    final updatedPage = currentPage.withUpdatedRegion(oldRegion, newRegion);
+    final updatedNotebook = currentNotebook.updateCurrentPage(updatedPage);
+    
+    // Use temporaryValue for live updates during resizing
+    temporaryValue = value.copyWith(notebook: updatedNotebook);
+  }
 }

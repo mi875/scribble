@@ -19,6 +19,7 @@ class MyApp extends StatelessWidget {
       title: 'Scribble',
       theme: ThemeData.from(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple)),
+      darkTheme: ThemeData.dark(),
       home: const HomePage(title: 'Scribble'),
     );
   }

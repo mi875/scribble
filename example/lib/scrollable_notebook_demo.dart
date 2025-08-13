@@ -17,10 +17,7 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
   late ScribbleThemeController themeController;
   Color selectedColor = Colors.black;
   double selectedWidth = 1.0;
-  bool showRowLines = false;
   double rowLineSpacing = 24.0;
-  RowLineMode rowLineMode = RowLineMode.static;
-  bool showLineNumbers = false;
   Color rowLineColor = const Color(0xFFBDBDBD);
   double rowLineWidth = 1.0;
   RowConstraintMode rowConstraintMode = RowConstraintMode.none;
@@ -138,11 +135,10 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
                                 '• Draw/erase only works on the active page\n'
                                 '• Use TWO FINGERS to zoom in/out at finger position\n'
                                 '• Pan with single finger when zoomed in\n'
-                                '• Row lines: Static mode shows all lines, Dynamic mode shows lines near content\n'
-                                '• Line numbers: Shows 1,2,3... in left margin, syncs with row spacing when enabled\n'
+                                '• Row lines: Always shown in dynamic mode (near content)\n'
+                                '• Line numbers: Always shown in left margin\n'
                                 '• Tap on line numbers to show row controls and delete specific rows\n'
-                                '• Adjust row spacing with the slider\n'
-                                '• Dynamic mode: Pages auto-add when writing near bottom\n'
+                                '• Pages auto-add when writing near bottom\n'
                                 '• Writing Constraints: Force line-by-line writing behavior\n'
                                 '  - Current: Only write on highlighted active row\n'
                                 '  - Sequential: Write lines in order from top to bottom',
@@ -305,7 +301,7 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
 
                       const SizedBox(height: 16),
 
-                      // Row Line Controls
+                      // Row Line Style Controls
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.all(16),
@@ -313,157 +309,88 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Row Lines',
+                                'Row Line Style',
                                 style: Theme.of(context).textTheme.titleSmall,
                               ),
                               const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Switch(
-                                    value: showRowLines,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        showRowLines = value;
-                                      });
-                                    },
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Text('Show Lines'),
-                                ],
+                              const Text(
+                                'Row lines and line numbers are always enabled in dynamic mode.',
+                                style: TextStyle(fontSize: 12),
                               ),
-                              if (showRowLines) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Spacing: ${rowLineSpacing.round()}px',
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                                Slider(
-                                  value: rowLineSpacing,
-                                  min: 12.0,
-                                  max: 48.0,
-                                  divisions: 18,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      rowLineSpacing = value;
-                                    });
-                                  },
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: RadioListTile<RowLineMode>(
-                                        title: const Text('Static'),
-                                        value: RowLineMode.static,
-                                        groupValue: rowLineMode,
-                                        onChanged: (value) {
-                                          setState(() {
-                                            rowLineMode = value!;
-                                          });
-                                        },
-                                        contentPadding: EdgeInsets.zero,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: RadioListTile<RowLineMode>(
-                                        title: const Text('Dynamic'),
-                                        value: RowLineMode.dynamic,
-                                        groupValue: rowLineMode,
-                                        onChanged: (value) {
-                                          setState(() {
-                                            rowLineMode = value!;
-                                          });
-                                        },
-                                        contentPadding: EdgeInsets.zero,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                              const SizedBox(height: 16),
+                              Text(
+                                'Spacing: ${rowLineSpacing.round()}px',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              Slider(
+                                value: rowLineSpacing,
+                                min: 12.0,
+                                max: 48.0,
+                                divisions: 18,
+                                onChanged: (value) {
+                                  setState(() {
+                                    rowLineSpacing = value;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Width: ${rowLineWidth.toStringAsFixed(1)}px',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              Slider(
+                                value: rowLineWidth,
+                                min: 0.5,
+                                max: 3.0,
+                                divisions: 10,
+                                onChanged: (value) {
+                                  setState(() {
+                                    rowLineWidth = value;
+                                  });
+                                },
+                              ),
                               const SizedBox(height: 8),
-                              Row(
+                              const Text(
+                                'Color:',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                              const SizedBox(height: 4),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
                                 children: [
-                                  Switch(
-                                    value: showLineNumbers,
-                                    onChanged: (value) {
+                                  const Color(0xFFBDBDBD), // Gray (default)
+                                  const Color(0xFFE3F2FD), // Light Blue
+                                  const Color(0xFFE8F5E8), // Light Green
+                                  const Color(0xFFFFF3E0), // Light Orange
+                                  const Color(0xFFE1F5FE), // Light Cyan
+                                  const Color(0xFFF3E5F5), // Light Purple
+                                ].map((color) {
+                                  return GestureDetector(
+                                    onTap: () {
                                       setState(() {
-                                        showLineNumbers = value;
+                                        rowLineColor = color;
                                       });
                                     },
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Text('Line Numbers'),
-                                ],
-                              ),
-                              if (showRowLines) ...[
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Line Appearance',
-                                  style: Theme.of(context).textTheme.titleSmall,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Width: ${rowLineWidth.toStringAsFixed(1)}px',
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                                Slider(
-                                  value: rowLineWidth,
-                                  min: 0.5,
-                                  max: 3.0,
-                                  divisions: 10,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      rowLineWidth = value;
-                                    });
-                                  },
-                                ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  'Color:',
-                                  style: TextStyle(fontSize: 12),
-                                ),
-                                const SizedBox(height: 4),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    const Color(0xFFBDBDBD), // Gray (default)
-                                    const Color(0xFFE3F2FD), // Light Blue
-                                    const Color(0xFFE8F5E8), // Light Green
-                                    const Color(0xFFFFF3E0), // Light Orange
-                                    const Color(0xFFE1F5FE), // Light Cyan
-                                    const Color(0xFFF3E5F5), // Light Purple
-                                  ].map((color) {
-                                    return GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          rowLineColor = color;
-                                        });
-                                      },
-                                      child: Container(
-                                        width: 30,
-                                        height: 30,
-                                        decoration: BoxDecoration(
-                                          color: color,
-                                          shape: BoxShape.circle,
-                                          border: rowLineColor == color
-                                              ? Border.all(
-                                                  color: Colors.grey.shade800,
-                                                  width: 3,
-                                                )
-                                              : Border.all(
-                                                  color: Colors.grey.shade300,
-                                                ),
-                                        ),
+                                    child: Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: BoxDecoration(
+                                        color: color,
+                                        shape: BoxShape.circle,
+                                        border: rowLineColor == color
+                                            ? Border.all(
+                                                color: Colors.grey.shade800,
+                                                width: 3,
+                                              )
+                                            : Border.all(
+                                                color: Colors.grey.shade300,
+                                              ),
                                       ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
                             ],
                           ),
                         ),
@@ -537,21 +464,12 @@ class _ScrollableNotebookDemoState extends State<ScrollableNotebookDemo> {
                     showPaperShadow: true,
                     showPaperBorder: true,
                     pageSpacing: 40,
-                    showRowLines: showRowLines,
                     rowLineSpacing: rowLineSpacing,
                     rowLineColor: rowLineColor,
                     rowLineWidth: rowLineWidth,
-                    rowLineMode: rowLineMode,
                     rowConstraintMode: rowConstraintMode,
-                    showLineNumbers: showLineNumbers,
-                    showRowControls: showLineNumbers,
                     autoAddPages: true,
                     bottomMarginThreshold: 50.0,
-                    onRowLineSpacingChanged: (newSpacing) {
-                      setState(() {
-                        rowLineSpacing = newSpacing;
-                      });
-                    },
                     onEraseRow: (rowIndex) {
                       // Row deleted silently - no notification needed
                     },
