@@ -3,7 +3,7 @@ import 'package:scribble/scribble.dart';
 import 'package:scribble/src/view/notifier/notebook_notifier.dart';
 
 /// A widget that provides zoom controls for a notebook canvas.
-/// 
+///
 /// Includes zoom in, zoom out, fit to screen, and actual size buttons.
 /// Also displays the current zoom level.
 class ZoomControls extends StatelessWidget {
@@ -34,7 +34,15 @@ class ZoomControls extends StatelessWidget {
 
   /// Common zoom levels for quick access.
   static const List<double> _commonZoomLevels = [
-    0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0,
+    0.25,
+    0.5,
+    0.75,
+    1.0,
+    1.25,
+    1.5,
+    2.0,
+    3.0,
+    4.0,
   ];
 
   @override
@@ -44,9 +52,11 @@ class ZoomControls extends StatelessWidget {
       builder: (context, state, _) {
         final currentZoom = state.zoomLevel;
         final zoomPercentage = (currentZoom * 100).round();
+        // Resolve theme: prefer provided theme, else provider/system fallback
+        final ScribbleTheme t = theme ?? ScribbleThemeProvider.resolve(context);
 
         return Card(
-          color: theme?.controlBackgroundColor,
+          color: t.controlBackgroundColor,
           child: Padding(
             padding: const EdgeInsets.all(8),
             child: Column(
@@ -56,9 +66,9 @@ class ZoomControls extends StatelessWidget {
                 IconButton(
                   onPressed: _zoomOut,
                   icon: Icon(
-                    Icons.zoom_out, 
+                    Icons.zoom_out,
                     size: iconSize,
-                    color: theme?.controlIconColor,
+                    color: t.controlIconColor,
                   ),
                   tooltip: 'Zoom Out',
                   padding: buttonPadding,
@@ -77,16 +87,15 @@ class ZoomControls extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: theme?.controlBorderColor ?? 
-                              Colors.grey.shade300,
+                          color: t.controlBorderColor,
                         ),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         '$zoomPercentage%',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: theme?.controlIconColor,
-                        ),
+                              color: t.controlIconColor,
+                            ),
                       ),
                     ),
                   ),
@@ -97,9 +106,9 @@ class ZoomControls extends StatelessWidget {
                 IconButton(
                   onPressed: _zoomIn,
                   icon: Icon(
-                    Icons.zoom_in, 
+                    Icons.zoom_in,
                     size: iconSize,
-                    color: theme?.controlIconColor,
+                    color: t.controlIconColor,
                   ),
                   tooltip: 'Zoom In',
                   padding: buttonPadding,
@@ -111,9 +120,9 @@ class ZoomControls extends StatelessWidget {
                 IconButton(
                   onPressed: _fitToScreen,
                   icon: Icon(
-                    Icons.fit_screen, 
+                    Icons.fit_screen,
                     size: iconSize,
-                    color: theme?.controlIconColor,
+                    color: t.controlIconColor,
                   ),
                   tooltip: 'Fit to Screen',
                   padding: buttonPadding,
@@ -125,9 +134,9 @@ class ZoomControls extends StatelessWidget {
                 IconButton(
                   onPressed: _actualSize,
                   icon: Icon(
-                    Icons.crop_free, 
+                    Icons.crop_free,
                     size: iconSize,
-                    color: theme?.controlIconColor,
+                    color: t.controlIconColor,
                   ),
                   tooltip: 'Actual Size (100%)',
                   padding: buttonPadding,
@@ -152,7 +161,7 @@ class ZoomControls extends StatelessWidget {
     final currentZoom = notifier.value.zoomLevel;
     final nextZoom = _findNextZoomLevel(currentZoom, false);
     notifier.setZoomLevel(nextZoom);
-    
+
     // Auto-center when zooming down to 1.0 or below
     if (nextZoom <= 1.0 && currentZoom > 1.0) {
       notifier.setPanOffset(Offset.zero);

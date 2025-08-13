@@ -8,7 +8,7 @@ import 'package:scribble/src/view/state/simple_notebook_state.dart';
 
 /// A simplified scrollable canvas widget that renders notebook pages
 /// vertically.
-/// 
+///
 /// This widget provides a clean multi-page drawing experience with:
 /// - Vertical scrolling through all pages
 /// - Basic drawing and erasing functionality
@@ -29,9 +29,15 @@ class SimpleScrollableNotebook extends StatefulWidget {
     /// Whether to simulate pressure for lines without pressure information
     this.simulatePressure = true,
 
-    /// Theme configuration for colors. When provided, individual color 
+    /// Theme configuration for colors. When provided, individual color
     /// parameters are ignored in favor of theme colors.
     this.theme,
+
+    /// Control how the widget derives its theme (defaults to system).
+    this.themeMode = ScribbleThemeMode.system,
+
+    /// Optional external theme controller for advanced control.
+    this.themeController,
 
     /// Background color for the paper. If null, uses white.
     /// Ignored if [theme] is provided.
@@ -58,7 +64,6 @@ class SimpleScrollableNotebook extends StatefulWidget {
 
     /// Distance from bottom edge that triggers new page creation.
     this.bottomMarginThreshold = 50.0,
-
     super.key,
   });
 
@@ -75,9 +80,16 @@ class SimpleScrollableNotebook extends StatefulWidget {
   /// information (all points have the same pressure).
   final bool simulatePressure;
 
-  /// Theme configuration for colors. When provided, individual color 
+  /// Theme configuration for colors. When provided, individual color
   /// parameters are ignored in favor of theme colors.
   final ScribbleTheme? theme;
+
+  /// Theme derivation mode.
+  final ScribbleThemeMode themeMode;
+
+  /// Optional theme controller (advanced use). If provided, its theme is used
+  /// unless an explicit [theme] is set.
+  final ScribbleThemeController? themeController;
 
   /// Background color for the paper.
   final Color paperColor;
@@ -103,77 +115,85 @@ class SimpleScrollableNotebook extends StatefulWidget {
   /// Distance from bottom edge that triggers new page creation.
   final double bottomMarginThreshold;
 
-  /// Gets the resolved paper color from theme or parameter.
-  Color get _paperColor => theme?.paperColor ?? paperColor;
-
-  /// Gets the resolved paper border color from theme or parameter.
-  Color get _paperBorderColor => theme?.paperBorderColor ?? paperBorderColor;
-
   @override
-  State<SimpleScrollableNotebook> createState() => 
+  State<SimpleScrollableNotebook> createState() =>
       _SimpleScrollableNotebookState();
 }
 
 class _SimpleScrollableNotebookState extends State<SimpleScrollableNotebook> {
   final ScrollController _scrollController = ScrollController();
   final Map<int, GlobalKey> _pageKeys = {};
-  final TransformationController _transformationController = 
+  final TransformationController _transformationController =
       TransformationController();
   bool _isPenActive = false;
   double _currentZoom = 1;
+
+  ScribbleTheme _effectiveTheme(BuildContext context) {
+    if (widget.theme != null) return widget.theme!;
+    if (widget.themeController != null) return widget.themeController!.theme;
+    switch (widget.themeMode) {
+      case ScribbleThemeMode.light:
+        return ScribbleTheme.light;
+      case ScribbleThemeMode.dark:
+        return ScribbleTheme.dark;
+      case ScribbleThemeMode.system:
+        return ScribbleTheme.fromContext(context);
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     if (widget.autoAddPages) {
-      widget.notifier.setAutoAddPages(enabled: true, 
-          threshold: widget.bottomMarginThreshold,);
+      widget.notifier.setAutoAddPages(
+        enabled: true,
+        threshold: widget.bottomMarginThreshold,
+      );
     }
-    
+
     // Listen to transformation changes to update zoom level
     _transformationController.addListener(_onTransformationChanged);
-    
+
     // Center the content initially
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _centerContent();
     });
   }
-  
+
   void _centerContent() {
     if (!mounted) return;
-    
+
     // Get the render box to calculate the available space
     final renderBox = context.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
-    
+
     final size = renderBox.size;
     if (size.isEmpty) return;
-    
+
     // Calculate the content dimensions (rough estimate for pages)
     final state = widget.notifier.value;
     if (state.pages.isEmpty) return;
-    
+
     // Estimate content height: pages + spacing
     final pageHeight = state.pages.first.paperSize.height;
     final pageWidth = state.pages.first.paperSize.width;
-    final totalContentHeight = (state.pages.length * pageHeight) + 
-        ((state.pages.length - 1) * widget.pageSpacing) + 
+    final totalContentHeight = (state.pages.length * pageHeight) +
+        ((state.pages.length - 1) * widget.pageSpacing) +
         (2 * widget.pageSpacing); // top and bottom padding
-    
+
     // Calculate centering offsets
     final offsetX = (size.width - pageWidth) / 2;
     final offsetY = (size.height - totalContentHeight) / 2;
-    
+
     // Only center if content is smaller than viewport
     final centerX = offsetX > 0 ? offsetX : 0.0;
     final centerY = offsetY > 0 ? offsetY : 0.0;
-    
-    final matrix = Matrix4.identity()
-      ..translate(centerX, centerY);
-    
+
+    final matrix = Matrix4.identity()..translate(centerX, centerY);
+
     _transformationController.value = matrix;
   }
-  
+
   void _onTransformationChanged() {
     final matrix = _transformationController.value;
     final newZoom = matrix.getMaxScaleOnAxis();
@@ -195,60 +215,64 @@ class _SimpleScrollableNotebookState extends State<SimpleScrollableNotebook> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<SimpleNotebookState>(
-      valueListenable: widget.notifier,
-      builder: (context, state, child) {
-        return Container(
-          color: widget.theme?.paperShadowColor.withValues(alpha: 0.1) ?? 
-              Colors.grey[100],
-          child: ClipRect(
-            child: InteractiveViewer(
-              transformationController: _transformationController,
-              minScale: 0.05,
-              maxScale: 5,
-              constrained: false,
-              panEnabled: !_isPenActive,
-              scaleEnabled: !_isPenActive,
-              boundaryMargin: const EdgeInsets.all(double.infinity),
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                child: Padding(
-                  padding: EdgeInsets.all(widget.pageSpacing),
-                  child: Column(
-                    children: [
-                      for (int i = 0; i < state.pages.length; i++)
-                        Padding(
-                          padding: EdgeInsets.only(
-                            bottom: i < state.pages.length - 1 
-                                ? widget.pageSpacing 
-                                : 0,
+    final theme = _effectiveTheme(context);
+    return ScribbleThemeProvider(
+      theme: theme,
+      child: ValueListenableBuilder<SimpleNotebookState>(
+        valueListenable: widget.notifier,
+        builder: (context, state, child) {
+          return Container(
+            color: theme.paperShadowColor.withValues(alpha: 0.1),
+            child: ClipRect(
+              child: InteractiveViewer(
+                transformationController: _transformationController,
+                minScale: 0.05,
+                maxScale: 5,
+                constrained: false,
+                panEnabled: !_isPenActive,
+                scaleEnabled: !_isPenActive,
+                boundaryMargin: const EdgeInsets.all(double.infinity),
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  child: Padding(
+                    padding: EdgeInsets.all(widget.pageSpacing),
+                    child: Column(
+                      children: [
+                        for (int i = 0; i < state.pages.length; i++)
+                          Padding(
+                            padding: EdgeInsets.only(
+                              bottom: i < state.pages.length - 1
+                                  ? widget.pageSpacing
+                                  : 0,
+                            ),
+                            child: _buildPage(state, i, theme),
                           ),
-                          child: _buildPage(state, i),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildPage(SimpleNotebookState state, int pageIndex) {
+  Widget _buildPage(
+      SimpleNotebookState state, int pageIndex, ScribbleTheme theme) {
     final page = state.pages[pageIndex];
     final isCurrentPage = pageIndex == state.currentPageIndex;
-    
+
     // Ensure page key exists
     _pageKeys[pageIndex] ??= GlobalKey();
 
     return Container(
       decoration: BoxDecoration(
-        color: widget._paperColor,
+        color: theme.paperColor,
         border: widget.showPaperBorder
             ? Border.all(
-                color: widget._paperBorderColor,
+                color: theme.paperBorderColor,
                 width: widget.paperBorderWidth,
               )
             : null,
@@ -270,7 +294,7 @@ class _SimpleScrollableNotebookState extends State<SimpleScrollableNotebook> {
           child: Listener(
             onPointerDown: (event) {
               // Check if this is a pen/stylus input
-              if (event.kind == PointerDeviceKind.stylus || 
+              if (event.kind == PointerDeviceKind.stylus ||
                   event.kind == PointerDeviceKind.invertedStylus) {
                 setState(() => _isPenActive = true);
               }
@@ -279,15 +303,15 @@ class _SimpleScrollableNotebookState extends State<SimpleScrollableNotebook> {
               widget.notifier.onPointerDown(event);
             },
             onPointerMove: isCurrentPage ? widget.notifier.onPointerMove : null,
-            onPointerUp: isCurrentPage 
+            onPointerUp: isCurrentPage
                 ? (event) {
                     widget.notifier.onPointerUp(event);
                     // Re-enable zoom/pan after pen input ends
-                    if (event.kind == PointerDeviceKind.stylus || 
+                    if (event.kind == PointerDeviceKind.stylus ||
                         event.kind == PointerDeviceKind.invertedStylus) {
                       setState(() => _isPenActive = false);
                     }
-                  } 
+                  }
                 : null,
             child: CustomPaint(
               size: Size(page.paperSize.width, page.paperSize.height),
@@ -295,7 +319,7 @@ class _SimpleScrollableNotebookState extends State<SimpleScrollableNotebook> {
                 sketch: page.sketch,
                 scaleFactor: state.scaleFactor,
                 simulatePressure: widget.simulatePressure,
-                theme: widget.theme,
+                theme: theme,
               ),
               foregroundPainter: isCurrentPage && state is SimpleNotebookDrawing
                   ? ScribbleEditingPainter(
@@ -313,7 +337,7 @@ class _SimpleScrollableNotebookState extends State<SimpleScrollableNotebook> {
                       drawPointer: widget.drawPen,
                       drawEraser: widget.drawEraser,
                       simulatePressure: widget.simulatePressure,
-                      theme: widget.theme,
+                      theme: theme,
                     )
                   : null,
             ),

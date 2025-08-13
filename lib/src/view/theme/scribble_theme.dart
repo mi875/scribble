@@ -19,28 +19,28 @@ class ScribbleTheme {
 
   /// Background color for the drawing paper/canvas.
   final Color paperColor;
-  
+
   /// Border color around the paper/canvas.
   final Color paperBorderColor;
-  
+
   /// Shadow color for paper elevation effect.
   final Color paperShadowColor;
-  
+
   /// Color for row lines on lined paper.
   final Color rowLineColor;
-  
+
   /// Color for line numbers on the paper.
   final Color lineNumberColor;
-  
+
   /// Background color for UI controls (zoom controls, etc.).
   final Color controlBackgroundColor;
-  
+
   /// Border color for UI controls.
   final Color controlBorderColor;
-  
+
   /// Icon color for UI controls.
   final Color controlIconColor;
-  
+
   /// Color for the eraser pointer indicator.
   final Color eraserPointerColor;
 
@@ -88,12 +88,25 @@ class ScribbleTheme {
       paperShadowColor: paperShadowColor ?? this.paperShadowColor,
       rowLineColor: rowLineColor ?? this.rowLineColor,
       lineNumberColor: lineNumberColor ?? this.lineNumberColor,
-      controlBackgroundColor: 
+      controlBackgroundColor:
           controlBackgroundColor ?? this.controlBackgroundColor,
       controlBorderColor: controlBorderColor ?? this.controlBorderColor,
       controlIconColor: controlIconColor ?? this.controlIconColor,
       eraserPointerColor: eraserPointerColor ?? this.eraserPointerColor,
     );
+  }
+
+  /// Resolve a theme from a brightness value.
+  static ScribbleTheme fromBrightness(Brightness brightness) {
+    return brightness == Brightness.dark
+        ? ScribbleTheme.dark
+        : ScribbleTheme.light;
+  }
+
+  /// Resolve a theme using platform brightness from the given context.
+  static ScribbleTheme fromContext(BuildContext context) {
+    final brightness = MediaQuery.of(context).platformBrightness;
+    return fromBrightness(brightness);
   }
 
   @override
@@ -125,4 +138,16 @@ class ScribbleTheme {
       eraserPointerColor,
     );
   }
+}
+
+/// Controls how notebook widgets derive their color theme.
+enum ScribbleThemeMode {
+  /// Follow the system/platform brightness (default)
+  system,
+
+  /// Force light theme
+  light,
+
+  /// Force dark theme
+  dark,
 }

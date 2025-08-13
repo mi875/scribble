@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:scribble/src/view/theme/scribble_theme.dart';
 
 /// A widget that provides theme data to its descendants.
-/// 
+///
 /// This is a simple theme provider that allows switching between light
 /// and dark themes, as well as custom themes.
 class ScribbleThemeProvider extends InheritedWidget {
@@ -18,9 +18,14 @@ class ScribbleThemeProvider extends InheritedWidget {
 
   /// Gets the current theme from the widget tree.
   static ScribbleTheme? of(BuildContext context) {
-    final provider = context
-        .dependOnInheritedWidgetOfExactType<ScribbleThemeProvider>();
+    final provider =
+        context.dependOnInheritedWidgetOfExactType<ScribbleThemeProvider>();
     return provider?.theme;
+  }
+
+  /// Gets theme or resolves one from context when not provided.
+  static ScribbleTheme resolve(BuildContext context) {
+    return of(context) ?? ScribbleTheme.fromContext(context);
   }
 
   @override
@@ -38,7 +43,7 @@ class ScribbleThemeController extends ChangeNotifier {
   }) : _theme = initialTheme ?? ScribbleTheme.light;
 
   ScribbleTheme _theme;
-  
+
   /// Whether the controller should automatically follow system theme changes.
   bool followSystemTheme;
 
@@ -94,7 +99,7 @@ class ScribbleThemeController extends ChangeNotifier {
     final newTheme = brightness == Brightness.dark
         ? ScribbleTheme.dark
         : ScribbleTheme.light;
-    
+
     if (_theme != newTheme) {
       _theme = newTheme;
       notifyListeners();
@@ -137,7 +142,7 @@ class _ScribbleThemeBuilderState extends State<ScribbleThemeBuilder>
   @override
   void initState() {
     super.initState();
-    
+
     if (widget.controller != null) {
       _controller = widget.controller!;
     } else {
@@ -147,9 +152,9 @@ class _ScribbleThemeBuilderState extends State<ScribbleThemeBuilder>
       );
       _isInternalController = true;
     }
-    
+
     _controller.addListener(_onThemeChanged);
-    
+
     if (_controller.followSystemTheme) {
       WidgetsBinding.instance.addObserver(this);
       // Update theme from system after first frame
