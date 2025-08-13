@@ -9,3 +9,6 @@ export 'package:scribble/src/view/scrollable_notebook_canvas.dart';
 export 'package:scribble/src/view/state/scribble.state.dart';
 export 'package:scribble/src/view/theme/scribble_theme.dart';
 export 'package:scribble/src/view/theme/scribble_theme_provider.dart';
+export 'package:scribble/src/view/scrollable_media_canvas.dart';
+export 'package:scribble/src/view/notifier/media_canvas_notifier.dart';
+export 'package:scribble/src/domain/model/page/media_page.dart';
