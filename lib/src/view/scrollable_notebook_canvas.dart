@@ -1,18 +1,18 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:vector_math/vector_math_64.dart' hide Colors;
 import 'package:scribble/scribble.dart';
 import 'package:scribble/src/domain/model/page/page.dart';
+import 'package:scribble/src/domain/model/region/page_region.dart';
+import 'package:scribble/src/domain/model/region/region_type.dart';
 import 'package:scribble/src/view/notifier/notebook_notifier.dart';
+import 'package:scribble/src/view/painting/constrained_row_line_painter.dart';
+import 'package:scribble/src/view/painting/dynamic_row_line_painter.dart';
 import 'package:scribble/src/view/painting/scribble_editing_painter.dart';
 import 'package:scribble/src/view/painting/scribble_painter.dart';
-import 'package:scribble/src/view/painting/dynamic_row_line_painter.dart';
-import 'package:scribble/src/view/painting/constrained_row_line_painter.dart';
 import 'package:scribble/src/view/pan_gesture_catcher.dart';
 import 'package:scribble/src/view/state/notebook_state.dart';
-import 'package:scribble/src/domain/model/region/region_type.dart';
-import 'package:scribble/src/domain/model/region/page_region.dart';
+import 'package:vector_math/vector_math_64.dart' hide Colors;
 
 /// Enum for different row line display modes
 enum RowLineMode {
@@ -192,7 +192,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
   final TransformationController _transformationController = TransformationController();
   final Map<int, GlobalKey> _pageKeys = {};
   final GlobalKey _containerKey = GlobalKey();
-  double _currentRowLineSpacing = 24.0;
+  double _currentRowLineSpacing = 24;
   
   // Row controls state
   OverlayEntry? _rowControlsOverlay;
@@ -213,7 +213,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
     widget.notifier.setRowConstraintMode(
       widget.rowConstraintMode,
       rowLineSpacing: _currentRowLineSpacing,
-      topMargin: 30.0,
+      topMargin: 30,
     );
   }
 
@@ -236,7 +236,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
       widget.notifier.setRowConstraintMode(
         widget.rowConstraintMode,
         rowLineSpacing: _currentRowLineSpacing,
-        topMargin: 30.0,
+        topMargin: 30,
       );
     }
   }
@@ -268,7 +268,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
     const bottomMargin = 30.0;
     // Remove unused variable
     
-    final drawingTop = topMargin;
+    const drawingTop = topMargin;
     final drawingBottom = paperSize.height - bottomMargin;
     final availableHeight = drawingBottom - drawingTop;
     
@@ -282,7 +282,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
     
     final buttons = <Widget>[];
     
-    for (int i = 0; i < maxLines; i++) {
+    for (var i = 0; i < maxLines; i++) {
       final currentLine = 1 + i;
       final betweenRowsY = drawingTop + (i * lineSpacing) + (lineSpacing / 2);
       
@@ -298,7 +298,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
       if (_isVerticalPositionInFreeDrawingRegion(betweenRowsY, page.regions)) continue;
       
       // Position the button (centered in left margin)
-      final buttonX = leftMargin + 4; // Center horizontally in margin
+      const buttonX = leftMargin + 4; // Center horizontally in margin
       final buttonY = betweenRowsY - 16; // Center button vertically
       
       buttons.add(
@@ -312,7 +312,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
             child: PopupMenuButton<String>(
               offset: const Offset(0, 32),
               itemBuilder: (context) => [
-                PopupMenuItem(
+                const PopupMenuItem(
                   value: 'insert',
                   child: Row(
                     children: [
@@ -322,7 +322,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
                     ],
                   ),
                 ),
-                PopupMenuItem(
+                const PopupMenuItem(
                   value: 'free_space',
                   child: Row(
                     children: [
@@ -332,7 +332,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
                     ],
                   ),
                 ),
-                PopupMenuItem(
+                const PopupMenuItem(
                   value: 'delete',
                   child: Row(
                     children: [
@@ -351,7 +351,6 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: widget._lineNumberColor.withValues(alpha: 0.5),
-                    width: 1,
                   ),
                   color: Colors.transparent,
                 ),
@@ -392,16 +391,16 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
   double _calculateNumberOpacity(double numberY, List<Offset> contentPoints, int lineIndex) {
     // Always show the first two line numbers at full opacity initially
     if (lineIndex == 0 || lineIndex == 1) {
-      return 1.0;
+      return 1;
     }
 
     if (contentPoints.isEmpty) {
       // If no content, only show the first two line numbers
-      return 0.0;
+      return 0;
     }
 
     // Find the lowest content point (highest Y value) to determine progression
-    double maxContentY = contentPoints.isEmpty ? 0.0 : contentPoints.first.dy;
+    var maxContentY = contentPoints.isEmpty ? 0.0 : contentPoints.first.dy;
     for (final point in contentPoints) {
       if (point.dy > maxContentY) {
         maxContentY = point.dy;
@@ -431,7 +430,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
       
       if (minDistance <= proximityRadius) {
         // Full opacity near content
-        return 1.0;
+        return 1;
       } else if (minDistance <= proximityRadius + fadeDistance) {
         // Fade out over distance
         final fadeProgress = (minDistance - proximityRadius) / fadeDistance;
@@ -442,7 +441,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
       }
     } else {
       // Line numbers beyond the progression are not shown
-      return 0.0;
+      return 0;
     }
   }
   
@@ -465,14 +464,11 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
     switch (action) {
       case 'insert':
         _insertRowAbove(pageIndex, rowIndex);
-        break;
       case 'free_space':
         // Directly add a generous free drawing space
         _insertFreeDrawingSpace(pageIndex, rowIndex, FreeDrawingPreset.sketch);
-        break;
       case 'delete':
         _eraseRow(pageIndex, rowIndex);
-        break;
     }
   }
   
@@ -489,7 +485,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
       final bounds = region.bounds;
       
       // Position button in the center of the region vertically, in left margin
-      final buttonX = 30.0 - 16; // Center in 60px left margin
+      const buttonX = 30.0 - 16; // Center in 60px left margin
       final buttonY = bounds.center.dy - 16; // Center vertically in region
       
       // Get icon for the preset type
@@ -505,7 +501,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
           child: PopupMenuButton<String>(
             offset: const Offset(32, 0),
             itemBuilder: (context) => [
-              PopupMenuItem(
+              const PopupMenuItem(
                 value: 'extend',
                 child: Row(
                   children: [
@@ -515,7 +511,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
                   ],
                 ),
               ),
-              PopupMenuItem(
+              const PopupMenuItem(
                 value: 'delete',
                 child: Row(
                   children: [
@@ -534,7 +530,6 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: color.withValues(alpha: 0.5),
-                  width: 1,
                 ),
                 color: color.withValues(alpha: 0.1),
               ),
@@ -591,7 +586,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
     await widget.notifier.deleteRowAnimated(
       rowIndex,
       rowLineSpacing: _currentRowLineSpacing,
-      topMargin: 30.0,
+      topMargin: 30,
     );
   }
 
@@ -629,7 +624,6 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
       paperWidth: paperSize.width,
       leftMargin: 60,
       rightMargin: 20,
-      duration: const Duration(milliseconds: 400),
     );
   }
 
@@ -702,7 +696,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
     // Find which page contains this center point
     var currentOffset = widget.pageSpacing;
     
-    for (int i = 0; i < notebook.pages.length; i++) {
+    for (var i = 0; i < notebook.pages.length; i++) {
       final paperSize = notebook.pages[i].paperSize;
       final pageHeight = paperSize.height;
       
@@ -720,9 +714,9 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
   /// Calculates the total height of all pages plus spacing
   double _calculateTotalContentHeight() {
     final notebook = widget.notifier.currentNotebook;
-    double totalHeight = widget.pageSpacing * 2; // Top and bottom padding
+    var totalHeight = widget.pageSpacing * 2; // Top and bottom padding
     
-    for (int i = 0; i < notebook.pages.length; i++) {
+    for (var i = 0; i < notebook.pages.length; i++) {
       final paperSize = notebook.pages[i].paperSize;
       totalHeight += paperSize.height;
       
@@ -743,7 +737,7 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
     // Calculate the Y offset to the target page
     var targetOffset = widget.pageSpacing; // Initial top padding
     
-    for (int i = 0; i < pageIndex; i++) {
+    for (var i = 0; i < pageIndex; i++) {
       final paperSize = notebook.pages[i].paperSize;
       targetOffset += paperSize.height + widget.pageSpacing;
     }
@@ -941,9 +935,9 @@ class _ScrollableNotebookCanvasState extends State<ScrollableNotebookCanvas> {
   /// Gets the appropriate row line painter based on configuration.
   CustomPainter _getRowLinePainter(Size paperSize, NotebookPage page, NotebookState state) {
     const leftMargin = 60.0;
-    final rightMargin = 20.0;
-    final topMargin = 30.0;
-    final bottomMargin = 30.0;
+    const rightMargin = 20.0;
+    const topMargin = 30.0;
+    const bottomMargin = 30.0;
 
     // Use constrained painter if constraint mode is active
     if (widget.rowConstraintMode != RowConstraintMode.none) {

@@ -156,19 +156,19 @@ class LineNumberPainter extends CustomPainter with RegionAwarePainterMixin {
   double _calculateNumberOpacity(double numberY, List<Offset> contentPoints, int lineIndex) {
     // Always show the first two line numbers at full opacity initially
     if (lineIndex == 0) {
-      return 1.0;
+      return 1;
     }
     if (lineIndex == 1) {
-      return 1.0;
+      return 1;
     }
 
     if (contentPoints.isEmpty) {
       // If no content, only show the first two line numbers
-      return 0.0;
+      return 0;
     }
 
     // Find the lowest content point (highest Y value) to determine progression
-    double maxContentY = contentPoints.isEmpty ? 0.0 : contentPoints.first.dy;
+    var maxContentY = contentPoints.isEmpty ? 0.0 : contentPoints.first.dy;
     for (final point in contentPoints) {
       if (point.dy > maxContentY) {
         maxContentY = point.dy;
@@ -194,7 +194,7 @@ class LineNumberPainter extends CustomPainter with RegionAwarePainterMixin {
       // Calculate opacity based on distance for visible line numbers
       if (minDistance <= proximityRadius) {
         // Full opacity near content
-        return 1.0;
+        return 1;
       } else if (minDistance <= proximityRadius + fadeDistance) {
         // Fade out over distance
         final fadeProgress = (minDistance - proximityRadius) / fadeDistance;
@@ -205,7 +205,7 @@ class LineNumberPainter extends CustomPainter with RegionAwarePainterMixin {
       }
     } else {
       // Line numbers beyond the progression are not shown
-      return 0.0;
+      return 0;
     }
   }
 

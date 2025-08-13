@@ -8,12 +8,11 @@ import 'package:scribble/scribble.dart';
 import 'package:scribble/src/domain/model/notebook/notebook.dart';
 import 'package:scribble/src/domain/model/page/page.dart';
 import 'package:scribble/src/domain/model/paper_size/paper_size.dart';
+import 'package:scribble/src/domain/model/region/page_region.dart';
+import 'package:scribble/src/domain/model/region/region_type.dart';
 import 'package:scribble/src/view/painting/point_to_offset_x.dart';
-import 'package:scribble/src/view/scrollable_notebook_canvas.dart';
 import 'package:scribble/src/view/simplification/sketch_simplifier.dart';
 import 'package:scribble/src/view/state/notebook_state.dart';
-import 'package:scribble/src/domain/model/region/region_type.dart';
-import 'package:scribble/src/domain/model/region/page_region.dart';
 import 'package:value_notifier_tools/value_notifier_tools.dart';
 
 /// A notifier that manages a notebook with multiple pages and provides
@@ -66,16 +65,16 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
   bool _autoAddPages = false;
 
   /// Distance from bottom edge that triggers new page creation.
-  double _bottomMarginThreshold = 50.0;
+  double _bottomMarginThreshold = 50;
 
   /// Current row constraint mode for controlling writing behavior.
   RowConstraintMode _rowConstraintMode = RowConstraintMode.none;
 
   /// Row line spacing used for constraint calculations.
-  double _rowLineSpacing = 24.0;
+  double _rowLineSpacing = 24;
 
   /// Top margin used for constraint calculations.
-  double _topMargin = 30.0;
+  double _topMargin = 30;
 
   /// The repaint boundary key for accessing the render object.
   GlobalKey get repaintBoundaryKey => _repaintBoundaryKey;
@@ -302,10 +301,10 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
     if (linesToDelete.isEmpty && linesToMove.isEmpty) return;
     
     // Animate the movement over several frames
-    const int animationSteps = 15;
+    const animationSteps = 15;
     const stepDelay = Duration(milliseconds: 20);
     
-    for (int step = 0; step < animationSteps; step++) {
+    for (var step = 0; step < animationSteps; step++) {
       final progress = (step + 1) / animationSteps;
       final currentOffset = spacing * progress;
       
@@ -446,10 +445,10 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
     if (linesToMove.isEmpty) return;
     
     // Animate the movement over several frames
-    const int animationSteps = 15;
+    const animationSteps = 15;
     const stepDelay = Duration(milliseconds: 20);
     
-    for (int step = 0; step < animationSteps; step++) {
+    for (var step = 0; step < animationSteps; step++) {
       final progress = (step + 1) / animationSteps;
       final currentOffset = spacing * progress;
       
@@ -661,10 +660,10 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
     if (linesToMove.isEmpty) return;
     
     // Animate the movement over several frames
-    const int animationSteps = 15;
+    const animationSteps = 15;
     final stepDelay = Duration(milliseconds: duration.inMilliseconds ~/ animationSteps);
     
-    for (int step = 0; step < animationSteps; step++) {
+    for (var step = 0; step < animationSteps; step++) {
       final progress = (step + 1) / animationSteps;
       final currentOffset = moveDistance * progress;
       
@@ -799,7 +798,7 @@ class NotebookNotifier extends ValueNotifier<NotebookState>
       final stepDelay = Duration(milliseconds: duration.inMilliseconds ~/ animationSteps);
       final stepDistance = moveDistance / animationSteps;
       
-      for (int step = 0; step < animationSteps; step++) {
+      for (var step = 0; step < animationSteps; step++) {
         final currentOffset = stepDistance * (step + 1);
         final animatedLines = <SketchLine>[];
         

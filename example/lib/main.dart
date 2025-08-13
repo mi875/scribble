@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:example/scrollable_notebook_demo.dart';
+import 'package:example/simple_scrollable_notebook_demo.dart';
 import 'package:flutter/material.dart';
 import 'package:scribble/scribble.dart';
 import 'package:value_notifier_tools/value_notifier_tools.dart';
@@ -148,9 +149,28 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       icon: const Icon(Icons.view_stream),
-                      label: const Text('Scrollable Notebook Demo'),
+                      label: const Text('Complex Notebook Demo'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.all(16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Simple Scrollable Notebook Demo
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const SimpleScrollableNotebookDemo(),
+                        ),
+                      ),
+                      icon: const Icon(Icons.note),
+                      label: const Text('Simple Notebook Demo'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.all(16),
                       ),

@@ -13,7 +13,7 @@ class ZoomControls extends StatelessWidget {
     this.theme,
     this.showZoomLevel = true,
     this.iconSize = 24,
-    this.buttonPadding = const EdgeInsets.all(8.0),
+    this.buttonPadding = const EdgeInsets.all(8),
     super.key,
   });
 
@@ -48,7 +48,7 @@ class ZoomControls extends StatelessWidget {
         return Card(
           color: theme?.controlBackgroundColor,
           child: Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(8),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

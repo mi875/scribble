@@ -86,7 +86,7 @@ class DynamicRowLinePainter extends CustomPainter with RegionAwarePainterMixin {
     final numberOfLines = (availableHeight / lineSpacing).floor();
 
     // Draw horizontal lines with dynamic opacity
-    for (int i = 0; i <= numberOfLines; i++) {
+    for (var i = 0; i <= numberOfLines; i++) {
       final y = drawingTop + (i * lineSpacing);
       
       // Don't draw lines beyond the bottom margin
@@ -147,19 +147,19 @@ class DynamicRowLinePainter extends CustomPainter with RegionAwarePainterMixin {
   double _calculateLineOpacity(double lineY, List<Offset> contentPoints, int lineIndex) {
     // Always show the first two row lines at full opacity initially
     if (lineIndex == 0) {
-      return 1.0;
+      return 1;
     }
     if (lineIndex == 1) {
-      return 1.0;
+      return 1;
     }
 
     if (contentPoints.isEmpty) {
       // If no content, only show the first two lines
-      return 0.0;
+      return 0;
     }
 
     // Find the lowest content point (highest Y value) to determine progression
-    double maxContentY = contentPoints.isEmpty ? 0.0 : contentPoints.first.dy;
+    var maxContentY = contentPoints.isEmpty ? 0.0 : contentPoints.first.dy;
     for (final point in contentPoints) {
       if (point.dy > maxContentY) {
         maxContentY = point.dy;
@@ -172,7 +172,7 @@ class DynamicRowLinePainter extends CustomPainter with RegionAwarePainterMixin {
     // Show lines progressively: if content has reached line N, show lines 0 through N+2
     if (lineIndex <= contentLineIndex + 2) {
       // Find the closest content point to this specific line
-      double minDistance = double.infinity;
+      var minDistance = double.infinity;
       
       for (final point in contentPoints) {
         final distance = (point.dy - lineY).abs();
@@ -184,7 +184,7 @@ class DynamicRowLinePainter extends CustomPainter with RegionAwarePainterMixin {
       // Calculate opacity based on distance for visible lines
       if (minDistance <= proximityRadius) {
         // Full opacity near content
-        return 1.0;
+        return 1;
       } else if (minDistance <= proximityRadius + fadeDistance) {
         // Fade out over distance
         final fadeProgress = (minDistance - proximityRadius) / fadeDistance;
@@ -195,7 +195,7 @@ class DynamicRowLinePainter extends CustomPainter with RegionAwarePainterMixin {
       }
     } else {
       // Lines beyond the progression are not shown
-      return 0.0;
+      return 0;
     }
   }
 

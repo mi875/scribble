@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scribble/scribble.dart';
 import 'package:scribble/src/view/painting/scribble_painter.dart';
@@ -7,7 +6,7 @@ void main() {
   group('ScribblePainter theme support', () {
     test('adapts black strokes to white in dark mode', () {
       final painter = ScribblePainter(
-        sketch: Sketch(lines: []),
+        sketch: const Sketch(lines: []),
         scaleFactor: 1,
         simulatePressure: false,
         theme: ScribbleTheme.dark,
@@ -17,7 +16,7 @@ void main() {
       // so let's test the integration by checking that the painter 
       // considers theme in shouldRepaint
       final painterWithoutTheme = ScribblePainter(
-        sketch: Sketch(lines: []),
+        sketch: const Sketch(lines: []),
         scaleFactor: 1,
         simulatePressure: false,
       );
@@ -31,14 +30,14 @@ void main() {
 
     test('does not adapt colors in light mode', () {
       final painter1 = ScribblePainter(
-        sketch: Sketch(lines: []),
+        sketch: const Sketch(lines: []),
         scaleFactor: 1,
         simulatePressure: false,
         theme: ScribbleTheme.light,
       );
       
       final painter2 = ScribblePainter(
-        sketch: Sketch(lines: []),
+        sketch: const Sketch(lines: []),
         scaleFactor: 1,
         simulatePressure: false,
         theme: ScribbleTheme.light,
@@ -53,14 +52,14 @@ void main() {
 
     test('repaints when theme changes', () {
       final lightPainter = ScribblePainter(
-        sketch: Sketch(lines: []),
+        sketch: const Sketch(lines: []),
         scaleFactor: 1,
         simulatePressure: false,
         theme: ScribbleTheme.light,
       );
       
       final darkPainter = ScribblePainter(
-        sketch: Sketch(lines: []),
+        sketch: const Sketch(lines: []),
         scaleFactor: 1,
         simulatePressure: false,
         theme: ScribbleTheme.dark,

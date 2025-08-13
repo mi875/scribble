@@ -176,7 +176,9 @@ class _ScribbleThemeBuilderState extends State<ScribbleThemeBuilder>
   @override
   void didChangePlatformBrightness() {
     super.didChangePlatformBrightness();
-    _controller.updateSystemTheme(context);
+    if (mounted) {
+      _controller.updateSystemTheme(context);
+    }
   }
 
   void _onThemeChanged() {

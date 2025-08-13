@@ -50,7 +50,7 @@ mixin RegionAwarePainterMixin on CustomPainter {
     return regions
         .where((region) => 
             region.type == RegionType.freeDrawing &&
-            !(region.bounds.bottom < minY || region.bounds.top > maxY))
+            !(region.bounds.bottom < minY || region.bounds.top > maxY),)
         .toList();
   }
 
@@ -79,7 +79,7 @@ mixin RegionAwarePainterMixin on CustomPainter {
         .where((region) => 
             region.type == RegionType.freeDrawing &&
             lineY >= region.bounds.top && 
-            lineY <= region.bounds.bottom)
+            lineY <= region.bounds.bottom,)
         .toList();
 
     if (intersectingRegions.isEmpty) {
@@ -90,7 +90,7 @@ mixin RegionAwarePainterMixin on CustomPainter {
     // Sort regions by left position
     intersectingRegions.sort((a, b) => a.bounds.left.compareTo(b.bounds.left));
 
-    double currentX = fullStartX;
+    var currentX = fullStartX;
     
     for (final region in intersectingRegions) {
       // Add segment before this region (if any)
@@ -102,7 +102,7 @@ mixin RegionAwarePainterMixin on CustomPainter {
       }
       
       // Skip the region area
-      currentX = (region.bounds.right).clamp(fullStartX, fullEndX);
+      currentX = region.bounds.right.clamp(fullStartX, fullEndX);
       
       if (currentX >= fullEndX) {
         break;

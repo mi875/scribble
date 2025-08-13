@@ -7,7 +7,8 @@ import 'package:scribble/src/view/painting/region_aware_painter_mixin.dart';
 
 /// A custom painter that draws row lines for constraint modes.
 /// It can skip lines in free drawing regions when regions are provided.
-class ConstrainedRowLinePainter extends CustomPainter with RegionAwarePainterMixin {
+class ConstrainedRowLinePainter extends CustomPainter
+    with RegionAwarePainterMixin {
   /// Creates a new constrained row line painter.
   const ConstrainedRowLinePainter({
     required this.paperWidth,
@@ -53,7 +54,6 @@ class ConstrainedRowLinePainter extends CustomPainter with RegionAwarePainterMix
   /// The bottom margin for the row lines.
   final double bottomMargin;
 
-
   /// Optional sketch for dynamic line behavior.
   final Sketch? sketch;
 
@@ -82,11 +82,11 @@ class ConstrainedRowLinePainter extends CustomPainter with RegionAwarePainterMix
     final numberOfLines = (availableHeight / lineSpacing).floor();
 
     // Draw row lines
-    for (int i = 0; i < numberOfLines; i++) {
+    for (var i = 0; i < numberOfLines; i++) {
       final y = topMargin + (i * lineSpacing);
-      
-      double opacity = 1.0;
-      
+
+      double opacity = 1;
+
       // Apply dynamic behavior if sketch is provided
       if (isDynamic && sketch != null) {
         opacity = _calculateLineOpacity(y);
@@ -109,7 +109,7 @@ class ConstrainedRowLinePainter extends CustomPainter with RegionAwarePainterMix
           fullStartX: leftMargin,
           fullEndX: paperWidth - rightMargin,
         );
-        
+
         for (final (startX, endX) in segments) {
           if (endX > startX) {
             canvas.drawLine(
@@ -125,14 +125,14 @@ class ConstrainedRowLinePainter extends CustomPainter with RegionAwarePainterMix
 
   /// Calculates the opacity of a line based on proximity to drawing content.
   double _calculateLineOpacity(double lineY) {
-    if (sketch == null) return 1.0;
+    if (sketch == null) return 1;
 
     // Calculate line index to implement first-lines logic
     final lineIndex = ((lineY - topMargin) / lineSpacing).round();
-    
+
     // Always show the first two lines at full opacity
     if (lineIndex == 0 || lineIndex == 1) {
-      return 1.0;
+      return 1;
     }
 
     var minDistance = double.infinity;
@@ -154,10 +154,9 @@ class ConstrainedRowLinePainter extends CustomPainter with RegionAwarePainterMix
 
     // Calculate opacity based on proximity
     if (minDistance <= proximityRadius) {
-      return 1.0;
+      return 1;
     } else if (minDistance <= proximityRadius + fadeDistance) {
-      final fadeProgress = 
-          (minDistance - proximityRadius) / fadeDistance;
+      final fadeProgress = (minDistance - proximityRadius) / fadeDistance;
       return ui.lerpDouble(1, 0.3, fadeProgress) ?? 0.3;
     } else {
       return 0.3;

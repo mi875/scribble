@@ -76,7 +76,7 @@ class RowLinePainter extends CustomPainter with RegionAwarePainterMixin {
     final numberOfLines = (availableHeight / lineSpacing).floor();
 
     // Draw horizontal lines
-    for (int i = 0; i <= numberOfLines; i++) {
+    for (var i = 0; i <= numberOfLines; i++) {
       final y = drawingTop + (i * lineSpacing);
       
       // Don't draw lines beyond the bottom margin

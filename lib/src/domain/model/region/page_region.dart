@@ -14,18 +14,6 @@ class PageRegion {
     this.preset,
   });
 
-  /// The rectangular bounds of this region within the page coordinate system.
-  final Rect bounds;
-
-  /// The type of region (structured or free drawing).
-  final RegionType type;
-
-  /// Visual and behavioral settings for this region.
-  final RegionSettings settings;
-
-  /// The preset type if this is a free drawing region with predefined settings.
-  final FreeDrawingPreset? preset;
-
   /// Creates a structured region (with row lines and constraints).
   factory PageRegion.structured({
     required Rect bounds,
@@ -57,6 +45,18 @@ class PageRegion {
       preset: preset,
     );
   }
+
+  /// The rectangular bounds of this region within the page coordinate system.
+  final Rect bounds;
+
+  /// The type of region (structured or free drawing).
+  final RegionType type;
+
+  /// Visual and behavioral settings for this region.
+  final RegionSettings settings;
+
+  /// The preset type if this is a free drawing region with predefined settings.
+  final FreeDrawingPreset? preset;
 
   /// Creates a copy of this region with the specified changes.
   PageRegion copyWith({
