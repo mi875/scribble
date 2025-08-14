@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:scribble/scribble.dart';
 import 'package:scribble/src/view/painting/dynamic_row_line_painter.dart';
+import 'package:scribble/src/view/painting/image_row_painter.dart';
 import 'package:scribble/src/view/painting/scribble_editing_painter.dart';
 import 'package:scribble/src/view/painting/scribble_painter.dart';
 
@@ -252,6 +253,55 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
         _deleteFreeDrawingSpace(rowIndex);
       case 'expand_free_space':
         _expandFreeDrawingSpace(rowIndex);
+      case 'insert_image_row':
+        _showImageRowInsertionMessage(rowIndex);
+      case 'delete_image_row':
+        _deleteImageRowAtRowIndex(rowIndex);
+    }
+  }
+
+  /// Shows a message directing users to use external image insertion controls.
+  void _showImageRowInsertionMessage(int rowIndex) {
+    const topMargin = 30.0;
+    final yPosition = topMargin + (rowIndex * widget.notifier.rowLineSpacing);
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'To insert an image row, use the Image Rows controls in the left panel. '
+          'Set the insert position to ${yPosition.round()}px.',
+        ),
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'Got it',
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Deletes an image row at the specified row index.
+  void _deleteImageRowAtRowIndex(int rowIndex) {
+    const topMargin = 30.0;
+    final yPosition = topMargin + (rowIndex * widget.notifier.rowLineSpacing);
+
+    try {
+      widget.notifier.deleteImageRow(yPosition);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Image row deleted'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No image row found at this position: $e'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -405,15 +455,17 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
 
       if (betweenRowsY > drawingBottom) break;
 
-      // Get opacity based on content progress
-      final opacity = widget.notifier.getLineNumberOpacity(i);
-
-      // Skip if too transparent
-      if (opacity < 0.01) continue;
-
-      // Check if this position is within a free drawing space
+      // Check if this position is within a free drawing space or image row
       final currentRowY = drawingTop + (i * lineSpacing);
       final freeSpace = widget.notifier.getFreeDrawingSpaceAt(currentRowY);
+      final imageRow = widget.notifier.getImageRowAt(currentRowY);
+
+      // For image rows, only show icon at the beginning of the image row
+      if (imageRow != null) {
+        final imageRowStartRowIndex =
+            ((imageRow.startY - drawingTop) / lineSpacing).round();
+        if (i != imageRowStartRowIndex) continue;
+      }
 
       // If in free space, only show line number at the beginning of the space
       if (freeSpace != null) {
@@ -422,6 +474,12 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
             ((freeSpace.startY - drawingTop) / lineSpacing).round();
         if (i != spaceStartRowIndex) continue;
       }
+
+      // Get opacity based on content progress (but always show image rows)
+      final opacity = imageRow != null ? 1.0 : widget.notifier.getLineNumberOpacity(i);
+
+      // Skip if too transparent (but not for image rows)
+      if (opacity < 0.01) continue;
 
       // Position the button (centered in left margin)
       const buttonX = leftMargin - 6; // Center horizontally in margin
@@ -438,12 +496,14 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
             child: PopupMenuButton<String>(
               offset: const Offset(32, 0),
               itemBuilder: (context) {
-                // Check if current position is in a free drawing space
+                // Check if current position is in a free drawing space or image row
                 const topMargin = 30.0;
                 final currentY =
                     topMargin + (i * widget.notifier.rowLineSpacing);
                 final isInFreeSpace =
                     widget.notifier.isInFreeDrawingSpace(currentY);
+                final isInImageRow =
+                    widget.notifier.isInImageRow(currentY);
 
                 return [
                   const PopupMenuItem(
@@ -466,7 +526,28 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                       ],
                     ),
                   ),
-                  if (isInFreeSpace) ...[
+                  const PopupMenuItem(
+                    value: 'insert_image_row',
+                    child: Row(
+                      children: [
+                        Icon(Icons.image, size: 16),
+                        SizedBox(width: 8),
+                        Text('Insert Image Row'),
+                      ],
+                    ),
+                  ),
+                  if (isInImageRow) ...[
+                    const PopupMenuItem(
+                      value: 'delete_image_row',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline, size: 16),
+                          SizedBox(width: 8),
+                          Text('Delete Image Row'),
+                        ],
+                      ),
+                    ),
+                  ] else if (isInFreeSpace) ...[
                     const PopupMenuItem(
                       value: 'expand_free_space',
                       child: Row(
@@ -523,20 +604,26 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                   color: Colors.transparent,
                 ),
                 child: Center(
-                  child: freeSpace != null
+                  child: imageRow != null
                       ? Icon(
-                          Icons.space_bar,
+                          Icons.image,
                           size: widget.lineNumberFontSize + 2,
                           color: theme.lineNumberColor,
                         )
-                      : Text(
-                          currentLine.toString(),
-                          style: TextStyle(
-                            fontSize: widget.lineNumberFontSize - 1,
-                            fontWeight: FontWeight.w500,
-                            color: theme.lineNumberColor,
-                          ),
-                        ),
+                      : freeSpace != null
+                          ? Icon(
+                              Icons.space_bar,
+                              size: widget.lineNumberFontSize + 2,
+                              color: theme.lineNumberColor,
+                            )
+                          : Text(
+                              currentLine.toString(),
+                              style: TextStyle(
+                                fontSize: widget.lineNumberFontSize - 1,
+                                fontWeight: FontWeight.w500,
+                                color: theme.lineNumberColor,
+                              ),
+                            ),
                 ),
               ),
             ),
@@ -612,6 +699,20 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                             regions: const [],
                             freeDrawingSpaces:
                                 widget.notifier.freeDrawingSpaces,
+                            imageRows: widget.notifier.imageRows,
+                          ),
+                        ),
+
+                        // Image rows painter
+                        CustomPaint(
+                          painter: ImageRowPainter(
+                            imageRows: widget.notifier.imageRows,
+                            canvasWidth: widget.canvasWidth,
+                            leftMargin: 60.0,
+                            rightMargin: 20.0,
+                            borderColor: theme.rowLineColor.withOpacity(0.5),
+                            borderWidth: 1.0,
+                            showBorders: true,
                           ),
                         ),
 

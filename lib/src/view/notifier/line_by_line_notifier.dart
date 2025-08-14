@@ -1,6 +1,8 @@
+import 'dart:typed_data';
 import 'package:flutter/widgets.dart';
 import 'package:scribble/scribble.dart';
 import 'package:scribble/src/view/simplification/sketch_simplifier.dart';
+import 'package:scribble/src/domain/model/image_row/image_row.dart';
 
 /// A notifier that extends ScribbleNotifier with line-by-line writing
 /// capabilities and dynamic canvas extension.
@@ -40,7 +42,8 @@ class LineByLineNotifier extends ScribbleNotifier {
         _topMargin = topMargin,
         _bottomMargin = bottomMargin,
         _canvasHeight = initialCanvasHeight,
-        _freeDrawingSpaces = [];
+        _freeDrawingSpaces = [],
+        _imageRows = [];
 
   /// Row line spacing for line-by-line writing.
   double _rowLineSpacing;
@@ -71,9 +74,15 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// List of free drawing spaces (line-free regions).
   final List<FreeDrawingSpace> _freeDrawingSpaces;
 
+  /// List of image rows.
+  final List<ImageRow> _imageRows;
+
   /// Gets an immutable list of free drawing spaces.
   List<FreeDrawingSpace> get freeDrawingSpaces =>
       List.unmodifiable(_freeDrawingSpaces);
+
+  /// Gets an immutable list of image rows.
+  List<ImageRow> get imageRows => List.unmodifiable(_imageRows);
 
   /// Sets the callback for canvas height changes.
   void setCanvasHeightChangeCallback(
@@ -432,6 +441,185 @@ class LineByLineNotifier extends ScribbleNotifier {
     notifyListeners();
   }
 
+  // Image Row Management Methods
+
+  /// Default height for image rows (equivalent to ~4 rows).
+  static const double _defaultImageRowHeight = 96.0; // 4 * 24px
+
+  /// Inserts an image row above the specified Y position.
+  void insertImageRow(double yPosition, ImageProvider image, {double? height}) {
+    final rowHeight = height ?? _defaultImageRowHeight;
+
+    // Create the new image row
+    final newImageRow = ImageRow(
+      startY: yPosition,
+      height: rowHeight,
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+    );
+
+    // Shift all existing image rows that are below this position
+    final updatedImageRows = <ImageRow>[];
+    for (final imageRow in _imageRows) {
+      if (imageRow.startY >= yPosition) {
+        updatedImageRows.add(imageRow.moveBy(rowHeight));
+      } else {
+        updatedImageRows.add(imageRow);
+      }
+    }
+
+    // Shift all existing free drawing spaces that are below this position
+    final updatedSpaces = <FreeDrawingSpace>[];
+    for (final space in _freeDrawingSpaces) {
+      if (space.startY >= yPosition) {
+        updatedSpaces.add(space.moveBy(rowHeight));
+      } else {
+        updatedSpaces.add(space);
+      }
+    }
+
+    // Add the new image row and sort by startY
+    updatedImageRows.add(newImageRow);
+    updatedImageRows.sort((a, b) => a.startY.compareTo(b.startY));
+
+    // Update the lists
+    _imageRows.clear();
+    _imageRows.addAll(updatedImageRows);
+    _freeDrawingSpaces.clear();
+    _freeDrawingSpaces.addAll(updatedSpaces);
+
+    // Shift all sketch content that is below this position
+    _shiftSketchContentDown(yPosition, rowHeight);
+
+    // Extend canvas to accommodate the new image row
+    _checkAndExtendCanvas();
+
+    // Notify listeners
+    notifyListeners();
+  }
+
+  /// Inserts an image row with byte data above the specified Y position.
+  void insertImageRowWithBytes(double yPosition, List<int> imageBytes, {double? height}) {
+    final rowHeight = height ?? _defaultImageRowHeight;
+
+    // Create the new image row
+    final newImageRow = ImageRow(
+      startY: yPosition,
+      height: rowHeight,
+      imageBytes: Uint8List.fromList(imageBytes),
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+    );
+
+    // Shift all existing image rows that are below this position
+    final updatedImageRows = <ImageRow>[];
+    for (final imageRow in _imageRows) {
+      if (imageRow.startY >= yPosition) {
+        updatedImageRows.add(imageRow.moveBy(rowHeight));
+      } else {
+        updatedImageRows.add(imageRow);
+      }
+    }
+
+    // Shift all existing free drawing spaces that are below this position
+    final updatedSpaces = <FreeDrawingSpace>[];
+    for (final space in _freeDrawingSpaces) {
+      if (space.startY >= yPosition) {
+        updatedSpaces.add(space.moveBy(rowHeight));
+      } else {
+        updatedSpaces.add(space);
+      }
+    }
+
+    // Add the new image row and sort by startY
+    updatedImageRows.add(newImageRow);
+    updatedImageRows.sort((a, b) => a.startY.compareTo(b.startY));
+
+    // Update the lists
+    _imageRows.clear();
+    _imageRows.addAll(updatedImageRows);
+    _freeDrawingSpaces.clear();
+    _freeDrawingSpaces.addAll(updatedSpaces);
+
+    // Shift all sketch content that is below this position
+    _shiftSketchContentDown(yPosition, rowHeight);
+
+    // Extend canvas to accommodate the new image row
+    _checkAndExtendCanvas();
+
+    // Notify listeners
+    notifyListeners();
+  }
+
+  /// Deletes an image row at the specified Y position.
+  void deleteImageRow(double yPosition) {
+    // Find the image row that contains this Y position
+    final imageRowToDelete = _imageRows.firstWhere(
+      (imageRow) => imageRow.containsY(yPosition),
+      orElse: () => throw StateError(
+          'No image row found at Y position $yPosition'),
+    );
+
+    final rowHeight = imageRowToDelete.height;
+    final rowStartY = imageRowToDelete.startY;
+
+    // Remove the image row
+    _imageRows.remove(imageRowToDelete);
+
+    // Shift all remaining image rows that are below this position up
+    final updatedImageRows = <ImageRow>[];
+    for (final imageRow in _imageRows) {
+      if (imageRow.startY > rowStartY) {
+        updatedImageRows.add(imageRow.moveBy(-rowHeight));
+      } else {
+        updatedImageRows.add(imageRow);
+      }
+    }
+
+    // Shift all free drawing spaces that are below this position up
+    final updatedSpaces = <FreeDrawingSpace>[];
+    for (final space in _freeDrawingSpaces) {
+      if (space.startY > rowStartY) {
+        updatedSpaces.add(space.moveBy(-rowHeight));
+      } else {
+        updatedSpaces.add(space);
+      }
+    }
+
+    // Update the lists
+    _imageRows.clear();
+    _imageRows.addAll(updatedImageRows);
+    _freeDrawingSpaces.clear();
+    _freeDrawingSpaces.addAll(updatedSpaces);
+
+    // Shift all sketch content that is below this position up
+    _shiftSketchContentUp(rowStartY + rowHeight, rowHeight);
+
+    // Recalculate canvas height
+    _checkAndExtendCanvas();
+
+    // Notify listeners
+    notifyListeners();
+  }
+
+  /// Checks if a Y position is within any image row.
+  bool isInImageRow(double y) {
+    return _imageRows.any((imageRow) => imageRow.containsY(y));
+  }
+
+  /// Gets the image row that contains the specified Y position, if any.
+  ImageRow? getImageRowAt(double y) {
+    try {
+      return _imageRows.firstWhere((imageRow) => imageRow.containsY(y));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Clears all image rows.
+  void clearAllImageRows() {
+    _imageRows.clear();
+    notifyListeners();
+  }
+
   // Note: Free drawing space undo/redo is handled through the sketch operations
   // Since all free space operations trigger sketch modifications with addToUndoHistory: true,
   // the undo/redo functionality works through the existing sketch history system.
@@ -439,11 +627,15 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Map to store free drawing spaces for each sketch state
   final Map<Sketch, List<FreeDrawingSpace>> _sketchToSpacesMap = {};
 
+  /// Map to store image rows for each sketch state
+  final Map<Sketch, List<ImageRow>> _sketchToImageRowsMap = {};
+
   @override
   void setSketch({required Sketch sketch, bool addToUndoHistory = true}) {
     if (addToUndoHistory) {
-      // Store current free drawing spaces with current sketch
+      // Store current free drawing spaces and image rows with current sketch
       _sketchToSpacesMap[value.sketch] = List.from(_freeDrawingSpaces);
+      _sketchToImageRowsMap[value.sketch] = List.from(_imageRows);
     }
     super.setSketch(sketch: sketch, addToUndoHistory: addToUndoHistory);
   }
@@ -453,11 +645,16 @@ class LineByLineNotifier extends ScribbleNotifier {
     ScribbleState historyValue,
     ScribbleState currentValue,
   ) {
-    // Restore free drawing spaces when transforming history
+    // Restore free drawing spaces and image rows when transforming history
     final spaces =
         _sketchToSpacesMap[historyValue.sketch] ?? <FreeDrawingSpace>[];
+    final imageRows =
+        _sketchToImageRowsMap[historyValue.sketch] ?? <ImageRow>[];
+    
     _freeDrawingSpaces.clear();
     _freeDrawingSpaces.addAll(spaces);
+    _imageRows.clear();
+    _imageRows.addAll(imageRows);
 
     return super.transformHistoryValue(historyValue, currentValue);
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:scribble/src/domain/model/free_drawing_space/free_drawing_space.dart';
+import 'package:scribble/src/domain/model/image_row/image_row.dart';
 import 'package:scribble/src/domain/model/sketch/sketch.dart';
 
 /// A custom painter that draws dynamic row lines based on writing activity.
@@ -23,6 +24,7 @@ class DynamicRowLinePainter extends CustomPainter {
     this.fadeDistance = 100.0,
     this.regions = const [],
     this.freeDrawingSpaces = const [],
+    this.imageRows = const [],
   });
 
   /// Width of the paper in logical pixels.
@@ -67,6 +69,9 @@ class DynamicRowLinePainter extends CustomPainter {
   /// List of free drawing spaces where lines should not be drawn.
   final List<FreeDrawingSpace> freeDrawingSpaces;
 
+  /// List of image rows where lines should not be drawn.
+  final List<ImageRow> imageRows;
+
   @override
   void paint(Canvas canvas, Size size) {
     if (lineSpacing <= 0) return;
@@ -92,8 +97,8 @@ class DynamicRowLinePainter extends CustomPainter {
       final y = drawingTop + (i * lineSpacing);
       if (y > drawingBottom) break;
 
-      // Skip drawing lines within free drawing spaces
-      if (_isLineInFreeDrawingSpace(y)) {
+      // Skip drawing lines within free drawing spaces or image rows
+      if (_isLineInFreeDrawingSpace(y) || _isLineInImageRow(y)) {
         continue;
       }
 
@@ -161,6 +166,11 @@ class DynamicRowLinePainter extends CustomPainter {
     return freeDrawingSpaces.any((space) => space.containsY(lineY));
   }
 
+  /// Checks if a line Y coordinate is within any image row.
+  bool _isLineInImageRow(double lineY) {
+    return imageRows.any((imageRow) => imageRow.containsY(lineY));
+  }
+
   @override
   bool shouldRepaint(DynamicRowLinePainter oldDelegate) {
     return oldDelegate.paperWidth != paperWidth ||
@@ -175,7 +185,8 @@ class DynamicRowLinePainter extends CustomPainter {
         oldDelegate.bottomMargin != bottomMargin ||
         oldDelegate.proximityRadius != proximityRadius ||
         oldDelegate.fadeDistance != fadeDistance ||
-        !_freeDrawingSpacesEqual(oldDelegate.freeDrawingSpaces);
+        !_freeDrawingSpacesEqual(oldDelegate.freeDrawingSpaces) ||
+        !_imageRowsEqual(oldDelegate.imageRows);
   }
 
   /// Compares two lists of free drawing spaces for equality.
@@ -183,6 +194,15 @@ class DynamicRowLinePainter extends CustomPainter {
     if (freeDrawingSpaces.length != other.length) return false;
     for (int i = 0; i < freeDrawingSpaces.length; i++) {
       if (freeDrawingSpaces[i] != other[i]) return false;
+    }
+    return true;
+  }
+
+  /// Compares two lists of image rows for equality.
+  bool _imageRowsEqual(List<ImageRow> other) {
+    if (imageRows.length != other.length) return false;
+    for (int i = 0; i < imageRows.length; i++) {
+      if (imageRows[i] != other[i]) return false;
     }
     return true;
   }

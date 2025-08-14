@@ -2,6 +2,7 @@
 library scribble;
 
 export 'package:scribble/src/domain/model/free_drawing_space/free_drawing_space.dart';
+export 'package:scribble/src/domain/model/image_row/image_row.dart';
 export 'package:scribble/src/domain/model/sketch/sketch.dart';
 export 'package:scribble/src/view/notifier/scribble_notifier.dart';
 export 'package:scribble/src/view/scribble.dart';

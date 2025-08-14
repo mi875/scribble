@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:scribble/scribble.dart';
 
 /// A demo page for the simplified line-by-line canvas widget.
@@ -17,6 +18,10 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
   double selectedWidth = 1.0;
   double rowLineSpacing = 64.0;
   bool sequentialMode = false;
+  
+  // Image insertion settings
+  double selectedInsertPosition = 100.0;
+  double selectedImageHeight = 96.0;
 
   @override
   void initState() {
@@ -46,6 +51,68 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
   void dispose() {
     notifier.dispose();
     super.dispose();
+  }
+
+  /// Creates sample image data for demonstration.
+  Uint8List _createSampleImageData(int width, int height, Color color) {
+    // Create a simple colored rectangle as sample image data
+    // In a real app, you'd use image_picker or file_picker here
+    final bytes = <int>[];
+    
+    // Simple BMP header (not a real image, just for demonstration)
+    // In practice, you'd load real image files
+    for (int i = 0; i < width * height * 4; i += 4) {
+      bytes.addAll([color.blue, color.green, color.red, color.alpha]);
+    }
+    
+    return Uint8List.fromList(bytes);
+  }
+
+  /// Inserts a sample image row at the current position.
+  void _insertSampleImageRow(Color imageColor) {
+    try {
+      final imageBytes = _createSampleImageData(200, 100, imageColor);
+      notifier.insertImageRowWithBytes(
+        selectedInsertPosition,
+        imageBytes,
+        height: selectedImageHeight,
+      );
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Image row inserted at Y: ${selectedInsertPosition.round()}'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error inserting image row: $e'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  /// Deletes an image row at the current position.
+  void _deleteImageRowAtPosition() {
+    try {
+      notifier.deleteImageRow(selectedInsertPosition);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Image row deleted'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No image row found at position ${selectedInsertPosition.round()}'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   @override
@@ -274,6 +341,106 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                               setState(() => rowLineSpacing = v);
                               notifier.setRowLineSpacing(v);
                             },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Image Row Settings
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Image Rows',
+                              style: Theme.of(context).textTheme.titleSmall),
+                          const SizedBox(height: 12),
+                          
+                          // Insert Position
+                          Text('Insert Position: ${selectedInsertPosition.round()}px',
+                              style: const TextStyle(fontSize: 12)),
+                          Slider(
+                            value: selectedInsertPosition,
+                            min: 50,
+                            max: 500,
+                            divisions: 45,
+                            onChanged: (v) {
+                              setState(() => selectedInsertPosition = v);
+                            },
+                          ),
+                          
+                          const SizedBox(height: 8),
+                          
+                          // Image Height
+                          Text('Image Height: ${selectedImageHeight.round()}px',
+                              style: const TextStyle(fontSize: 12)),
+                          Slider(
+                            value: selectedImageHeight,
+                            min: 48,
+                            max: 200,
+                            divisions: 19,
+                            onChanged: (v) {
+                              setState(() => selectedImageHeight = v);
+                            },
+                          ),
+                          
+                          const SizedBox(height: 12),
+                          
+                          // Insert Sample Images
+                          Text('Insert Sample Image:',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              Colors.red.shade300,
+                              Colors.blue.shade300,
+                              Colors.green.shade300,
+                              Colors.orange.shade300,
+                              Colors.purple.shade300,
+                            ].map((color) {
+                              return GestureDetector(
+                                onTap: () => _insertSampleImageRow(color),
+                                child: Container(
+                                  width: 32,
+                                  height: 20,
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: Colors.grey.shade400,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.image,
+                                    size: 12,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          
+                          const SizedBox(height: 12),
+                          
+                          // Delete Image Row Button
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _deleteImageRowAtPosition,
+                              icon: const Icon(Icons.delete_outline, size: 16),
+                              label: const Text('Delete Image Row'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.red.shade600,
+                                side: BorderSide(color: Colors.red.shade300),
+                              ),
+                            ),
                           ),
                         ],
                       ),
