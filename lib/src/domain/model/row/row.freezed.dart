@@ -3,7 +3,7 @@
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
-part of 'image_row.dart';
+part of 'row.dart';
 
 // **************************************************************************
 // FreezedGenerator
@@ -13,80 +13,75 @@ part of 'image_row.dart';
 T _$identity<T>(T value) => value;
 
 /// @nodoc
-mixin _$ImageRow {
-  /// The Y coordinate where the image row starts.
+mixin _$NotebookRow {
+  /// The Y coordinate where the row line is positioned.
   double get startY;
 
-  /// The height of the image row region.
+  /// The zero-based index of this row.
+  int get index;
+
+  /// The height/spacing of this row (distance to next row).
+  /// Defaults to the standard row line spacing.
   double get height;
 
-  /// The image data as bytes (for JSON serialization).
-  @Uint8ListConverter()
-  Uint8List? get imageBytes;
-
-  /// Optional identifier for the image row.
+  /// Optional identifier for the row.
   String? get id;
 
-  /// Create a copy of ImageRow
+  /// Create a copy of NotebookRow
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
-  $ImageRowCopyWith<ImageRow> get copyWith =>
-      _$ImageRowCopyWithImpl<ImageRow>(this as ImageRow, _$identity);
+  $NotebookRowCopyWith<NotebookRow> get copyWith =>
+      _$NotebookRowCopyWithImpl<NotebookRow>(this as NotebookRow, _$identity);
 
-  /// Serializes this ImageRow to a JSON map.
+  /// Serializes this NotebookRow to a JSON map.
   Map<String, dynamic> toJson();
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is ImageRow &&
+            other is NotebookRow &&
             (identical(other.startY, startY) || other.startY == startY) &&
+            (identical(other.index, index) || other.index == index) &&
             (identical(other.height, height) || other.height == height) &&
-            const DeepCollectionEquality()
-                .equals(other.imageBytes, imageBytes) &&
             (identical(other.id, id) || other.id == id));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, startY, height,
-      const DeepCollectionEquality().hash(imageBytes), id);
+  int get hashCode => Object.hash(runtimeType, startY, index, height, id);
 
   @override
   String toString() {
-    return 'ImageRow(startY: $startY, height: $height, imageBytes: $imageBytes, id: $id)';
+    return 'NotebookRow(startY: $startY, index: $index, height: $height, id: $id)';
   }
 }
 
 /// @nodoc
-abstract mixin class $ImageRowCopyWith<$Res> {
-  factory $ImageRowCopyWith(ImageRow value, $Res Function(ImageRow) _then) =
-      _$ImageRowCopyWithImpl;
+abstract mixin class $NotebookRowCopyWith<$Res> {
+  factory $NotebookRowCopyWith(
+          NotebookRow value, $Res Function(NotebookRow) _then) =
+      _$NotebookRowCopyWithImpl;
   @useResult
-  $Res call(
-      {double startY,
-      double height,
-      @Uint8ListConverter() Uint8List? imageBytes,
-      String? id});
+  $Res call({double startY, int index, double height, String? id});
 }
 
 /// @nodoc
-class _$ImageRowCopyWithImpl<$Res> implements $ImageRowCopyWith<$Res> {
-  _$ImageRowCopyWithImpl(this._self, this._then);
+class _$NotebookRowCopyWithImpl<$Res> implements $NotebookRowCopyWith<$Res> {
+  _$NotebookRowCopyWithImpl(this._self, this._then);
 
-  final ImageRow _self;
-  final $Res Function(ImageRow) _then;
+  final NotebookRow _self;
+  final $Res Function(NotebookRow) _then;
 
-  /// Create a copy of ImageRow
+  /// Create a copy of NotebookRow
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
     Object? startY = null,
+    Object? index = null,
     Object? height = null,
-    Object? imageBytes = freezed,
     Object? id = freezed,
   }) {
     return _then(_self.copyWith(
@@ -94,14 +89,14 @@ class _$ImageRowCopyWithImpl<$Res> implements $ImageRowCopyWith<$Res> {
           ? _self.startY
           : startY // ignore: cast_nullable_to_non_nullable
               as double,
+      index: null == index
+          ? _self.index
+          : index // ignore: cast_nullable_to_non_nullable
+              as int,
       height: null == height
           ? _self.height
           : height // ignore: cast_nullable_to_non_nullable
               as double,
-      imageBytes: freezed == imageBytes
-          ? _self.imageBytes
-          : imageBytes // ignore: cast_nullable_to_non_nullable
-              as Uint8List?,
       id: freezed == id
           ? _self.id
           : id // ignore: cast_nullable_to_non_nullable
@@ -110,8 +105,8 @@ class _$ImageRowCopyWithImpl<$Res> implements $ImageRowCopyWith<$Res> {
   }
 }
 
-/// Adds pattern-matching-related methods to [ImageRow].
-extension ImageRowPatterns on ImageRow {
+/// Adds pattern-matching-related methods to [NotebookRow].
+extension NotebookRowPatterns on NotebookRow {
   /// A variant of `map` that fallback to returning `orElse`.
   ///
   /// It is equivalent to doing:
@@ -126,12 +121,12 @@ extension ImageRowPatterns on ImageRow {
 
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>(
-    TResult Function(_ImageRow value)? $default, {
+    TResult Function(_NotebookRow value)? $default, {
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
-      case _ImageRow() when $default != null:
+      case _NotebookRow() when $default != null:
         return $default(_that);
       case _:
         return orElse();
@@ -153,11 +148,11 @@ extension ImageRowPatterns on ImageRow {
 
   @optionalTypeArgs
   TResult map<TResult extends Object?>(
-    TResult Function(_ImageRow value) $default,
+    TResult Function(_NotebookRow value) $default,
   ) {
     final _that = this;
     switch (_that) {
-      case _ImageRow():
+      case _NotebookRow():
         return $default(_that);
       case _:
         throw StateError('Unexpected subclass');
@@ -178,11 +173,11 @@ extension ImageRowPatterns on ImageRow {
 
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>(
-    TResult? Function(_ImageRow value)? $default,
+    TResult? Function(_NotebookRow value)? $default,
   ) {
     final _that = this;
     switch (_that) {
-      case _ImageRow() when $default != null:
+      case _NotebookRow() when $default != null:
         return $default(_that);
       case _:
         return null;
@@ -203,15 +198,14 @@ extension ImageRowPatterns on ImageRow {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(double startY, double height,
-            @Uint8ListConverter() Uint8List? imageBytes, String? id)?
+    TResult Function(double startY, int index, double height, String? id)?
         $default, {
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
-      case _ImageRow() when $default != null:
-        return $default(_that.startY, _that.height, _that.imageBytes, _that.id);
+      case _NotebookRow() when $default != null:
+        return $default(_that.startY, _that.index, _that.height, _that.id);
       case _:
         return orElse();
     }
@@ -232,14 +226,13 @@ extension ImageRowPatterns on ImageRow {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
-    TResult Function(double startY, double height,
-            @Uint8ListConverter() Uint8List? imageBytes, String? id)
+    TResult Function(double startY, int index, double height, String? id)
         $default,
   ) {
     final _that = this;
     switch (_that) {
-      case _ImageRow():
-        return $default(_that.startY, _that.height, _that.imageBytes, _that.id);
+      case _NotebookRow():
+        return $default(_that.startY, _that.index, _that.height, _that.id);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -259,14 +252,13 @@ extension ImageRowPatterns on ImageRow {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(double startY, double height,
-            @Uint8ListConverter() Uint8List? imageBytes, String? id)?
+    TResult? Function(double startY, int index, double height, String? id)?
         $default,
   ) {
     final _that = this;
     switch (_that) {
-      case _ImageRow() when $default != null:
-        return $default(_that.startY, _that.height, _that.imageBytes, _that.id);
+      case _NotebookRow() when $default != null:
+        return $default(_that.startY, _that.index, _that.height, _that.id);
       case _:
         return null;
     }
@@ -275,44 +267,42 @@ extension ImageRowPatterns on ImageRow {
 
 /// @nodoc
 @JsonSerializable()
-class _ImageRow extends ImageRow {
-  const _ImageRow(
-      {required this.startY,
-      required this.height,
-      @Uint8ListConverter() this.imageBytes,
-      this.id})
+class _NotebookRow extends NotebookRow {
+  const _NotebookRow(
+      {required this.startY, required this.index, this.height = 24.0, this.id})
       : super._();
-  factory _ImageRow.fromJson(Map<String, dynamic> json) =>
-      _$ImageRowFromJson(json);
+  factory _NotebookRow.fromJson(Map<String, dynamic> json) =>
+      _$NotebookRowFromJson(json);
 
-  /// The Y coordinate where the image row starts.
+  /// The Y coordinate where the row line is positioned.
   @override
   final double startY;
 
-  /// The height of the image row region.
+  /// The zero-based index of this row.
   @override
+  final int index;
+
+  /// The height/spacing of this row (distance to next row).
+  /// Defaults to the standard row line spacing.
+  @override
+  @JsonKey()
   final double height;
 
-  /// The image data as bytes (for JSON serialization).
-  @override
-  @Uint8ListConverter()
-  final Uint8List? imageBytes;
-
-  /// Optional identifier for the image row.
+  /// Optional identifier for the row.
   @override
   final String? id;
 
-  /// Create a copy of ImageRow
+  /// Create a copy of NotebookRow
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
-  _$ImageRowCopyWith<_ImageRow> get copyWith =>
-      __$ImageRowCopyWithImpl<_ImageRow>(this, _$identity);
+  _$NotebookRowCopyWith<_NotebookRow> get copyWith =>
+      __$NotebookRowCopyWithImpl<_NotebookRow>(this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
-    return _$ImageRowToJson(
+    return _$NotebookRowToJson(
       this,
     );
   }
@@ -321,69 +311,64 @@ class _ImageRow extends ImageRow {
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _ImageRow &&
+            other is _NotebookRow &&
             (identical(other.startY, startY) || other.startY == startY) &&
+            (identical(other.index, index) || other.index == index) &&
             (identical(other.height, height) || other.height == height) &&
-            const DeepCollectionEquality()
-                .equals(other.imageBytes, imageBytes) &&
             (identical(other.id, id) || other.id == id));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, startY, height,
-      const DeepCollectionEquality().hash(imageBytes), id);
+  int get hashCode => Object.hash(runtimeType, startY, index, height, id);
 
   @override
   String toString() {
-    return 'ImageRow(startY: $startY, height: $height, imageBytes: $imageBytes, id: $id)';
+    return 'NotebookRow(startY: $startY, index: $index, height: $height, id: $id)';
   }
 }
 
 /// @nodoc
-abstract mixin class _$ImageRowCopyWith<$Res>
-    implements $ImageRowCopyWith<$Res> {
-  factory _$ImageRowCopyWith(_ImageRow value, $Res Function(_ImageRow) _then) =
-      __$ImageRowCopyWithImpl;
+abstract mixin class _$NotebookRowCopyWith<$Res>
+    implements $NotebookRowCopyWith<$Res> {
+  factory _$NotebookRowCopyWith(
+          _NotebookRow value, $Res Function(_NotebookRow) _then) =
+      __$NotebookRowCopyWithImpl;
   @override
   @useResult
-  $Res call(
-      {double startY,
-      double height,
-      @Uint8ListConverter() Uint8List? imageBytes,
-      String? id});
+  $Res call({double startY, int index, double height, String? id});
 }
 
 /// @nodoc
-class __$ImageRowCopyWithImpl<$Res> implements _$ImageRowCopyWith<$Res> {
-  __$ImageRowCopyWithImpl(this._self, this._then);
+class __$NotebookRowCopyWithImpl<$Res> implements _$NotebookRowCopyWith<$Res> {
+  __$NotebookRowCopyWithImpl(this._self, this._then);
 
-  final _ImageRow _self;
-  final $Res Function(_ImageRow) _then;
+  final _NotebookRow _self;
+  final $Res Function(_NotebookRow) _then;
 
-  /// Create a copy of ImageRow
+  /// Create a copy of NotebookRow
   /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
   $Res call({
     Object? startY = null,
+    Object? index = null,
     Object? height = null,
-    Object? imageBytes = freezed,
     Object? id = freezed,
   }) {
-    return _then(_ImageRow(
+    return _then(_NotebookRow(
       startY: null == startY
           ? _self.startY
           : startY // ignore: cast_nullable_to_non_nullable
               as double,
+      index: null == index
+          ? _self.index
+          : index // ignore: cast_nullable_to_non_nullable
+              as int,
       height: null == height
           ? _self.height
           : height // ignore: cast_nullable_to_non_nullable
               as double,
-      imageBytes: freezed == imageBytes
-          ? _self.imageBytes
-          : imageBytes // ignore: cast_nullable_to_non_nullable
-              as Uint8List?,
       id: freezed == id
           ? _self.id
           : id // ignore: cast_nullable_to_non_nullable

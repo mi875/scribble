@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:scribble/src/domain/model/free_drawing_space/free_drawing_space.dart';
 import 'package:scribble/src/domain/model/image_row/image_row.dart';
+import 'package:scribble/src/domain/model/row/row.dart';
 import 'package:scribble/src/domain/model/sketch/sketch.dart';
 
 /// A custom painter that draws dynamic row lines based on writing activity.
@@ -16,6 +17,7 @@ class DynamicRowLinePainter extends CustomPainter {
     required this.lineColor,
     required this.lineWidth,
     required this.sketch,
+    required this.rows,
     this.leftMargin = 0.0,
     this.rightMargin = 0.0,
     this.topMargin = 0.0,
@@ -44,6 +46,9 @@ class DynamicRowLinePainter extends CustomPainter {
 
   /// The sketch containing drawn content.
   final Sketch? sketch;
+
+  /// List of row objects with fixed positions.
+  final List<NotebookRow> rows;
 
   /// Left margin in logical pixels.
   final double leftMargin;
@@ -79,26 +84,36 @@ class DynamicRowLinePainter extends CustomPainter {
     // Calculate drawing bounds with margins
     final drawingLeft = leftMargin;
     final drawingRight = paperWidth - rightMargin;
-    final drawingTop = topMargin;
-    final drawingBottom = paperHeight - bottomMargin;
 
     // Don't draw if margins make drawing area invalid
-    if (drawingLeft >= drawingRight || drawingTop >= drawingBottom) return;
+    if (drawingLeft >= drawingRight) return;
 
     // Get all content points from the sketch
     final contentPoints = _getContentPoints();
 
-    // Calculate the number of lines that fit within the drawing area
-    final availableHeight = drawingBottom - drawingTop;
-    final numberOfLines = (availableHeight / lineSpacing).floor();
+    // Create dashed paint for free space borders
+    final dashedPaint = Paint()
+      ..color = lineColor.withValues(alpha: 0.6)
+      ..strokeWidth = lineWidth
+      ..style = PaintingStyle.stroke;
 
     // Draw each row line with dynamic opacity
-    for (int i = 0; i < numberOfLines; i++) {
-      final y = drawingTop + (i * lineSpacing);
-      if (y > drawingBottom) break;
+    for (final row in rows) {
+      final y = row.startY;
 
-      // Skip drawing lines within free drawing spaces or image rows
-      if (_isLineInFreeDrawingSpace(y) || _isLineInImageRow(y)) {
+      // Draw dashed lines within free drawing spaces instead of regular lines
+      if (_isLineInFreeDrawingSpace(y)) {
+        _drawDashedLine(
+          canvas,
+          Offset(drawingLeft, y),
+          Offset(drawingRight, y),
+          dashedPaint,
+        );
+        continue;
+      }
+      
+      // Skip drawing lines within image rows
+      if (_isLineInImageRow(y)) {
         continue;
       }
 
@@ -119,8 +134,8 @@ class DynamicRowLinePainter extends CustomPainter {
       }
     }
 
-    // Draw borders for free drawing spaces
-    _drawFreeDrawingSpaceBorders(canvas, drawingLeft, drawingRight);
+    // Note: Free space boundaries are now indicated by the dashed row lines
+    // No need for additional top/bottom borders as they create visual clutter
   }
 
   /// Gets all content points from the sketch.
@@ -185,8 +200,18 @@ class DynamicRowLinePainter extends CustomPainter {
         oldDelegate.bottomMargin != bottomMargin ||
         oldDelegate.proximityRadius != proximityRadius ||
         oldDelegate.fadeDistance != fadeDistance ||
+        !_rowsEqual(oldDelegate.rows) ||
         !_freeDrawingSpacesEqual(oldDelegate.freeDrawingSpaces) ||
         !_imageRowsEqual(oldDelegate.imageRows);
+  }
+
+  /// Compares two lists of rows for equality.
+  bool _rowsEqual(List<NotebookRow> other) {
+    if (rows.length != other.length) return false;
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i] != other[i]) return false;
+    }
+    return true;
   }
 
   /// Compares two lists of free drawing spaces for equality.
@@ -207,33 +232,6 @@ class DynamicRowLinePainter extends CustomPainter {
     return true;
   }
 
-  /// Draws borders around free drawing spaces.
-  void _drawFreeDrawingSpaceBorders(Canvas canvas, double left, double right) {
-    if (freeDrawingSpaces.isEmpty) return;
-
-    final borderPaint = Paint()
-      ..color = lineColor.withValues(alpha: 0.6)
-      ..strokeWidth = lineWidth * 2.0
-      ..style = PaintingStyle.stroke;
-
-    for (final space in freeDrawingSpaces) {
-      // Draw dashed top border
-      _drawDashedLine(
-        canvas,
-        Offset(left, space.startY),
-        Offset(right, space.startY),
-        borderPaint,
-      );
-
-      // Draw dashed bottom border
-      _drawDashedLine(
-        canvas,
-        Offset(left, space.endY),
-        Offset(right, space.endY),
-        borderPaint,
-      );
-    }
-  }
 
   /// Draws a dashed line between two points.
   void _drawDashedLine(Canvas canvas, Offset start, Offset end, Paint paint) {

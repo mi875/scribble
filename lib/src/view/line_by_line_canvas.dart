@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:scribble/scribble.dart';
@@ -262,8 +263,10 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
 
   /// Shows a message directing users to use external image insertion controls.
   void _showImageRowInsertionMessage(int rowIndex) {
-    const topMargin = 30.0;
-    final yPosition = topMargin + (rowIndex * widget.notifier.rowLineSpacing);
+    final row = widget.notifier.getRowByIndex(rowIndex);
+    if (row == null) return;
+    
+    final yPosition = row.startY;
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -284,8 +287,10 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
 
   /// Deletes an image row at the specified row index.
   void _deleteImageRowAtRowIndex(int rowIndex) {
-    const topMargin = 30.0;
-    final yPosition = topMargin + (rowIndex * widget.notifier.rowLineSpacing);
+    final row = widget.notifier.getRowByIndex(rowIndex);
+    if (row == null) return;
+    
+    final yPosition = row.startY;
 
     try {
       widget.notifier.deleteImageRow(yPosition);
@@ -307,9 +312,10 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
 
   /// Inserts a new row above the specified row.
   void _insertRowAbove(int rowIndex) {
-    // Calculate Y position for the row
-    const topMargin = 30.0;
-    final rowY = topMargin + (rowIndex * widget.notifier.rowLineSpacing);
+    final row = widget.notifier.getRowByIndex(rowIndex);
+    if (row == null) return;
+    
+    final rowY = row.startY;
 
     // Shift all content below this Y position down by one row spacing
     final currentSketch = widget.notifier.currentSketch;
@@ -329,9 +335,11 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
 
   /// Erases/deletes the specified row.
   void _eraseRow(int rowIndex) {
-    const topMargin = 30.0;
-    final rowY = topMargin + (rowIndex * widget.notifier.rowLineSpacing);
-    final nextRowY = rowY + widget.notifier.rowLineSpacing;
+    final row = widget.notifier.getRowByIndex(rowIndex);
+    if (row == null) return;
+    
+    final rowY = row.startY;
+    final nextRowY = row.endY;
 
     // Remove all content in this row and shift content below up
     final currentSketch = widget.notifier.currentSketch;
@@ -366,9 +374,11 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
 
   /// Clears content in the specified row without shifting other rows.
   void _clearRow(int rowIndex) {
-    const topMargin = 30.0;
-    final rowY = topMargin + (rowIndex * widget.notifier.rowLineSpacing);
-    final nextRowY = rowY + widget.notifier.rowLineSpacing;
+    final row = widget.notifier.getRowByIndex(rowIndex);
+    if (row == null) return;
+    
+    final rowY = row.startY;
+    final nextRowY = row.endY;
 
     // Remove all content in this row only
     final currentSketch = widget.notifier.currentSketch;
@@ -390,16 +400,19 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
 
   /// Inserts a free drawing space below the specified row.
   void _insertFreeDrawingSpace(int rowIndex) {
-    const topMargin = 30.0;
-    final yPosition =
-        topMargin + ((rowIndex + 1) * widget.notifier.rowLineSpacing);
+    final row = widget.notifier.getRowByIndex(rowIndex);
+    if (row == null) return;
+    
+    final yPosition = row.endY;
     widget.notifier.insertFreeDrawingSpace(yPosition);
   }
 
   /// Deletes a free drawing space at the specified row.
   void _deleteFreeDrawingSpace(int rowIndex) {
-    const topMargin = 30.0;
-    final yPosition = topMargin + (rowIndex * widget.notifier.rowLineSpacing);
+    final row = widget.notifier.getRowByIndex(rowIndex);
+    if (row == null) return;
+    
+    final yPosition = row.startY;
 
     try {
       widget.notifier.deleteFreeDrawingSpace(yPosition);
@@ -416,8 +429,10 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
 
   /// Expands a free drawing space at the specified row.
   void _expandFreeDrawingSpace(int rowIndex) {
-    const topMargin = 30.0;
-    final yPosition = topMargin + (rowIndex * widget.notifier.rowLineSpacing);
+    final row = widget.notifier.getRowByIndex(rowIndex);
+    if (row == null) return;
+    
+    final yPosition = row.startY;
 
     try {
       widget.notifier.expandFreeDrawingSpace(yPosition);
@@ -435,51 +450,52 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
   /// Builds line number buttons positioned over the canvas.
   List<Widget> _buildLineNumberButtons(ScribbleTheme theme) {
     const leftMargin = 20.0;
-    const topMargin = 30.0;
-    const bottomMargin = 30.0;
-
-    const drawingTop = topMargin;
-    final drawingBottom = _currentCanvasHeight - bottomMargin;
-    final availableHeight = drawingBottom - drawingTop;
-
-    if (drawingTop >= drawingBottom || availableHeight <= 0) return [];
-
-    final lineSpacing = widget.notifier.rowLineSpacing;
-    final maxLines = (availableHeight / lineSpacing).floor();
-
     final buttons = <Widget>[];
+    final rows = widget.notifier.rows;
+    int sequentialLineNumber = 1; // Counter for actual text lines
 
-    for (var i = 0; i < maxLines; i++) {
-      final currentLine = 1 + i;
-      final betweenRowsY = drawingTop + (i * lineSpacing) + (lineSpacing / 2);
-
-      if (betweenRowsY > drawingBottom) break;
+    for (var i = 0; i < rows.length; i++) {
+      final row = rows[i];
+      final betweenRowsY = row.startY + (row.height / 2);
 
       // Check if this position is within a free drawing space or image row
-      final currentRowY = drawingTop + (i * lineSpacing);
+      final currentRowY = row.startY;
+      final rowCenterY = row.startY + (row.height / 2);
       final freeSpace = widget.notifier.getFreeDrawingSpaceAt(currentRowY);
-      final imageRow = widget.notifier.getImageRowAt(currentRowY);
+      
+      // Try multiple positions to detect image rows that might not align perfectly
+      var imageRow = widget.notifier.getImageRowAt(currentRowY);
+      imageRow ??= widget.notifier.getImageRowAt(rowCenterY);
+      imageRow ??= widget.notifier.getImageRowAt(row.startY + row.height);
 
-      // For image rows, only show icon at the beginning of the image row
+      // Skip rows that are completely within image rows or free spaces,
+      // except show one button per image row or free space region
       if (imageRow != null) {
-        final imageRowStartRowIndex =
-            ((imageRow.startY - drawingTop) / lineSpacing).round();
+        final imageRowStartRowIndex = 
+            widget.notifier.getRowIndexForY(imageRow.startY);
         if (i != imageRowStartRowIndex) continue;
-      }
-
-      // If in free space, only show line number at the beginning of the space
-      if (freeSpace != null) {
-        // Skip if not at the start of the free drawing space
-        final spaceStartRowIndex =
-            ((freeSpace.startY - drawingTop) / lineSpacing).round();
+      } else if (freeSpace != null) {
+        final spaceStartRowIndex = 
+            widget.notifier.getRowIndexForY(freeSpace.startY);
         if (i != spaceStartRowIndex) continue;
       }
 
       // Get opacity based on content progress (but always show image rows)
-      final opacity = imageRow != null ? 1.0 : widget.notifier.getLineNumberOpacity(i);
+      final opacity = imageRow != null ? 1.0 : 
+          widget.notifier.getLineNumberOpacity(i);
 
       // Skip if too transparent (but not for image rows)
       if (opacity < 0.01) continue;
+
+      // Get the current line number for display
+      final currentLine = (imageRow != null || freeSpace != null) 
+          ? null // Don't show line numbers for image rows or free spaces
+          : sequentialLineNumber;
+
+      // Increment sequential line number only for regular text rows
+      if (imageRow == null && freeSpace == null) {
+        sequentialLineNumber++;
+      }
 
       // Position the button (centered in left margin)
       const buttonX = leftMargin - 6; // Center horizontally in margin
@@ -497,9 +513,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
               offset: const Offset(32, 0),
               itemBuilder: (context) {
                 // Check if current position is in a free drawing space or image row
-                const topMargin = 30.0;
-                final currentY =
-                    topMargin + (i * widget.notifier.rowLineSpacing);
+                final currentY = row.startY;
                 final isInFreeSpace =
                     widget.notifier.isInFreeDrawingSpace(currentY);
                 final isInImageRow =
@@ -617,7 +631,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                               color: theme.lineNumberColor,
                             )
                           : Text(
-                              currentLine.toString(),
+                              currentLine?.toString() ?? '',
                               style: TextStyle(
                                 fontSize: widget.lineNumberFontSize - 1,
                                 fontWeight: FontWeight.w500,
@@ -690,6 +704,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                             lineColor: theme.rowLineColor,
                             lineWidth: widget.rowLineWidth,
                             sketch: state.sketch,
+                            rows: widget.notifier.rows,
                             leftMargin: 60.0,
                             rightMargin: 20.0,
                             topMargin: 30.0,

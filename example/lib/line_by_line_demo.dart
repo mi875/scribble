@@ -18,7 +18,7 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
   double selectedWidth = 1.0;
   double rowLineSpacing = 64.0;
   bool sequentialMode = false;
-  
+
   // Image insertion settings
   double selectedInsertPosition = 100.0;
   double selectedImageHeight = 96.0;
@@ -27,10 +27,10 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
   void initState() {
     super.initState();
     notifier = LineByLineNotifier(
-      allowedPointersMode: ScribblePointerMode.penOnly,
-      rowLineSpacing: rowLineSpacing,
-      initialCanvasHeight: 400,
-    );
+        allowedPointersMode: ScribblePointerMode.penOnly,
+        rowLineSpacing: rowLineSpacing,
+        initialCanvasHeight: 400,
+        widths: [1]);
   }
 
   @override
@@ -58,13 +58,13 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
     // Create a simple colored rectangle as sample image data
     // In a real app, you'd use image_picker or file_picker here
     final bytes = <int>[];
-    
+
     // Simple BMP header (not a real image, just for demonstration)
     // In practice, you'd load real image files
     for (int i = 0; i < width * height * 4; i += 4) {
       bytes.addAll([color.blue, color.green, color.red, color.alpha]);
     }
-    
+
     return Uint8List.fromList(bytes);
   }
 
@@ -77,10 +77,11 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
         imageBytes,
         height: selectedImageHeight,
       );
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Image row inserted at Y: ${selectedInsertPosition.round()}'),
+          content: Text(
+              'Image row inserted at Y: ${selectedInsertPosition.round()}'),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -98,7 +99,7 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
   void _deleteImageRowAtPosition() {
     try {
       notifier.deleteImageRow(selectedInsertPosition);
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Image row deleted'),
@@ -108,7 +109,8 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('No image row found at position ${selectedInsertPosition.round()}'),
+          content: Text(
+              'No image row found at position ${selectedInsertPosition.round()}'),
           duration: const Duration(seconds: 3),
         ),
       );
@@ -359,9 +361,10 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                           Text('Image Rows',
                               style: Theme.of(context).textTheme.titleSmall),
                           const SizedBox(height: 12),
-                          
+
                           // Insert Position
-                          Text('Insert Position: ${selectedInsertPosition.round()}px',
+                          Text(
+                              'Insert Position: ${selectedInsertPosition.round()}px',
                               style: const TextStyle(fontSize: 12)),
                           Slider(
                             value: selectedInsertPosition,
@@ -372,9 +375,9 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                               setState(() => selectedInsertPosition = v);
                             },
                           ),
-                          
+
                           const SizedBox(height: 8),
-                          
+
                           // Image Height
                           Text('Image Height: ${selectedImageHeight.round()}px',
                               style: const TextStyle(fontSize: 12)),
@@ -387,12 +390,13 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                               setState(() => selectedImageHeight = v);
                             },
                           ),
-                          
+
                           const SizedBox(height: 12),
-                          
+
                           // Insert Sample Images
                           Text('Insert Sample Image:',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w500)),
                           const SizedBox(height: 8),
                           Wrap(
                             spacing: 6,
@@ -426,9 +430,9 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                               );
                             }).toList(),
                           ),
-                          
+
                           const SizedBox(height: 12),
-                          
+
                           // Delete Image Row Button
                           SizedBox(
                             width: double.infinity,

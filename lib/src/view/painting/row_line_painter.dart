@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:scribble/src/domain/model/row/row.dart';
 
 /// A basic custom painter that draws row lines on paper.
 /// 
@@ -12,6 +13,7 @@ class RowLinePainter extends CustomPainter {
     required this.lineSpacing,
     required this.lineColor,
     required this.lineWidth,
+    required this.rows,
     this.leftMargin = 0.0,
     this.rightMargin = 0.0,
     this.topMargin = 0.0,
@@ -34,6 +36,9 @@ class RowLinePainter extends CustomPainter {
   /// Width of the row lines in logical pixels.
   final double lineWidth;
 
+  /// List of row objects with fixed positions.
+  final List<NotebookRow> rows;
+
   /// Left margin in logical pixels.
   final double leftMargin;
 
@@ -47,7 +52,7 @@ class RowLinePainter extends CustomPainter {
   final double bottomMargin;
 
   /// List of regions (unused in simplified version, kept for compatibility).
-  final List regions;
+  final List<dynamic> regions;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -56,11 +61,9 @@ class RowLinePainter extends CustomPainter {
     // Calculate drawing bounds with margins
     final drawingLeft = leftMargin;
     final drawingRight = paperWidth - rightMargin;
-    final drawingTop = topMargin;
-    final drawingBottom = paperHeight - bottomMargin;
 
     // Don't draw if margins make drawing area invalid
-    if (drawingLeft >= drawingRight || drawingTop >= drawingBottom) return;
+    if (drawingLeft >= drawingRight) return;
 
     // Create paint for the lines
     final paint = Paint()
@@ -68,14 +71,9 @@ class RowLinePainter extends CustomPainter {
       ..strokeWidth = lineWidth
       ..style = PaintingStyle.stroke;
 
-    // Calculate the number of lines that fit within the drawing area
-    final availableHeight = drawingBottom - drawingTop;
-    final numberOfLines = (availableHeight / lineSpacing).floor();
-
-    // Draw each row line
-    for (int i = 0; i < numberOfLines; i++) {
-      final y = drawingTop + (i * lineSpacing);
-      if (y > drawingBottom) break;
+    // Draw each row line using Row objects
+    for (final row in rows) {
+      final y = row.startY;
 
       canvas.drawLine(
         Offset(drawingLeft, y),
@@ -95,6 +93,16 @@ class RowLinePainter extends CustomPainter {
         oldDelegate.leftMargin != leftMargin ||
         oldDelegate.rightMargin != rightMargin ||
         oldDelegate.topMargin != topMargin ||
-        oldDelegate.bottomMargin != bottomMargin;
+        oldDelegate.bottomMargin != bottomMargin ||
+        !_rowsEqual(oldDelegate.rows);
+  }
+
+  /// Compares two lists of rows for equality.
+  bool _rowsEqual(List<NotebookRow> other) {
+    if (rows.length != other.length) return false;
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i] != other[i]) return false;
+    }
+    return true;
   }
 }

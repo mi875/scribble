@@ -1,8 +1,10 @@
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:scribble/scribble.dart';
 import 'package:scribble/src/view/simplification/sketch_simplifier.dart';
 import 'package:scribble/src/domain/model/image_row/image_row.dart';
+import 'package:scribble/src/domain/model/row/row.dart';
 
 /// A notifier that extends ScribbleNotifier with line-by-line writing
 /// capabilities and dynamic canvas extension.
@@ -43,7 +45,10 @@ class LineByLineNotifier extends ScribbleNotifier {
         _bottomMargin = bottomMargin,
         _canvasHeight = initialCanvasHeight,
         _freeDrawingSpaces = [],
-        _imageRows = [];
+        _imageRows = [] {
+    // Initialize rows based on initial canvas height
+    _initializeRows();
+  }
 
   /// Row line spacing for line-by-line writing.
   double _rowLineSpacing;
@@ -71,11 +76,17 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Canvas width for bounds checking.
   double _canvasWidth = 600;
 
+  /// List of rows with fixed positions.
+  final List<NotebookRow> _rows = [];
+
   /// List of free drawing spaces (line-free regions).
   final List<FreeDrawingSpace> _freeDrawingSpaces;
 
   /// List of image rows.
   final List<ImageRow> _imageRows;
+
+  /// Gets an immutable list of rows.
+  List<NotebookRow> get rows => List.unmodifiable(_rows);
 
   /// Gets an immutable list of free drawing spaces.
   List<FreeDrawingSpace> get freeDrawingSpaces =>
@@ -105,6 +116,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   void setCanvasHeight(double height) {
     if (_canvasHeight != height) {
       _canvasHeight = height;
+      _initializeRows(); // Reinitialize rows with new height
       _onCanvasHeightChanged?.call(height);
     }
   }
@@ -112,6 +124,44 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Sets the canvas width for bounds checking.
   void setCanvasWidth(double width) {
     _canvasWidth = width;
+  }
+
+  /// Initializes the rows based on current canvas height and spacing.
+  void _initializeRows() {
+    _rows.clear();
+    
+    final drawingHeight = _canvasHeight - _topMargin - _bottomMargin;
+    final numberOfRows = (drawingHeight / _rowLineSpacing).floor();
+    
+    for (int i = 0; i < numberOfRows; i++) {
+      final rowY = _topMargin + (i * _rowLineSpacing);
+      _rows.add(NotebookRow(
+        startY: rowY,
+        index: i,
+        height: _rowLineSpacing,
+        id: 'row_$i',
+      ));
+    }
+  }
+
+  /// Gets a row by its index, returns null if not found.
+  NotebookRow? getRowByIndex(int index) {
+    if (index < 0 || index >= _rows.length) return null;
+    return _rows[index];
+  }
+
+  /// Gets the row that contains the specified Y position, returns null if not found.
+  NotebookRow? getRowAt(double y) {
+    return _rows.cast<NotebookRow?>().firstWhere(
+      (row) => row?.containsY(y) == true,
+      orElse: () => null,
+    );
+  }
+
+  /// Gets the row index for a given Y coordinate.
+  int getRowIndexForY(double y) {
+    if (y < _topMargin) return -1;
+    return ((y - _topMargin) / _rowLineSpacing).floor();
   }
 
   /// Gets the maximum Y coordinate of all drawn content.
@@ -156,11 +206,11 @@ class LineByLineNotifier extends ScribbleNotifier {
     if (!_sequentialMode) return true;
 
     final maxContentY = _getMaxContentY();
-    final currentRow = ((position.dy - _topMargin) / _rowLineSpacing).floor();
-    final maxRow = ((maxContentY - _topMargin) / _rowLineSpacing).floor();
+    final currentRowIndex = getRowIndexForY(position.dy);
+    final maxRowIndex = getRowIndexForY(maxContentY);
 
     // Allow drawing on current row or next row only
-    return currentRow <= maxRow + 1;
+    return currentRowIndex <= maxRowIndex + 1;
   }
 
   /// Validates if the position is within canvas bounds.
@@ -229,8 +279,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     }
 
     // Calculate which line the content has reached
-    final contentLineIndex =
-        ((maxContentY - _topMargin) / _rowLineSpacing).floor();
+    final contentLineIndex = getRowIndexForY(maxContentY);
 
     // Show line numbers progressively: if content reached line N, show numbers 1 through N+2
     if (lineIndex <= contentLineIndex + 2) {
@@ -251,9 +300,13 @@ class LineByLineNotifier extends ScribbleNotifier {
     if (!_sequentialMode) return true;
 
     final maxContentY = _getMaxContentY();
-
+    final maxRowIndex = getRowIndexForY(maxContentY);
+    final maxRow = getRowByIndex(maxRowIndex);
+    
+    if (maxRow == null) return y >= _topMargin;
+    
     // Allow drawing within current content area plus one extra row
-    final allowedMaxY = maxContentY + _rowLineSpacing;
+    final allowedMaxY = maxRow.endY + _rowLineSpacing;
 
     return y >= _topMargin && y <= allowedMaxY;
   }
@@ -607,9 +660,18 @@ class LineByLineNotifier extends ScribbleNotifier {
 
   /// Gets the image row that contains the specified Y position, if any.
   ImageRow? getImageRowAt(double y) {
+    // Primary detection: exact containment
     try {
       return _imageRows.firstWhere((imageRow) => imageRow.containsY(y));
     } catch (e) {
+      // Fallback: tolerance-based detection for slight misalignments
+      const tolerance = 1.0;
+      for (final imageRow in _imageRows) {
+        if (y >= (imageRow.startY - tolerance) && 
+            y <= (imageRow.endY + tolerance)) {
+          return imageRow;
+        }
+      }
       return null;
     }
   }
