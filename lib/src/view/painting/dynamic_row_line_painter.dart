@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:scribble/src/domain/model/free_drawing_space/free_drawing_space.dart';
 import 'package:scribble/src/domain/model/sketch/sketch.dart';
 
 /// A custom painter that draws dynamic row lines based on writing activity.
@@ -21,6 +22,7 @@ class DynamicRowLinePainter extends CustomPainter {
     this.proximityRadius = 50.0,
     this.fadeDistance = 100.0,
     this.regions = const [],
+    this.freeDrawingSpaces = const [],
   });
 
   /// Width of the paper in logical pixels.
@@ -62,6 +64,9 @@ class DynamicRowLinePainter extends CustomPainter {
   /// List of regions (unused in simplified version, kept for compatibility).
   final List regions;
 
+  /// List of free drawing spaces where lines should not be drawn.
+  final List<FreeDrawingSpace> freeDrawingSpaces;
+
   @override
   void paint(Canvas canvas, Size size) {
     if (lineSpacing <= 0) return;
@@ -87,6 +92,11 @@ class DynamicRowLinePainter extends CustomPainter {
       final y = drawingTop + (i * lineSpacing);
       if (y > drawingBottom) break;
 
+      // Skip drawing lines within free drawing spaces
+      if (_isLineInFreeDrawingSpace(y)) {
+        continue;
+      }
+
       // Calculate opacity based on proximity to content
       final opacity = _calculateLineOpacity(y, contentPoints);
       
@@ -103,6 +113,9 @@ class DynamicRowLinePainter extends CustomPainter {
         );
       }
     }
+
+    // Draw borders for free drawing spaces
+    _drawFreeDrawingSpaceBorders(canvas, drawingLeft, drawingRight);
   }
 
   /// Gets all content points from the sketch.
@@ -143,6 +156,11 @@ class DynamicRowLinePainter extends CustomPainter {
     }
   }
 
+  /// Checks if a line Y coordinate is within any free drawing space.
+  bool _isLineInFreeDrawingSpace(double lineY) {
+    return freeDrawingSpaces.any((space) => space.containsY(lineY));
+  }
+
   @override
   bool shouldRepaint(DynamicRowLinePainter oldDelegate) {
     return oldDelegate.paperWidth != paperWidth ||
@@ -156,6 +174,62 @@ class DynamicRowLinePainter extends CustomPainter {
         oldDelegate.topMargin != topMargin ||
         oldDelegate.bottomMargin != bottomMargin ||
         oldDelegate.proximityRadius != proximityRadius ||
-        oldDelegate.fadeDistance != fadeDistance;
+        oldDelegate.fadeDistance != fadeDistance ||
+        !_freeDrawingSpacesEqual(oldDelegate.freeDrawingSpaces);
+  }
+
+  /// Compares two lists of free drawing spaces for equality.
+  bool _freeDrawingSpacesEqual(List<FreeDrawingSpace> other) {
+    if (freeDrawingSpaces.length != other.length) return false;
+    for (int i = 0; i < freeDrawingSpaces.length; i++) {
+      if (freeDrawingSpaces[i] != other[i]) return false;
+    }
+    return true;
+  }
+
+  /// Draws borders around free drawing spaces.
+  void _drawFreeDrawingSpaceBorders(Canvas canvas, double left, double right) {
+    if (freeDrawingSpaces.isEmpty) return;
+
+    final borderPaint = Paint()
+      ..color = lineColor.withValues(alpha: 0.6)
+      ..strokeWidth = lineWidth * 2.0
+      ..style = PaintingStyle.stroke;
+
+    for (final space in freeDrawingSpaces) {
+      // Draw dashed top border
+      _drawDashedLine(
+        canvas,
+        Offset(left, space.startY),
+        Offset(right, space.startY),
+        borderPaint,
+      );
+
+      // Draw dashed bottom border
+      _drawDashedLine(
+        canvas,
+        Offset(left, space.endY),
+        Offset(right, space.endY),
+        borderPaint,
+      );
+    }
+  }
+
+  /// Draws a dashed line between two points.
+  void _drawDashedLine(Canvas canvas, Offset start, Offset end, Paint paint) {
+    const dashWidth = 8.0;
+    const dashSpace = 4.0;
+    
+    final distance = (end - start).distance;
+    final dashCount = (distance / (dashWidth + dashSpace)).floor();
+    
+    final direction = (end - start) / distance;
+    
+    for (int i = 0; i < dashCount; i++) {
+      final dashStart = start + direction * (i * (dashWidth + dashSpace));
+      final dashEnd = dashStart + direction * dashWidth;
+      
+      canvas.drawLine(dashStart, dashEnd, paint);
+    }
   }
 }

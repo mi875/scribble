@@ -14,8 +14,8 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
 
   // Control settings
   Color selectedColor = Colors.black;
-  double selectedWidth = 5.0;
-  double rowLineSpacing = 24.0;
+  double selectedWidth = 1.0;
+  double rowLineSpacing = 64.0;
   bool sequentialMode = false;
 
   @override
@@ -52,7 +52,7 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Line-by-Line Writing'),
@@ -119,7 +119,8 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                                   style:
                                       Theme.of(context).textTheme.titleSmall),
                               const SizedBox(height: 8),
-                              Text('Height: ${notifier.canvasHeight.round()}px'),
+                              Text(
+                                  'Height: ${notifier.canvasHeight.round()}px'),
                               const SizedBox(height: 4),
                               Text('Lines: ${state.sketch.lines.length}'),
                               const SizedBox(height: 4),
@@ -203,7 +204,9 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                                     shape: BoxShape.circle,
                                     border: Border.all(
                                       color: selected
-                                          ? (isDark ? Colors.grey.shade300 : Colors.grey.shade800)
+                                          ? (isDark
+                                              ? Colors.grey.shade300
+                                              : Colors.grey.shade800)
                                           : (color == Colors.white
                                               ? Colors.grey.shade400
                                               : Colors.grey.shade300),
@@ -265,7 +268,7 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                           Slider(
                             value: rowLineSpacing,
                             min: 16,
-                            max: 48,
+                            max: 72,
                             divisions: 16,
                             onChanged: (v) {
                               setState(() => rowLineSpacing = v);
@@ -284,15 +287,15 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
           // Right Panel - Canvas
           Expanded(
             child: Container(
-              color: isDark 
-                  ? theme.colorScheme.surfaceContainerLowest 
+              color: isDark
+                  ? theme.colorScheme.surfaceContainerLowest
                   : Colors.grey.shade100,
               child: LineByLineCanvas(
                 notifier: notifier,
                 simulatePressure: false,
                 showPaperShadow: true,
                 showPaperBorder: true,
-                canvasWidth: 600,
+                canvasWidth: 700,
                 themeMode: ScribbleThemeMode.system,
                 sequentialMode: sequentialMode,
               ),

@@ -69,7 +69,6 @@ class LineByLineCanvas extends StatefulWidget {
 
     /// Font size for the line numbers.
     this.lineNumberFontSize = 12.0,
-
     super.key,
   });
 
@@ -169,7 +168,8 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
     // Set sequential mode
     widget.notifier.setSequentialMode(widget.sequentialMode);
 
-    // Set initial canvas height
+    // Set canvas dimensions
+    widget.notifier.setCanvasWidth(widget.canvasWidth);
     _currentCanvasHeight = widget.notifier.canvasHeight;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -182,6 +182,9 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.sequentialMode != widget.sequentialMode) {
       widget.notifier.setSequentialMode(widget.sequentialMode);
+    }
+    if (oldWidget.canvasWidth != widget.canvasWidth) {
+      widget.notifier.setCanvasWidth(widget.canvasWidth);
     }
   }
 
@@ -243,6 +246,12 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
         _eraseRow(rowIndex);
       case 'clear':
         _clearRow(rowIndex);
+      case 'insert_free_space':
+        _insertFreeDrawingSpace(rowIndex);
+      case 'delete_free_space':
+        _deleteFreeDrawingSpace(rowIndex);
+      case 'expand_free_space':
+        _expandFreeDrawingSpace(rowIndex);
     }
   }
 
@@ -251,7 +260,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
     // Calculate Y position for the row
     const topMargin = 30.0;
     final rowY = topMargin + (rowIndex * widget.notifier.rowLineSpacing);
-    
+
     // Shift all content below this Y position down by one row spacing
     final currentSketch = widget.notifier.currentSketch;
     final shiftedLines = currentSketch.lines.map((line) {
@@ -263,7 +272,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
       }).toList();
       return line.copyWith(points: shiftedPoints);
     }).toList();
-    
+
     final newSketch = currentSketch.copyWith(lines: shiftedLines);
     widget.notifier.setSketch(sketch: newSketch, addToUndoHistory: true);
   }
@@ -273,14 +282,14 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
     const topMargin = 30.0;
     final rowY = topMargin + (rowIndex * widget.notifier.rowLineSpacing);
     final nextRowY = rowY + widget.notifier.rowLineSpacing;
-    
+
     // Remove all content in this row and shift content below up
     final currentSketch = widget.notifier.currentSketch;
     final filteredAndShiftedLines = <SketchLine>[];
-    
+
     for (final line in currentSketch.lines) {
       final filteredPoints = <Point>[];
-      
+
       for (final point in line.points) {
         if (point.y >= rowY && point.y < nextRowY) {
           // Skip points in the deleted row
@@ -295,12 +304,12 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
           filteredPoints.add(point);
         }
       }
-      
+
       if (filteredPoints.isNotEmpty) {
         filteredAndShiftedLines.add(line.copyWith(points: filteredPoints));
       }
     }
-    
+
     final newSketch = currentSketch.copyWith(lines: filteredAndShiftedLines);
     widget.notifier.setSketch(sketch: newSketch, addToUndoHistory: true);
   }
@@ -310,23 +319,67 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
     const topMargin = 30.0;
     final rowY = topMargin + (rowIndex * widget.notifier.rowLineSpacing);
     final nextRowY = rowY + widget.notifier.rowLineSpacing;
-    
+
     // Remove all content in this row only
     final currentSketch = widget.notifier.currentSketch;
     final filteredLines = <SketchLine>[];
-    
+
     for (final line in currentSketch.lines) {
       final filteredPoints = line.points
           .where((point) => !(point.y >= rowY && point.y < nextRowY))
           .toList();
-      
+
       if (filteredPoints.isNotEmpty) {
         filteredLines.add(line.copyWith(points: filteredPoints));
       }
     }
-    
+
     final newSketch = currentSketch.copyWith(lines: filteredLines);
     widget.notifier.setSketch(sketch: newSketch, addToUndoHistory: true);
+  }
+
+  /// Inserts a free drawing space below the specified row.
+  void _insertFreeDrawingSpace(int rowIndex) {
+    const topMargin = 30.0;
+    final yPosition =
+        topMargin + ((rowIndex + 1) * widget.notifier.rowLineSpacing);
+    widget.notifier.insertFreeDrawingSpace(yPosition);
+  }
+
+  /// Deletes a free drawing space at the specified row.
+  void _deleteFreeDrawingSpace(int rowIndex) {
+    const topMargin = 30.0;
+    final yPosition = topMargin + (rowIndex * widget.notifier.rowLineSpacing);
+
+    try {
+      widget.notifier.deleteFreeDrawingSpace(yPosition);
+    } catch (e) {
+      // Show a brief message if no free drawing space found
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No free drawing space found at this position'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// Expands a free drawing space at the specified row.
+  void _expandFreeDrawingSpace(int rowIndex) {
+    const topMargin = 30.0;
+    final yPosition = topMargin + (rowIndex * widget.notifier.rowLineSpacing);
+
+    try {
+      widget.notifier.expandFreeDrawingSpace(yPosition);
+    } catch (e) {
+      // Show a brief message if no free drawing space found
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No free drawing space found at this position'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   /// Builds line number buttons positioned over the canvas.
@@ -358,8 +411,20 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
       // Skip if too transparent
       if (opacity < 0.01) continue;
 
+      // Check if this position is within a free drawing space
+      final currentRowY = drawingTop + (i * lineSpacing);
+      final freeSpace = widget.notifier.getFreeDrawingSpaceAt(currentRowY);
+
+      // If in free space, only show line number at the beginning of the space
+      if (freeSpace != null) {
+        // Skip if not at the start of the free drawing space
+        final spaceStartRowIndex =
+            ((freeSpace.startY - drawingTop) / lineSpacing).round();
+        if (i != spaceStartRowIndex) continue;
+      }
+
       // Position the button (centered in left margin)
-      const buttonX = leftMargin - 16; // Center horizontally in margin
+      const buttonX = leftMargin - 6; // Center horizontally in margin
       final buttonY = betweenRowsY - 16; // Center button vertically
 
       buttons.add(
@@ -372,38 +437,80 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
             opacity: opacity,
             child: PopupMenuButton<String>(
               offset: const Offset(32, 0),
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'insert',
-                  child: Row(
-                    children: [
-                      Icon(Icons.add, size: 16),
-                      SizedBox(width: 8),
-                      Text('Insert Row Above'),
-                    ],
+              itemBuilder: (context) {
+                // Check if current position is in a free drawing space
+                const topMargin = 30.0;
+                final currentY =
+                    topMargin + (i * widget.notifier.rowLineSpacing);
+                final isInFreeSpace =
+                    widget.notifier.isInFreeDrawingSpace(currentY);
+
+                return [
+                  const PopupMenuItem(
+                    value: 'insert',
+                    child: Row(
+                      children: [
+                        Icon(Icons.add, size: 16),
+                        SizedBox(width: 8),
+                        Text('Insert Row Above'),
+                      ],
+                    ),
                   ),
-                ),
-                const PopupMenuItem(
-                  value: 'clear',
-                  child: Row(
-                    children: [
-                      Icon(Icons.clear, size: 16),
-                      SizedBox(width: 8),
-                      Text('Clear Row'),
-                    ],
+                  const PopupMenuItem(
+                    value: 'insert_free_space',
+                    child: Row(
+                      children: [
+                        Icon(Icons.space_bar, size: 16),
+                        SizedBox(width: 8),
+                        Text('Add Free Drawing Space'),
+                      ],
+                    ),
                   ),
-                ),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete_outline, size: 16),
-                      SizedBox(width: 8),
-                      Text('Delete Row'),
-                    ],
-                  ),
-                ),
-              ],
+                  if (isInFreeSpace) ...[
+                    const PopupMenuItem(
+                      value: 'expand_free_space',
+                      child: Row(
+                        children: [
+                          Icon(Icons.expand, size: 16),
+                          SizedBox(width: 8),
+                          Text('Expand Free Space'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete_free_space',
+                      child: Row(
+                        children: [
+                          Icon(Icons.compress, size: 16),
+                          SizedBox(width: 8),
+                          Text('Delete Free Space'),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    const PopupMenuItem(
+                      value: 'clear',
+                      child: Row(
+                        children: [
+                          Icon(Icons.clear, size: 16),
+                          SizedBox(width: 8),
+                          Text('Clear Row'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline, size: 16),
+                          SizedBox(width: 8),
+                          Text('Delete Row'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ];
+              },
               onSelected: (value) => _handleRowAction(value, i),
               child: Container(
                 width: 32,
@@ -416,14 +523,20 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                   color: Colors.transparent,
                 ),
                 child: Center(
-                  child: Text(
-                    currentLine.toString(),
-                    style: TextStyle(
-                      fontSize: widget.lineNumberFontSize - 1,
-                      fontWeight: FontWeight.w500,
-                      color: theme.lineNumberColor,
-                    ),
-                  ),
+                  child: freeSpace != null
+                      ? Icon(
+                          Icons.space_bar,
+                          size: widget.lineNumberFontSize + 2,
+                          color: theme.lineNumberColor,
+                        )
+                      : Text(
+                          currentLine.toString(),
+                          style: TextStyle(
+                            fontSize: widget.lineNumberFontSize - 1,
+                            fontWeight: FontWeight.w500,
+                            color: theme.lineNumberColor,
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -438,7 +551,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
   @override
   Widget build(BuildContext context) {
     final theme = _effectiveTheme(context);
-    
+
     return ScribbleThemeProvider(
       theme: theme,
       child: ValueListenableBuilder<ScribbleState>(
@@ -497,16 +610,18 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                             proximityRadius: 40,
                             fadeDistance: 80,
                             regions: const [],
+                            freeDrawingSpaces:
+                                widget.notifier.freeDrawingSpaces,
                           ),
                         ),
-                        
+
                         // Main drawing canvas
                         RepaintBoundary(
                           key: widget.notifier.repaintBoundaryKey,
                           child: Listener(
                             onPointerDown: (event) {
                               if (event.kind == PointerDeviceKind.stylus ||
-                                  event.kind == 
+                                  event.kind ==
                                       PointerDeviceKind.invertedStylus) {
                                 setState(() => _isPenActive = true);
                               }
@@ -516,14 +631,14 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                             onPointerUp: (event) {
                               widget.notifier.onPointerUp(event);
                               if (event.kind == PointerDeviceKind.stylus ||
-                                  event.kind == 
+                                  event.kind ==
                                       PointerDeviceKind.invertedStylus) {
                                 setState(() => _isPenActive = false);
                               }
                             },
                             child: CustomPaint(
-                              size: Size(widget.canvasWidth, 
-                                  _currentCanvasHeight),
+                              size: Size(
+                                  widget.canvasWidth, _currentCanvasHeight),
                               painter: ScribblePainter(
                                 sketch: state.sketch,
                                 scaleFactor: 1.0,
@@ -542,7 +657,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                             ),
                           ),
                         ),
-                        
+
                         // Line number buttons
                         ..._buildLineNumberButtons(theme),
                       ],
