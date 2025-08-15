@@ -384,6 +384,9 @@ class LineByLineNotifier extends ScribbleNotifier {
     _freeDrawingSpaces.clear();
     _freeDrawingSpaces.addAll(updatedSpaces);
 
+    // Remove all strokes that were drawn within the deleted free space
+    _removeStrokesInRegion(spaceStartY, spaceStartY + spaceHeight);
+
     // Shift all sketch content that is below this position up
     _shiftSketchContentUp(spaceStartY + spaceHeight, spaceHeight);
 
@@ -462,6 +465,26 @@ class LineByLineNotifier extends ScribbleNotifier {
     }
 
     final newSketch = currentSketch.copyWith(lines: shiftedLines);
+    setSketch(sketch: newSketch, addToUndoHistory: true);
+  }
+
+  /// Removes all strokes that are within the specified Y region.
+  void _removeStrokesInRegion(double startY, double endY) {
+    final currentSketch = value.sketch;
+    final filteredLines = <SketchLine>[];
+
+    for (final line in currentSketch.lines) {
+      // Check if any point in this line is within the region to be deleted
+      final hasPointInRegion = line.points.any((point) =>
+          point.y >= startY && point.y <= endY);
+
+      // Only keep lines that have no points in the deletion region
+      if (!hasPointInRegion) {
+        filteredLines.add(line);
+      }
+    }
+
+    final newSketch = currentSketch.copyWith(lines: filteredLines);
     setSketch(sketch: newSketch, addToUndoHistory: true);
   }
 
