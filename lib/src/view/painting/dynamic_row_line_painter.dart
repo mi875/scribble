@@ -151,8 +151,22 @@ class DynamicRowLinePainter extends CustomPainter {
     return points;
   }
 
+  /// Gets the row index for a given Y coordinate.
+  int _getRowIndexForY(double y) {
+    if (y < topMargin) return -1;
+    return ((y - topMargin) / lineSpacing).floor();
+  }
+
   /// Calculates the opacity for a line based on proximity to content.
   double _calculateLineOpacity(double lineY, List<Offset> contentPoints) {
+    // Calculate which row this line corresponds to
+    final rowIndex = _getRowIndexForY(lineY);
+    
+    // Always show first two row lines at full opacity (matching line numbers)
+    if (rowIndex == 0 || rowIndex == 1) {
+      return 1.0;
+    }
+    
     if (contentPoints.isEmpty) return 0.1; // Very faint when no content
 
     // Find the minimum distance to any content point

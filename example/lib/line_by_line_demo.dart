@@ -117,6 +117,30 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
     }
   }
 
+  void _showImage(BuildContext context) async {
+    final image = notifier.renderImage();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Generated Image"),
+        content: SizedBox.expand(
+          child: FutureBuilder(
+            future: image,
+            builder: (context, snapshot) => snapshot.hasData
+                ? Image.memory(snapshot.data!.buffer.asUint8List())
+                : const Center(child: CircularProgressIndicator()),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: Navigator.of(context).pop,
+            child: const Text("Close"),
+          )
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -160,6 +184,11 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
               );
             },
             icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+          ),
+          IconButton(
+            icon: const Icon(Icons.image),
+            tooltip: "Show PNG Image",
+            onPressed: () => _showImage(context),
           ),
         ],
       ),
@@ -469,6 +498,7 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                 canvasWidth: 700,
                 themeMode: ScribbleThemeMode.system,
                 sequentialMode: sequentialMode,
+                rowLineWidth: 1.5,
               ),
             ),
           ),

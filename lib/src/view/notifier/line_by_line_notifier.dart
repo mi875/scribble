@@ -743,4 +743,5 @@ class LineByLineNotifier extends ScribbleNotifier {
 
     return super.transformHistoryValue(historyValue, currentValue);
   }
+
 }

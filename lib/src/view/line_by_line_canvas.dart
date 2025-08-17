@@ -693,48 +693,48 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                             ]
                           : null,
                     ),
-                    child: Stack(
-                      children: [
-                        // Row lines painter
-                        CustomPaint(
-                          painter: DynamicRowLinePainter(
-                            paperWidth: widget.canvasWidth,
-                            paperHeight: _currentCanvasHeight,
-                            lineSpacing: widget.notifier.rowLineSpacing,
-                            lineColor: theme.rowLineColor,
-                            lineWidth: widget.rowLineWidth,
-                            sketch: state.sketch,
-                            rows: widget.notifier.rows,
-                            leftMargin: 60.0,
-                            rightMargin: 20.0,
-                            topMargin: 30.0,
-                            bottomMargin: 30.0,
-                            proximityRadius: 40,
-                            fadeDistance: 80,
-                            regions: const [],
-                            freeDrawingSpaces:
-                                widget.notifier.freeDrawingSpaces,
-                            imageRows: widget.notifier.imageRows,
+                    child: RepaintBoundary(
+                      key: widget.notifier.repaintBoundaryKey,
+                      child: Stack(
+                        children: [
+                          // Row lines painter
+                          CustomPaint(
+                            painter: DynamicRowLinePainter(
+                              paperWidth: widget.canvasWidth,
+                              paperHeight: _currentCanvasHeight,
+                              lineSpacing: widget.notifier.rowLineSpacing,
+                              lineColor: theme.rowLineColor,
+                              lineWidth: widget.rowLineWidth,
+                              sketch: state.sketch,
+                              rows: widget.notifier.rows,
+                              leftMargin: 60.0,
+                              rightMargin: 20.0,
+                              topMargin: 30.0,
+                              bottomMargin: 30.0,
+                              proximityRadius: 40,
+                              fadeDistance: 80,
+                              regions: const [],
+                              freeDrawingSpaces:
+                                  widget.notifier.freeDrawingSpaces,
+                              imageRows: widget.notifier.imageRows,
+                            ),
                           ),
-                        ),
 
-                        // Image rows painter
-                        CustomPaint(
-                          painter: ImageRowPainter(
-                            imageRows: widget.notifier.imageRows,
-                            canvasWidth: widget.canvasWidth,
-                            leftMargin: 60.0,
-                            rightMargin: 20.0,
-                            borderColor: theme.rowLineColor.withOpacity(0.5),
-                            borderWidth: 1.0,
-                            showBorders: true,
+                          // Image rows painter
+                          CustomPaint(
+                            painter: ImageRowPainter(
+                              imageRows: widget.notifier.imageRows,
+                              canvasWidth: widget.canvasWidth,
+                              leftMargin: 60.0,
+                              rightMargin: 20.0,
+                              borderColor: theme.rowLineColor.withOpacity(0.5),
+                              borderWidth: 1.0,
+                              showBorders: true,
+                            ),
                           ),
-                        ),
 
-                        // Main drawing canvas
-                        RepaintBoundary(
-                          key: widget.notifier.repaintBoundaryKey,
-                          child: Listener(
+                          // Main drawing canvas
+                          Listener(
                             onPointerDown: (event) {
                               if (event.kind == PointerDeviceKind.stylus ||
                                   event.kind ==
@@ -772,11 +772,11 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                                   : null,
                             ),
                           ),
-                        ),
 
-                        // Line number buttons
-                        ..._buildLineNumberButtons(theme),
-                      ],
+                          // Line number buttons
+                          ..._buildLineNumberButtons(theme),
+                        ],
+                      ),
                     ),
                   ),
                 ),
