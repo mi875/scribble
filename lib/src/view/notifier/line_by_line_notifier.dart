@@ -85,6 +85,9 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// List of image rows.
   final List<ImageRow> _imageRows;
 
+  /// Set of highlighted row indices.
+  final Set<int> _highlightedRows = <int>{};
+
   /// Gets an immutable list of rows.
   List<NotebookRow> get rows => List.unmodifiable(_rows);
 
@@ -94,6 +97,9 @@ class LineByLineNotifier extends ScribbleNotifier {
 
   /// Gets an immutable list of image rows.
   List<ImageRow> get imageRows => List.unmodifiable(_imageRows);
+
+  /// Gets an immutable set of highlighted row indices.
+  Set<int> get highlightedRows => Set.unmodifiable(_highlightedRows);
 
   /// Sets the callback for canvas height changes.
   void setCanvasHeightChangeCallback(
@@ -703,6 +709,139 @@ class LineByLineNotifier extends ScribbleNotifier {
   void clearAllImageRows() {
     _imageRows.clear();
     notifyListeners();
+  }
+
+  // Row Highlighting Methods
+
+  /// Highlights the specified line number (1, 2, 3, etc.).
+  /// 
+  /// Line numbers correspond to what users see displayed on the UI.
+  /// Free drawing spaces and image rows are skipped when counting line numbers.
+  void highlightRow(int lineNumber) {
+    final rowIndex = _getRowIndexForLineNumber(lineNumber);
+    if (rowIndex == null) return; // Invalid line number
+    
+    if (_highlightedRows.add(rowIndex)) {
+      notifyListeners();
+    }
+  }
+
+  /// Removes highlight from the specified line number (1, 2, 3, etc.).
+  /// 
+  /// Line numbers correspond to what users see displayed on the UI.
+  /// Free drawing spaces and image rows are skipped when counting line numbers.
+  void unhighlightRow(int lineNumber) {
+    final rowIndex = _getRowIndexForLineNumber(lineNumber);
+    if (rowIndex == null) return; // Invalid line number
+    
+    if (_highlightedRows.remove(rowIndex)) {
+      notifyListeners();
+    }
+  }
+
+  /// Toggles the highlight state of the specified line number (1, 2, 3, etc.).
+  /// 
+  /// Line numbers correspond to what users see displayed on the UI.
+  /// Free drawing spaces and image rows are skipped when counting line numbers.
+  void toggleRowHighlight(int lineNumber) {
+    final rowIndex = _getRowIndexForLineNumber(lineNumber);
+    if (rowIndex == null) return; // Invalid line number
+    
+    if (_highlightedRows.contains(rowIndex)) {
+      unhighlightRow(lineNumber);
+    } else {
+      highlightRow(lineNumber);
+    }
+  }
+
+  /// Highlights multiple line numbers (1, 2, 3, etc.).
+  /// 
+  /// Line numbers correspond to what users see displayed on the UI.
+  /// Free drawing spaces and image rows are skipped when counting line numbers.
+  void highlightRows(Iterable<int> lineNumbers) {
+    bool changed = false;
+    for (final lineNumber in lineNumbers) {
+      final rowIndex = _getRowIndexForLineNumber(lineNumber);
+      if (rowIndex != null) {
+        if (_highlightedRows.add(rowIndex)) {
+          changed = true;
+        }
+      }
+    }
+    if (changed) {
+      notifyListeners();
+    }
+  }
+
+  /// Removes highlights from multiple line numbers (1, 2, 3, etc.).
+  /// 
+  /// Line numbers correspond to what users see displayed on the UI.
+  /// Free drawing spaces and image rows are skipped when counting line numbers.
+  void unhighlightRows(Iterable<int> lineNumbers) {
+    bool changed = false;
+    for (final lineNumber in lineNumbers) {
+      final rowIndex = _getRowIndexForLineNumber(lineNumber);
+      if (rowIndex != null) {
+        if (_highlightedRows.remove(rowIndex)) {
+          changed = true;
+        }
+      }
+    }
+    if (changed) {
+      notifyListeners();
+    }
+  }
+
+  /// Clears all row highlights.
+  void clearAllHighlights() {
+    if (_highlightedRows.isNotEmpty) {
+      _highlightedRows.clear();
+      notifyListeners();
+    }
+  }
+
+  /// Checks if a specific line number (1, 2, 3, etc.) is highlighted.
+  /// 
+  /// Line numbers correspond to what users see displayed on the UI.
+  /// Free drawing spaces and image rows are skipped when counting line numbers.
+  bool isRowHighlighted(int lineNumber) {
+    final rowIndex = _getRowIndexForLineNumber(lineNumber);
+    if (rowIndex == null) return false; // Invalid line number
+    
+    return _highlightedRows.contains(rowIndex);
+  }
+
+  /// Converts a line number (1, 2, 3...) to the corresponding row index (0, 1, 2...).
+  /// 
+  /// Line numbers are what users see displayed on the UI, while row indices
+  /// are internal array positions. This method skips free drawing spaces and
+  /// image rows when counting line numbers.
+  /// 
+  /// Returns null if the line number doesn't exist or is invalid.
+  int? _getRowIndexForLineNumber(int lineNumber) {
+    if (lineNumber < 1) return null; // Line numbers start at 1
+    
+    int sequentialLineNumber = 1;
+    
+    for (var i = 0; i < _rows.length; i++) {
+      final row = _rows[i];
+      final currentRowY = row.startY;
+      final freeSpace = getFreeDrawingSpaceAt(currentRowY);
+      final imageRow = getImageRowAt(currentRowY);
+      
+      // Skip rows that are within free drawing spaces or image rows
+      if (freeSpace != null || imageRow != null) {
+        continue;
+      }
+      
+      // This is a regular text row with a line number
+      if (sequentialLineNumber == lineNumber) {
+        return i; // Return the row index
+      }
+      sequentialLineNumber++;
+    }
+    
+    return null; // Line number not found
   }
 
   // Note: Free drawing space undo/redo is handled through the sketch operations

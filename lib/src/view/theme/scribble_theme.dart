@@ -15,6 +15,7 @@ class ScribbleTheme {
     required this.controlBorderColor,
     required this.controlIconColor,
     required this.eraserPointerColor,
+    required this.rowHighlightColor,
   });
 
   /// Background color for the drawing paper/canvas.
@@ -44,6 +45,9 @@ class ScribbleTheme {
   /// Color for the eraser pointer indicator.
   final Color eraserPointerColor;
 
+  /// Color for highlighted row backgrounds.
+  final Color rowHighlightColor;
+
   /// Default light theme with bright colors suitable for light backgrounds.
   static const ScribbleTheme light = ScribbleTheme(
     paperColor: Colors.white,
@@ -55,6 +59,7 @@ class ScribbleTheme {
     controlBorderColor: Color(0xFFE0E0E0),
     controlIconColor: Color(0xFF757575),
     eraserPointerColor: Colors.black,
+    rowHighlightColor: Color(0xFFFFEB3B), // Yellow highlight
   );
 
   /// Default dark theme with muted colors suitable for dark backgrounds.
@@ -68,6 +73,7 @@ class ScribbleTheme {
     controlBorderColor: Color(0xFF4A5568),
     controlIconColor: Color(0xFFA0AEC0),
     eraserPointerColor: Colors.white,
+    rowHighlightColor: Color(0xFFFFC107), // Amber highlight for dark mode
   );
 
   /// Creates a copy of this theme with some properties replaced.
@@ -81,6 +87,7 @@ class ScribbleTheme {
     Color? controlBorderColor,
     Color? controlIconColor,
     Color? eraserPointerColor,
+    Color? rowHighlightColor,
   }) {
     return ScribbleTheme(
       paperColor: paperColor ?? this.paperColor,
@@ -93,6 +100,7 @@ class ScribbleTheme {
       controlBorderColor: controlBorderColor ?? this.controlBorderColor,
       controlIconColor: controlIconColor ?? this.controlIconColor,
       eraserPointerColor: eraserPointerColor ?? this.eraserPointerColor,
+      rowHighlightColor: rowHighlightColor ?? this.rowHighlightColor,
     );
   }
 

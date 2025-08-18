@@ -190,6 +190,13 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
             tooltip: "Show PNG Image",
             onPressed: () => _showImage(context),
           ),
+          IconButton(
+              icon: const Icon(Icons.highlight),
+              tooltip: "Highlight Line 3",
+              onPressed: () {
+                // Toggle highlight for line number 3 (what users see on screen)
+                notifier..highlightRows([1, 2, 3]);
+              })
         ],
       ),
       body: Row(

@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:scribble/src/domain/model/free_drawing_space/free_drawing_space.dart';
 import 'package:scribble/src/domain/model/image_row/image_row.dart';
@@ -27,6 +28,9 @@ class DynamicRowLinePainter extends CustomPainter {
     this.regions = const [],
     this.freeDrawingSpaces = const [],
     this.imageRows = const [],
+    this.highlightedRows = const {},
+    this.highlightColor = const Color(0xFFFFEB3B),
+    this.highlightOpacity = 0.3,
   });
 
   /// Width of the paper in logical pixels.
@@ -77,6 +81,15 @@ class DynamicRowLinePainter extends CustomPainter {
   /// List of image rows where lines should not be drawn.
   final List<ImageRow> imageRows;
 
+  /// Set of highlighted row indices.
+  final Set<int> highlightedRows;
+
+  /// Color for highlighted row backgrounds.
+  final Color highlightColor;
+
+  /// Opacity for highlighted row backgrounds.
+  final double highlightOpacity;
+
   @override
   void paint(Canvas canvas, Size size) {
     if (lineSpacing <= 0) return;
@@ -87,6 +100,9 @@ class DynamicRowLinePainter extends CustomPainter {
 
     // Don't draw if margins make drawing area invalid
     if (drawingLeft >= drawingRight) return;
+
+    // Paint row highlights first (behind everything else)
+    _paintRowHighlights(canvas, drawingLeft, drawingRight);
 
     // Get all content points from the sketch
     final contentPoints = _getContentPoints();
@@ -157,6 +173,59 @@ class DynamicRowLinePainter extends CustomPainter {
     return ((y - topMargin) / lineSpacing).floor();
   }
 
+  /// Paints row highlights for highlighted rows.
+  void _paintRowHighlights(Canvas canvas, double drawingLeft, double drawingRight) {
+    if (highlightedRows.isEmpty) return;
+
+    final highlightPaint = Paint()
+      ..color = highlightColor.withValues(alpha: highlightOpacity)
+      ..style = PaintingStyle.fill;
+
+    for (final row in rows) {
+      if (highlightedRows.contains(row.index)) {
+        // Calculate extended highlight area including free spaces
+        double highlightStartY = row.startY;
+        double highlightEndY = row.endY;
+        
+        // Find free spaces that belong to this row and extend the highlight
+        for (final freeSpace in freeDrawingSpaces) {
+          if (_freeSpaceBelongsToRow(freeSpace, row)) {
+            // Extend highlight to include this free space
+            highlightStartY = math.min(highlightStartY, freeSpace.startY);
+            highlightEndY = math.max(highlightEndY, freeSpace.endY);
+          }
+        }
+        
+        // Find any chained free spaces that should also be included
+        // (free spaces that start where the previous one ended)
+        bool foundMoreSpaces = true;
+        while (foundMoreSpaces) {
+          foundMoreSpaces = false;
+          for (final freeSpace in freeDrawingSpaces) {
+            // Check if this free space is chained to our current highlight area
+            const tolerance = 2.0;
+            if (freeSpace.startY >= highlightEndY - tolerance && 
+                freeSpace.startY <= highlightEndY + tolerance) {
+              if (freeSpace.endY > highlightEndY) {
+                highlightEndY = freeSpace.endY;
+                foundMoreSpaces = true;
+              }
+            }
+          }
+        }
+        
+        // Paint the extended highlight area
+        final highlightRect = Rect.fromLTRB(
+          drawingLeft,
+          highlightStartY,
+          drawingRight,
+          highlightEndY,
+        );
+        canvas.drawRect(highlightRect, highlightPaint);
+      }
+    }
+  }
+
   /// Calculates the opacity for a line based on proximity to content.
   double _calculateLineOpacity(double lineY, List<Offset> contentPoints) {
     // Calculate which row this line corresponds to
@@ -216,7 +285,10 @@ class DynamicRowLinePainter extends CustomPainter {
         oldDelegate.fadeDistance != fadeDistance ||
         !_rowsEqual(oldDelegate.rows) ||
         !_freeDrawingSpacesEqual(oldDelegate.freeDrawingSpaces) ||
-        !_imageRowsEqual(oldDelegate.imageRows);
+        !_imageRowsEqual(oldDelegate.imageRows) ||
+        !_highlightedRowsEqual(oldDelegate.highlightedRows) ||
+        oldDelegate.highlightColor != highlightColor ||
+        oldDelegate.highlightOpacity != highlightOpacity;
   }
 
   /// Compares two lists of rows for equality.
@@ -244,6 +316,34 @@ class DynamicRowLinePainter extends CustomPainter {
       if (imageRows[i] != other[i]) return false;
     }
     return true;
+  }
+
+  /// Compares two sets of highlighted rows for equality.
+  bool _highlightedRowsEqual(Set<int> other) {
+    if (highlightedRows.length != other.length) return false;
+    return highlightedRows.every(other.contains);
+  }
+
+  /// Determines if a free drawing space belongs to a specific row.
+  /// 
+  /// A free space belongs to a row if:
+  /// 1. The free space starts within the row bounds, OR
+  /// 2. The free space starts immediately after the row ends (within small tolerance)
+  bool _freeSpaceBelongsToRow(FreeDrawingSpace freeSpace, NotebookRow row) {
+    const tolerance = 2.0; // Small tolerance for floating point precision
+    
+    // Case 1: Free space starts within row bounds
+    if (freeSpace.startY >= row.startY && freeSpace.startY <= row.endY) {
+      return true;
+    }
+    
+    // Case 2: Free space starts immediately after row ends
+    if (freeSpace.startY >= row.endY && 
+        freeSpace.startY <= row.endY + tolerance) {
+      return true;
+    }
+    
+    return false;
   }
 
 
