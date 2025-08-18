@@ -24,6 +24,7 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
   // Image insertion settings
   double selectedInsertPosition = 100.0;
   double selectedImageHeight = 96.0;
+  bool shiftContentWhenInserting = true;
 
   @override
   void initState() {
@@ -105,6 +106,7 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
         selectedInsertPosition,
         imageBytes,
         height: height,
+        shiftContent: shiftContentWhenInserting,
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -466,6 +468,21 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                           ),
 
                           const SizedBox(height: 12),
+
+                          // Shift Content Option
+                          CheckboxListTile(
+                            title: const Text('Shift content when inserting'),
+                            subtitle: const Text('Move strokes down to make space'),
+                            value: shiftContentWhenInserting,
+                            onChanged: (value) {
+                              setState(() => shiftContentWhenInserting = value ?? true);
+                            },
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                            controlAffinity: ListTileControlAffinity.leading,
+                          ),
+
+                          const SizedBox(height: 8),
 
                           // Insert Images
                           Text('Insert Image:',

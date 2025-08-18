@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
@@ -536,58 +537,81 @@ class LineByLineNotifier extends ScribbleNotifier {
   static const double _defaultImageRowHeight = 96.0; // 4 * 24px
 
   /// Inserts an image row above the specified Y position.
-  void insertImageRow(double yPosition, ImageProvider image, {double? height}) {
+  Future<void> insertImageRow(double yPosition, ImageProvider image, {double? height, bool shiftContent = true}) async {
     final rowHeight = height ?? _defaultImageRowHeight;
 
-    // Create the new image row
-    final newImageRow = ImageRow(
-      startY: yPosition,
-      height: rowHeight,
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-    );
-
-    // Shift all existing image rows that are below this position
-    final updatedImageRows = <ImageRow>[];
-    for (final imageRow in _imageRows) {
-      if (imageRow.startY >= yPosition) {
-        updatedImageRows.add(imageRow.moveBy(rowHeight));
-      } else {
-        updatedImageRows.add(imageRow);
+    try {
+      // Convert ImageProvider to bytes
+      final imageBytes = await _imageProviderToBytes(image);
+      if (imageBytes == null) {
+        throw Exception('Failed to load image from ImageProvider');
       }
-    }
 
-    // Shift all existing free drawing spaces that are below this position
-    final updatedSpaces = <FreeDrawingSpace>[];
-    for (final space in _freeDrawingSpaces) {
-      if (space.startY >= yPosition) {
-        updatedSpaces.add(space.moveBy(rowHeight));
+      // Create the new image row with the image bytes
+      final newImageRow = ImageRow(
+        startY: yPosition,
+        height: rowHeight,
+        imageBytes: imageBytes,
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+      );
+
+      if (shiftContent) {
+        // Shift all existing image rows that are below this position
+        final updatedImageRows = <ImageRow>[];
+        for (final imageRow in _imageRows) {
+          if (imageRow.startY >= yPosition) {
+            updatedImageRows.add(imageRow.moveBy(rowHeight));
+          } else {
+            updatedImageRows.add(imageRow);
+          }
+        }
+
+        // Shift all existing free drawing spaces that are below this position
+        final updatedSpaces = <FreeDrawingSpace>[];
+        for (final space in _freeDrawingSpaces) {
+          if (space.startY >= yPosition) {
+            updatedSpaces.add(space.moveBy(rowHeight));
+          } else {
+            updatedSpaces.add(space);
+          }
+        }
+
+        // Add the new image row and sort by startY
+        updatedImageRows.add(newImageRow);
+        updatedImageRows.sort((a, b) => a.startY.compareTo(b.startY));
+
+        // Update the lists
+        _imageRows.clear();
+        _imageRows.addAll(updatedImageRows);
+        _freeDrawingSpaces.clear();
+        _freeDrawingSpaces.addAll(updatedSpaces);
+
+        // Shift all sketch content that is below this position
+        _shiftSketchContentDown(yPosition, rowHeight);
       } else {
-        updatedSpaces.add(space);
+        // Just add the image row without shifting anything
+        _imageRows.add(newImageRow);
+        _imageRows.sort((a, b) => a.startY.compareTo(b.startY));
       }
+
+      // Extend canvas to accommodate the new image row
+      _checkAndExtendCanvas();
+
+      // Load the image asynchronously for rendering (fire and forget)
+      if (newImageRow.id != null && newImageRow.imageBytes != null) {
+        loadImageForRow(newImageRow.id!, newImageRow.imageBytes!).ignore();
+      }
+
+      // Notify listeners
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Failed to insert image row: $e');
+      rethrow; // Re-throw so calling code can handle the error
     }
-
-    // Add the new image row and sort by startY
-    updatedImageRows.add(newImageRow);
-    updatedImageRows.sort((a, b) => a.startY.compareTo(b.startY));
-
-    // Update the lists
-    _imageRows.clear();
-    _imageRows.addAll(updatedImageRows);
-    _freeDrawingSpaces.clear();
-    _freeDrawingSpaces.addAll(updatedSpaces);
-
-    // Shift all sketch content that is below this position
-    _shiftSketchContentDown(yPosition, rowHeight);
-
-    // Extend canvas to accommodate the new image row
-    _checkAndExtendCanvas();
-
-    // Notify listeners
-    notifyListeners();
   }
 
   /// Inserts an image row with byte data above the specified Y position.
-  void insertImageRowWithBytes(double yPosition, List<int> imageBytes, {double? height}) {
+  void insertImageRowWithBytes(double yPosition, List<int> imageBytes, {double? height, bool shiftContent = true}) {
     final rowHeight = height ?? _defaultImageRowHeight;
 
     // Create the new image row
@@ -598,45 +622,51 @@ class LineByLineNotifier extends ScribbleNotifier {
       id: DateTime.now().millisecondsSinceEpoch.toString(),
     );
 
-    // Shift all existing image rows that are below this position
-    final updatedImageRows = <ImageRow>[];
-    for (final imageRow in _imageRows) {
-      if (imageRow.startY >= yPosition) {
-        updatedImageRows.add(imageRow.moveBy(rowHeight));
-      } else {
-        updatedImageRows.add(imageRow);
+    if (shiftContent) {
+      // Shift all existing image rows that are below this position
+      final updatedImageRows = <ImageRow>[];
+      for (final imageRow in _imageRows) {
+        if (imageRow.startY >= yPosition) {
+          updatedImageRows.add(imageRow.moveBy(rowHeight));
+        } else {
+          updatedImageRows.add(imageRow);
+        }
       }
-    }
 
-    // Shift all existing free drawing spaces that are below this position
-    final updatedSpaces = <FreeDrawingSpace>[];
-    for (final space in _freeDrawingSpaces) {
-      if (space.startY >= yPosition) {
-        updatedSpaces.add(space.moveBy(rowHeight));
-      } else {
-        updatedSpaces.add(space);
+      // Shift all existing free drawing spaces that are below this position
+      final updatedSpaces = <FreeDrawingSpace>[];
+      for (final space in _freeDrawingSpaces) {
+        if (space.startY >= yPosition) {
+          updatedSpaces.add(space.moveBy(rowHeight));
+        } else {
+          updatedSpaces.add(space);
+        }
       }
+
+      // Add the new image row and sort by startY
+      updatedImageRows.add(newImageRow);
+      updatedImageRows.sort((a, b) => a.startY.compareTo(b.startY));
+
+      // Update the lists
+      _imageRows.clear();
+      _imageRows.addAll(updatedImageRows);
+      _freeDrawingSpaces.clear();
+      _freeDrawingSpaces.addAll(updatedSpaces);
+
+      // Shift all sketch content that is below this position
+      _shiftSketchContentDown(yPosition, rowHeight);
+    } else {
+      // Just add the image row without shifting anything
+      _imageRows.add(newImageRow);
+      _imageRows.sort((a, b) => a.startY.compareTo(b.startY));
     }
-
-    // Add the new image row and sort by startY
-    updatedImageRows.add(newImageRow);
-    updatedImageRows.sort((a, b) => a.startY.compareTo(b.startY));
-
-    // Update the lists
-    _imageRows.clear();
-    _imageRows.addAll(updatedImageRows);
-    _freeDrawingSpaces.clear();
-    _freeDrawingSpaces.addAll(updatedSpaces);
-
-    // Shift all sketch content that is below this position
-    _shiftSketchContentDown(yPosition, rowHeight);
 
     // Extend canvas to accommodate the new image row
     _checkAndExtendCanvas();
 
-    // Load the image asynchronously
+    // Load the image asynchronously (fire and forget)
     if (newImageRow.id != null && newImageRow.imageBytes != null) {
-      loadImageForRow(newImageRow.id!, newImageRow.imageBytes!);
+      loadImageForRow(newImageRow.id!, newImageRow.imageBytes!).ignore();
     }
 
     // Notify listeners
@@ -766,6 +796,47 @@ class LineByLineNotifier extends ScribbleNotifier {
       }
     }
     await Future.wait(futures);
+  }
+
+  /// Converts an ImageProvider to bytes for storage.
+  Future<Uint8List?> _imageProviderToBytes(ImageProvider imageProvider) async {
+    try {
+      // Handle different ImageProvider types
+      if (imageProvider is MemoryImage) {
+        // MemoryImage already has bytes
+        return imageProvider.bytes;
+      }
+      
+      // For other ImageProvider types, load the image and encode it
+      final ImageStream stream = imageProvider.resolve(const ImageConfiguration());
+      final Completer<Uint8List?> completer = Completer<Uint8List?>();
+      
+      late ImageStreamListener listener;
+      listener = ImageStreamListener((ImageInfo info, bool synchronousCall) {
+        stream.removeListener(listener);
+        
+        // Convert ui.Image to bytes
+        info.image.toByteData(format: ui.ImageByteFormat.png).then((byteData) {
+          if (byteData != null) {
+            completer.complete(Uint8List.fromList(byteData.buffer.asUint8List()));
+          } else {
+            completer.complete(null);
+          }
+        }).catchError((Object error) {
+          completer.completeError(error);
+        });
+      }, onError: (Object error, StackTrace? stackTrace) {
+        stream.removeListener(listener);
+        completer.completeError(error);
+      });
+      
+      stream.addListener(listener);
+      
+      return await completer.future;
+    } catch (e) {
+      debugPrint('Failed to convert ImageProvider to bytes: $e');
+      return null;
+    }
   }
 
   // Row Highlighting Methods
