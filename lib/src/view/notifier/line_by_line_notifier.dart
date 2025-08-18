@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:scribble/scribble.dart';
@@ -85,6 +86,9 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// List of image rows.
   final List<ImageRow> _imageRows;
 
+  /// Map of loaded ui.Image objects keyed by image row ID.
+  final Map<String, ui.Image> _loadedImages = <String, ui.Image>{};
+
   /// Set of highlighted row indices.
   final Set<int> _highlightedRows = <int>{};
 
@@ -97,6 +101,9 @@ class LineByLineNotifier extends ScribbleNotifier {
 
   /// Gets an immutable list of image rows.
   List<ImageRow> get imageRows => List.unmodifiable(_imageRows);
+
+  /// Gets an immutable map of loaded images.
+  Map<String, ui.Image> get loadedImages => Map.unmodifiable(_loadedImages);
 
   /// Gets an immutable set of highlighted row indices.
   Set<int> get highlightedRows => Set.unmodifiable(_highlightedRows);
@@ -627,6 +634,11 @@ class LineByLineNotifier extends ScribbleNotifier {
     // Extend canvas to accommodate the new image row
     _checkAndExtendCanvas();
 
+    // Load the image asynchronously
+    if (newImageRow.id != null && newImageRow.imageBytes != null) {
+      loadImageForRow(newImageRow.id!, newImageRow.imageBytes!);
+    }
+
     // Notify listeners
     notifyListeners();
   }
@@ -642,6 +654,12 @@ class LineByLineNotifier extends ScribbleNotifier {
 
     final rowHeight = imageRowToDelete.height;
     final rowStartY = imageRowToDelete.startY;
+    final rowId = imageRowToDelete.id;
+
+    // Remove the loaded image from memory
+    if (rowId != null) {
+      unloadImageForRow(rowId);
+    }
 
     // Remove the image row
     _imageRows.remove(imageRowToDelete);
@@ -708,7 +726,46 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Clears all image rows.
   void clearAllImageRows() {
     _imageRows.clear();
+    _clearAllLoadedImages();
     notifyListeners();
+  }
+
+  /// Loads a ui.Image for the specified image row ID.
+  Future<void> loadImageForRow(String imageRowId, Uint8List imageBytes) async {
+    try {
+      final codec = await ui.instantiateImageCodec(imageBytes);
+      final frame = await codec.getNextFrame();
+      _loadedImages[imageRowId] = frame.image;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Failed to load image for row $imageRowId: $e');
+    }
+  }
+
+  /// Removes a loaded image from memory.
+  void unloadImageForRow(String imageRowId) {
+    final image = _loadedImages.remove(imageRowId);
+    image?.dispose();
+    notifyListeners();
+  }
+
+  /// Clears all loaded images from memory.
+  void _clearAllLoadedImages() {
+    for (final image in _loadedImages.values) {
+      image.dispose();
+    }
+    _loadedImages.clear();
+  }
+
+  /// Loads all images for existing image rows.
+  Future<void> loadAllImages() async {
+    final futures = <Future<void>>[];
+    for (final imageRow in _imageRows) {
+      if (imageRow.id != null && imageRow.imageBytes != null) {
+        futures.add(loadImageForRow(imageRow.id!, imageRow.imageBytes!));
+      }
+    }
+    await Future.wait(futures);
   }
 
   // Row Highlighting Methods

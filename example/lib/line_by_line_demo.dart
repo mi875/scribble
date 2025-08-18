@@ -1,6 +1,8 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:scribble/scribble.dart';
+import 'services/image_service.dart';
 
 /// A demo page for the simplified line-by-line canvas widget.
 class LineByLineDemo extends StatefulWidget {
@@ -53,47 +55,83 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
     super.dispose();
   }
 
-  /// Creates sample image data for demonstration.
-  Uint8List _createSampleImageData(int width, int height, Color color) {
-    // Create a simple colored rectangle as sample image data
-    // In a real app, you'd use image_picker or file_picker here
-    final bytes = <int>[];
-
-    // Simple BMP header (not a real image, just for demonstration)
-    // In practice, you'd load real image files
-    for (int i = 0; i < width * height * 4; i += 4) {
-      bytes.addAll([color.blue, color.green, color.red, color.alpha]);
+  /// Picks an image from gallery and inserts it as an image row.
+  Future<void> _pickImageFromGallery() async {
+    try {
+      final imageBytes = await ImageService.pickImageFromGallery();
+      if (imageBytes != null) {
+        await _insertImageRow(imageBytes);
+      }
+    } catch (e) {
+      _showErrorMessage('Failed to pick image from gallery: $e');
     }
-
-    return Uint8List.fromList(bytes);
   }
 
-  /// Inserts a sample image row at the current position.
-  void _insertSampleImageRow(Color imageColor) {
+  /// Picks an image from camera and inserts it as an image row.
+  Future<void> _pickImageFromCamera() async {
     try {
-      final imageBytes = _createSampleImageData(200, 100, imageColor);
+      final imageBytes = await ImageService.pickImageFromCamera();
+      if (imageBytes != null) {
+        await _insertImageRow(imageBytes);
+      }
+    } catch (e) {
+      _showErrorMessage('Failed to pick image from camera: $e');
+    }
+  }
+
+  /// Inserts an image row with the provided bytes.
+  Future<void> _insertImageRow(Uint8List imageBytes) async {
+    try {
+      // Validate the image
+      if (!ImageService.isValidImage(imageBytes)) {
+        _showErrorMessage('Invalid image format');
+        return;
+      }
+
+      // Get image dimensions to calculate appropriate height
+      final dimensions = await ImageService.getImageDimensions(imageBytes);
+      
+      if (!mounted) return; // Check if widget is still mounted
+      double height = selectedImageHeight;
+      
+      if (dimensions != null) {
+        // Adjust height based on aspect ratio if needed
+        const maxWidth = 300.0; // Approximate canvas width minus margins
+        final scaledHeight = maxWidth / dimensions.aspectRatio;
+        height = scaledHeight.clamp(48.0, 300.0);
+      }
+
       notifier.insertImageRowWithBytes(
         selectedInsertPosition,
         imageBytes,
-        height: selectedImageHeight,
+        height: height,
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              'Image row inserted at Y: ${selectedInsertPosition.round()}'),
+            'Image row inserted at Y: ${selectedInsertPosition.round()}'
+            '${dimensions != null ? ' ($dimensions)' : ''}',
+          ),
           duration: const Duration(seconds: 2),
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error inserting image row: $e'),
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      _showErrorMessage('Error inserting image row: $e');
     }
   }
+
+  /// Shows an error message to the user.
+  void _showErrorMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 3),
+        backgroundColor: Colors.red.shade600,
+      ),
+    );
+  }
+
 
   /// Deletes an image row at the current position.
   void _deleteImageRowAtPosition() {
@@ -429,42 +467,38 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
 
                           const SizedBox(height: 12),
 
-                          // Insert Sample Images
-                          Text('Insert Sample Image:',
+                          // Insert Images
+                          Text('Insert Image:',
                               style: const TextStyle(
                                   fontSize: 12, fontWeight: FontWeight.w500)),
                           const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 6,
-                            children: [
-                              Colors.red.shade300,
-                              Colors.blue.shade300,
-                              Colors.green.shade300,
-                              Colors.orange.shade300,
-                              Colors.purple.shade300,
-                            ].map((color) {
-                              return GestureDetector(
-                                onTap: () => _insertSampleImageRow(color),
-                                child: Container(
-                                  width: 32,
-                                  height: 20,
-                                  decoration: BoxDecoration(
-                                    color: color,
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(
-                                      color: Colors.grey.shade400,
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: const Icon(
-                                    Icons.image,
-                                    size: 12,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
+                          
+                          // Gallery Button
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _pickImageFromGallery,
+                              icon: const Icon(Icons.photo_library, size: 16),
+                              label: const Text('From Gallery'),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                              ),
+                            ),
+                          ),
+                          
+                          const SizedBox(height: 8),
+                          
+                          // Camera Button
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _pickImageFromCamera,
+                              icon: const Icon(Icons.photo_camera, size: 16),
+                              label: const Text('From Camera'),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                              ),
+                            ),
                           ),
 
                           const SizedBox(height: 12),

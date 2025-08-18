@@ -725,15 +725,26 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
 
                           // Image rows painter
                           CustomPaint(
-                            painter: ImageRowPainter(
-                              imageRows: widget.notifier.imageRows,
-                              canvasWidth: widget.canvasWidth,
-                              leftMargin: 60.0,
-                              rightMargin: 20.0,
-                              borderColor: theme.rowLineColor.withOpacity(0.5),
-                              borderWidth: 1.0,
-                              showBorders: true,
-                            ),
+                            painter: widget.notifier.loadedImages.isNotEmpty
+                                ? AsyncImageRowPainter(
+                                    imageRows: widget.notifier.imageRows,
+                                    canvasWidth: widget.canvasWidth,
+                                    loadedImages: widget.notifier.loadedImages,
+                                    leftMargin: 60.0,
+                                    rightMargin: 20.0,
+                                    borderColor: theme.rowLineColor.withOpacity(0.5),
+                                    borderWidth: 1.0,
+                                    showBorders: true,
+                                  )
+                                : ImageRowPainter(
+                                    imageRows: widget.notifier.imageRows,
+                                    canvasWidth: widget.canvasWidth,
+                                    leftMargin: 60.0,
+                                    rightMargin: 20.0,
+                                    borderColor: theme.rowLineColor.withOpacity(0.5),
+                                    borderWidth: 1.0,
+                                    showBorders: true,
+                                  ),
                           ),
 
                           // Main drawing canvas
