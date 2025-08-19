@@ -31,6 +31,9 @@ mixin _$ScribbleState {
   /// The current width of the pen
   double get selectedWidth;
 
+  /// The current width of the eraser
+  double get selectedEraserWidth;
+
   /// {@template view.state.scribble_state.scale_factor}
   /// How much the widget is scaled at the moment.
   ///
@@ -69,6 +72,8 @@ mixin _$ScribbleState {
                 other.pointerPosition == pointerPosition) &&
             (identical(other.selectedWidth, selectedWidth) ||
                 other.selectedWidth == selectedWidth) &&
+            (identical(other.selectedEraserWidth, selectedEraserWidth) ||
+                other.selectedEraserWidth == selectedEraserWidth) &&
             (identical(other.scaleFactor, scaleFactor) ||
                 other.scaleFactor == scaleFactor) &&
             (identical(
@@ -84,12 +89,13 @@ mixin _$ScribbleState {
       const DeepCollectionEquality().hash(activePointerIds),
       pointerPosition,
       selectedWidth,
+      selectedEraserWidth,
       scaleFactor,
       simplificationTolerance);
 
   @override
   String toString() {
-    return 'ScribbleState(sketch: $sketch, allowedPointersMode: $allowedPointersMode, activePointerIds: $activePointerIds, pointerPosition: $pointerPosition, selectedWidth: $selectedWidth, scaleFactor: $scaleFactor, simplificationTolerance: $simplificationTolerance)';
+    return 'ScribbleState(sketch: $sketch, allowedPointersMode: $allowedPointersMode, activePointerIds: $activePointerIds, pointerPosition: $pointerPosition, selectedWidth: $selectedWidth, selectedEraserWidth: $selectedEraserWidth, scaleFactor: $scaleFactor, simplificationTolerance: $simplificationTolerance)';
   }
 }
 
@@ -105,6 +111,7 @@ abstract mixin class $ScribbleStateCopyWith<$Res> {
       List<int> activePointerIds,
       Point? pointerPosition,
       double selectedWidth,
+      double selectedEraserWidth,
       double scaleFactor,
       double simplificationTolerance});
 
@@ -130,6 +137,7 @@ class _$ScribbleStateCopyWithImpl<$Res>
     Object? activePointerIds = null,
     Object? pointerPosition = freezed,
     Object? selectedWidth = null,
+    Object? selectedEraserWidth = null,
     Object? scaleFactor = null,
     Object? simplificationTolerance = null,
   }) {
@@ -153,6 +161,10 @@ class _$ScribbleStateCopyWithImpl<$Res>
       selectedWidth: null == selectedWidth
           ? _self.selectedWidth
           : selectedWidth // ignore: cast_nullable_to_non_nullable
+              as double,
+      selectedEraserWidth: null == selectedEraserWidth
+          ? _self.selectedEraserWidth
+          : selectedEraserWidth // ignore: cast_nullable_to_non_nullable
               as double,
       scaleFactor: null == scaleFactor
           ? _self.scaleFactor
@@ -298,6 +310,7 @@ extension ScribbleStatePatterns on ScribbleState {
             Point? pointerPosition,
             int selectedColor,
             double selectedWidth,
+            double selectedEraserWidth,
             double scaleFactor,
             double simplificationTolerance)?
         drawing,
@@ -307,6 +320,7 @@ extension ScribbleStatePatterns on ScribbleState {
             List<int> activePointerIds,
             Point? pointerPosition,
             double selectedWidth,
+            double selectedEraserWidth,
             double scaleFactor,
             double simplificationTolerance)?
         erasing,
@@ -323,6 +337,7 @@ extension ScribbleStatePatterns on ScribbleState {
             _that.pointerPosition,
             _that.selectedColor,
             _that.selectedWidth,
+            _that.selectedEraserWidth,
             _that.scaleFactor,
             _that.simplificationTolerance);
       case Erasing() when erasing != null:
@@ -332,6 +347,7 @@ extension ScribbleStatePatterns on ScribbleState {
             _that.activePointerIds,
             _that.pointerPosition,
             _that.selectedWidth,
+            _that.selectedEraserWidth,
             _that.scaleFactor,
             _that.simplificationTolerance);
       case _:
@@ -362,6 +378,7 @@ extension ScribbleStatePatterns on ScribbleState {
             Point? pointerPosition,
             int selectedColor,
             double selectedWidth,
+            double selectedEraserWidth,
             double scaleFactor,
             double simplificationTolerance)
         drawing,
@@ -371,6 +388,7 @@ extension ScribbleStatePatterns on ScribbleState {
             List<int> activePointerIds,
             Point? pointerPosition,
             double selectedWidth,
+            double selectedEraserWidth,
             double scaleFactor,
             double simplificationTolerance)
         erasing,
@@ -386,6 +404,7 @@ extension ScribbleStatePatterns on ScribbleState {
             _that.pointerPosition,
             _that.selectedColor,
             _that.selectedWidth,
+            _that.selectedEraserWidth,
             _that.scaleFactor,
             _that.simplificationTolerance);
       case Erasing():
@@ -395,6 +414,7 @@ extension ScribbleStatePatterns on ScribbleState {
             _that.activePointerIds,
             _that.pointerPosition,
             _that.selectedWidth,
+            _that.selectedEraserWidth,
             _that.scaleFactor,
             _that.simplificationTolerance);
     }
@@ -422,6 +442,7 @@ extension ScribbleStatePatterns on ScribbleState {
             Point? pointerPosition,
             int selectedColor,
             double selectedWidth,
+            double selectedEraserWidth,
             double scaleFactor,
             double simplificationTolerance)?
         drawing,
@@ -431,6 +452,7 @@ extension ScribbleStatePatterns on ScribbleState {
             List<int> activePointerIds,
             Point? pointerPosition,
             double selectedWidth,
+            double selectedEraserWidth,
             double scaleFactor,
             double simplificationTolerance)?
         erasing,
@@ -446,6 +468,7 @@ extension ScribbleStatePatterns on ScribbleState {
             _that.pointerPosition,
             _that.selectedColor,
             _that.selectedWidth,
+            _that.selectedEraserWidth,
             _that.scaleFactor,
             _that.simplificationTolerance);
       case Erasing() when erasing != null:
@@ -455,6 +478,7 @@ extension ScribbleStatePatterns on ScribbleState {
             _that.activePointerIds,
             _that.pointerPosition,
             _that.selectedWidth,
+            _that.selectedEraserWidth,
             _that.scaleFactor,
             _that.simplificationTolerance);
       case _:
@@ -474,6 +498,7 @@ class Drawing extends ScribbleState {
       this.pointerPosition,
       this.selectedColor = 0xFF000000,
       this.selectedWidth = 5,
+      this.selectedEraserWidth = 10,
       this.scaleFactor = 1,
       this.simplificationTolerance = 0})
       : _activePointerIds = activePointerIds,
@@ -519,6 +544,11 @@ class Drawing extends ScribbleState {
   @override
   @JsonKey()
   final double selectedWidth;
+
+  /// The current width of the eraser
+  @override
+  @JsonKey()
+  final double selectedEraserWidth;
 
   /// {@template view.state.scribble_state.scale_factor}
   /// How much the widget is scaled at the moment.
@@ -566,6 +596,8 @@ class Drawing extends ScribbleState {
                 other.selectedColor == selectedColor) &&
             (identical(other.selectedWidth, selectedWidth) ||
                 other.selectedWidth == selectedWidth) &&
+            (identical(other.selectedEraserWidth, selectedEraserWidth) ||
+                other.selectedEraserWidth == selectedEraserWidth) &&
             (identical(other.scaleFactor, scaleFactor) ||
                 other.scaleFactor == scaleFactor) &&
             (identical(
@@ -583,12 +615,13 @@ class Drawing extends ScribbleState {
       pointerPosition,
       selectedColor,
       selectedWidth,
+      selectedEraserWidth,
       scaleFactor,
       simplificationTolerance);
 
   @override
   String toString() {
-    return 'ScribbleState.drawing(sketch: $sketch, activeLine: $activeLine, allowedPointersMode: $allowedPointersMode, activePointerIds: $activePointerIds, pointerPosition: $pointerPosition, selectedColor: $selectedColor, selectedWidth: $selectedWidth, scaleFactor: $scaleFactor, simplificationTolerance: $simplificationTolerance)';
+    return 'ScribbleState.drawing(sketch: $sketch, activeLine: $activeLine, allowedPointersMode: $allowedPointersMode, activePointerIds: $activePointerIds, pointerPosition: $pointerPosition, selectedColor: $selectedColor, selectedWidth: $selectedWidth, selectedEraserWidth: $selectedEraserWidth, scaleFactor: $scaleFactor, simplificationTolerance: $simplificationTolerance)';
   }
 }
 
@@ -607,6 +640,7 @@ abstract mixin class $DrawingCopyWith<$Res>
       Point? pointerPosition,
       int selectedColor,
       double selectedWidth,
+      double selectedEraserWidth,
       double scaleFactor,
       double simplificationTolerance});
 
@@ -636,6 +670,7 @@ class _$DrawingCopyWithImpl<$Res> implements $DrawingCopyWith<$Res> {
     Object? pointerPosition = freezed,
     Object? selectedColor = null,
     Object? selectedWidth = null,
+    Object? selectedEraserWidth = null,
     Object? scaleFactor = null,
     Object? simplificationTolerance = null,
   }) {
@@ -667,6 +702,10 @@ class _$DrawingCopyWithImpl<$Res> implements $DrawingCopyWith<$Res> {
       selectedWidth: null == selectedWidth
           ? _self.selectedWidth
           : selectedWidth // ignore: cast_nullable_to_non_nullable
+              as double,
+      selectedEraserWidth: null == selectedEraserWidth
+          ? _self.selectedEraserWidth
+          : selectedEraserWidth // ignore: cast_nullable_to_non_nullable
               as double,
       scaleFactor: null == scaleFactor
           ? _self.scaleFactor
@@ -727,6 +766,7 @@ class Erasing extends ScribbleState {
       final List<int> activePointerIds = const [],
       this.pointerPosition,
       this.selectedWidth = 5,
+      this.selectedEraserWidth = 10,
       this.scaleFactor = 1,
       this.simplificationTolerance = 0})
       : _activePointerIds = activePointerIds,
@@ -766,6 +806,11 @@ class Erasing extends ScribbleState {
   @JsonKey()
   final double selectedWidth;
 
+  /// The current width of the eraser
+  @override
+  @JsonKey()
+  final double selectedEraserWidth;
+
   /// How much the widget is scaled at the moment.
   ///
   /// Can be used if zoom functionality is needed
@@ -804,6 +849,8 @@ class Erasing extends ScribbleState {
                 other.pointerPosition == pointerPosition) &&
             (identical(other.selectedWidth, selectedWidth) ||
                 other.selectedWidth == selectedWidth) &&
+            (identical(other.selectedEraserWidth, selectedEraserWidth) ||
+                other.selectedEraserWidth == selectedEraserWidth) &&
             (identical(other.scaleFactor, scaleFactor) ||
                 other.scaleFactor == scaleFactor) &&
             (identical(
@@ -819,12 +866,13 @@ class Erasing extends ScribbleState {
       const DeepCollectionEquality().hash(_activePointerIds),
       pointerPosition,
       selectedWidth,
+      selectedEraserWidth,
       scaleFactor,
       simplificationTolerance);
 
   @override
   String toString() {
-    return 'ScribbleState.erasing(sketch: $sketch, allowedPointersMode: $allowedPointersMode, activePointerIds: $activePointerIds, pointerPosition: $pointerPosition, selectedWidth: $selectedWidth, scaleFactor: $scaleFactor, simplificationTolerance: $simplificationTolerance)';
+    return 'ScribbleState.erasing(sketch: $sketch, allowedPointersMode: $allowedPointersMode, activePointerIds: $activePointerIds, pointerPosition: $pointerPosition, selectedWidth: $selectedWidth, selectedEraserWidth: $selectedEraserWidth, scaleFactor: $scaleFactor, simplificationTolerance: $simplificationTolerance)';
   }
 }
 
@@ -841,6 +889,7 @@ abstract mixin class $ErasingCopyWith<$Res>
       List<int> activePointerIds,
       Point? pointerPosition,
       double selectedWidth,
+      double selectedEraserWidth,
       double scaleFactor,
       double simplificationTolerance});
 
@@ -867,6 +916,7 @@ class _$ErasingCopyWithImpl<$Res> implements $ErasingCopyWith<$Res> {
     Object? activePointerIds = null,
     Object? pointerPosition = freezed,
     Object? selectedWidth = null,
+    Object? selectedEraserWidth = null,
     Object? scaleFactor = null,
     Object? simplificationTolerance = null,
   }) {
@@ -890,6 +940,10 @@ class _$ErasingCopyWithImpl<$Res> implements $ErasingCopyWith<$Res> {
       selectedWidth: null == selectedWidth
           ? _self.selectedWidth
           : selectedWidth // ignore: cast_nullable_to_non_nullable
+              as double,
+      selectedEraserWidth: null == selectedEraserWidth
+          ? _self.selectedEraserWidth
+          : selectedEraserWidth // ignore: cast_nullable_to_non_nullable
               as double,
       scaleFactor: null == scaleFactor
           ? _self.scaleFactor

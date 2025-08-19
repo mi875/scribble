@@ -102,7 +102,10 @@ class ScribbleEditingPainter extends CustomPainter with SketchLinePathMixin {
         ..strokeWidth = 1;
       canvas.drawCircle(
         state.pointerPosition!.asOffset,
-        state.selectedWidth / state.scaleFactor,
+        state.map(
+          drawing: (s) => s.selectedWidth / state.scaleFactor,
+          erasing: (s) => s.selectedEraserWidth / state.scaleFactor,
+        ),
         paint,
       );
     }

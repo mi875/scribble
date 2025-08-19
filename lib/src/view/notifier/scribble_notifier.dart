@@ -92,6 +92,7 @@ class ScribbleNotifier extends ScribbleNotifierBase
     /// How many states you want stored in the undo history, 30 by default.
     int maxHistoryLength = 30,
     this.widths = const [5, 10, 15],
+    this.eraserWidths = const [10, 15, 20],
     this.pressureCurve = Curves.linear,
     this.simplifier = const VisvalingamSimplifier(),
 
@@ -107,6 +108,7 @@ class ScribbleNotifier extends ScribbleNotifierBase
               null => const Sketch(lines: []),
             },
             selectedWidth: widths[0],
+            selectedEraserWidth: eraserWidths[0],
             allowedPointersMode: allowedPointersMode,
             simplificationTolerance: simplificationTolerance,
           ),
@@ -119,6 +121,12 @@ class ScribbleNotifier extends ScribbleNotifierBase
   ///
   /// The first entry in this list will be the starting width.
   final List<double> widths;
+
+  /// The supported eraser widths, mainly useful for rendering UI, you can still set
+  /// the eraser width to any arbitrary value from code.
+  ///
+  /// The first entry in this list will be the starting eraser width.
+  final List<double> eraserWidths;
 
   /// The curve that's used to map pen pressure to the pressure value when
   /// recording, by default it's linear.
@@ -195,14 +203,39 @@ class ScribbleNotifier extends ScribbleNotifierBase
     );
   }
 
+  /// Sets the width of the eraser
+  void setEraserWidth(double eraserWidth) {
+    temporaryValue = value.copyWith(
+      selectedEraserWidth: eraserWidth,
+    );
+  }
+
   /// Switches to eraser mode
   void setEraser() {
     temporaryValue = ScribbleState.erasing(
       sketch: value.sketch,
       selectedWidth: value.selectedWidth,
+      selectedEraserWidth: value.selectedEraserWidth,
       scaleFactor: value.scaleFactor,
       allowedPointersMode: value.allowedPointersMode,
       activePointerIds: value.activePointerIds,
+    );
+  }
+
+  /// Switches to drawing/pen mode
+  void setDrawing() {
+    temporaryValue = ScribbleState.drawing(
+      sketch: value.sketch,
+      selectedColor: switch (value) {
+        Drawing d => d.selectedColor,
+        Erasing _ => 0xFF000000, // Default to black if coming from erasing
+      },
+      selectedWidth: value.selectedWidth,
+      selectedEraserWidth: value.selectedEraserWidth,
+      scaleFactor: value.scaleFactor,
+      allowedPointersMode: value.allowedPointersMode,
+      activePointerIds: value.activePointerIds,
+      simplificationTolerance: value.simplificationTolerance,
     );
   }
 
@@ -232,15 +265,21 @@ class ScribbleNotifier extends ScribbleNotifierBase
         sketch: s.sketch,
         selectedColor: color.value,
         selectedWidth: s.selectedWidth,
+        selectedEraserWidth: s.selectedEraserWidth,
         allowedPointersMode: s.allowedPointersMode,
+        scaleFactor: s.scaleFactor,
+        activePointerIds: s.activePointerIds,
+        simplificationTolerance: s.simplificationTolerance,
       ),
       erasing: (s) => ScribbleState.drawing(
         sketch: s.sketch,
         selectedColor: color.value,
         selectedWidth: s.selectedWidth,
+        selectedEraserWidth: s.selectedEraserWidth,
         allowedPointersMode: s.allowedPointersMode,
-        scaleFactor: value.scaleFactor,
-        activePointerIds: value.activePointerIds,
+        scaleFactor: s.scaleFactor,
+        activePointerIds: s.activePointerIds,
+        simplificationTolerance: s.simplificationTolerance,
       ),
     );
   }
@@ -418,7 +457,7 @@ class ScribbleNotifier extends ScribbleNotifierBase
             (l) => l.points.every(
               (p) =>
                   (event.localPosition - p.asOffset).distance >
-                  l.width + value.selectedWidth,
+                  l.width + value.selectedEraserWidth,
             ),
           )
           .toList(),

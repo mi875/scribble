@@ -53,6 +53,9 @@ sealed class ScribbleState with _$ScribbleState {
     /// The current width of the pen
     @Default(5) double selectedWidth,
 
+    /// The current width of the eraser
+    @Default(10) double selectedEraserWidth,
+
     /// {@template view.state.scribble_state.scale_factor}
     /// How much the widget is scaled at the moment.
     ///
@@ -88,6 +91,9 @@ sealed class ScribbleState with _$ScribbleState {
 
     /// The current width of the pen
     @Default(5) double selectedWidth,
+
+    /// The current width of the eraser
+    @Default(10) double selectedEraserWidth,
 
     /// How much the widget is scaled at the moment.
     ///

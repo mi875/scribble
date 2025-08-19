@@ -88,7 +88,7 @@ class _HomePageState extends State<HomePage> {
                           children: [
                             _buildColorToolbar(context),
                             const VerticalDivider(width: 32),
-                            _buildStrokeToolbar(context),
+                            _buildWidthToolbar(context),
                           ],
                         ),
                         Row(
@@ -268,19 +268,41 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildStrokeToolbar(BuildContext context) {
+  Widget _buildWidthToolbar(BuildContext context) {
     return ValueListenableBuilder<ScribbleState>(
       valueListenable: notifier,
-      builder: (context, state, _) => Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.start,
+      builder: (context, state, _) => Column(
         children: [
-          for (final w in notifier.widths)
-            _buildStrokeButton(
-              context,
-              strokeWidth: w,
-              state: state,
+          // Show appropriate label based on mode
+          Text(
+            state.map(
+              drawing: (_) => 'Pen Width',
+              erasing: (_) => 'Eraser Width',
             ),
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              // Show appropriate widths based on mode
+              ...state.map(
+                drawing: (_) => notifier.widths.map((w) => _buildStrokeButton(
+                      context,
+                      strokeWidth: w,
+                      state: state,
+                      isEraser: false,
+                    )),
+                erasing: (_) => notifier.eraserWidths.map((w) => _buildStrokeButton(
+                      context,
+                      strokeWidth: w,
+                      state: state,
+                      isEraser: true,
+                    )),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -290,29 +312,35 @@ class _HomePageState extends State<HomePage> {
     BuildContext context, {
     required double strokeWidth,
     required ScribbleState state,
+    required bool isEraser,
   }) {
-    final selected = state.selectedWidth == strokeWidth;
+    final selected = isEraser 
+        ? state.selectedEraserWidth == strokeWidth
+        : state.selectedWidth == strokeWidth;
     return Padding(
       padding: const EdgeInsets.all(4),
       child: Material(
         elevation: selected ? 4 : 0,
         shape: const CircleBorder(),
         child: InkWell(
-          onTap: () => notifier.setStrokeWidth(strokeWidth),
+          onTap: () => isEraser 
+              ? notifier.setEraserWidth(strokeWidth)
+              : notifier.setStrokeWidth(strokeWidth),
           customBorder: const CircleBorder(),
           child: AnimatedContainer(
             duration: kThemeAnimationDuration,
             width: strokeWidth * 2,
             height: strokeWidth * 2,
             decoration: BoxDecoration(
-                color: state.map(
-                  drawing: (s) => Color(s.selectedColor),
-                  erasing: (_) => Colors.transparent,
-                ),
-                border: state.map(
-                  drawing: (_) => null,
-                  erasing: (_) => Border.all(width: 1),
-                ),
+                color: isEraser 
+                    ? Colors.transparent
+                    : state.map(
+                        drawing: (s) => Color(s.selectedColor),
+                        erasing: (_) => Colors.transparent,
+                      ),
+                border: isEraser || state is Erasing
+                    ? Border.all(width: 1)
+                    : null,
                 borderRadius: BorderRadius.circular(50.0)),
           ),
         ),
@@ -331,6 +359,7 @@ class _HomePageState extends State<HomePage> {
         _buildColorButton(context, color: Colors.blue),
         _buildColorButton(context, color: Colors.yellow),
         _buildEraserButton(context),
+        _buildDrawingButton(context),
       ],
     );
   }
@@ -371,6 +400,18 @@ class _HomePageState extends State<HomePage> {
         isActive: value,
         onPressed: () => notifier.setEraser(),
         child: const Icon(Icons.cleaning_services),
+      ),
+    );
+  }
+
+  Widget _buildDrawingButton(BuildContext context) {
+    return ValueListenableBuilder(
+      valueListenable: notifier.select((value) => value is Drawing),
+      builder: (context, value, child) => ColorButton(
+        color: Colors.purple,
+        isActive: value,
+        onPressed: () => notifier.setDrawing(),
+        child: const Icon(Icons.edit, color: Colors.white),
       ),
     );
   }
