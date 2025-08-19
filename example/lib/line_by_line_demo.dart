@@ -18,6 +18,7 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
   // Control settings
   Color selectedColor = Colors.black;
   double selectedWidth = 1.0;
+  double selectedEraserWidth = 5.0;
   double rowLineSpacing = 64.0;
   bool sequentialMode = false;
 
@@ -33,7 +34,8 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
         allowedPointersMode: ScribblePointerMode.penOnly,
         rowLineSpacing: rowLineSpacing,
         initialCanvasHeight: 400,
-        widths: [1]);
+        widths: [1],
+        eraserWidths: [2, 5, 10]);
   }
 
   @override
@@ -398,6 +400,97 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
 
                   const SizedBox(height: 16),
 
+                  // Eraser Controls
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Eraser Controls',
+                              style: Theme.of(context).textTheme.titleSmall),
+                          const SizedBox(height: 8),
+                          
+                          // Mode Toggle Buttons
+                          ValueListenableBuilder(
+                            valueListenable: notifier,
+                            builder: (context, state, _) {
+                              final isErasing = state is Erasing;
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      onPressed: () => notifier.setDrawing(),
+                                      icon: const Icon(Icons.edit, size: 16),
+                                      label: const Text('Pen'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: !isErasing 
+                                            ? Theme.of(context).colorScheme.primary
+                                            : null,
+                                        foregroundColor: !isErasing 
+                                            ? Theme.of(context).colorScheme.onPrimary
+                                            : null,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      onPressed: () => notifier.setEraser(),
+                                      icon: const Icon(Icons.cleaning_services, size: 16),
+                                      label: const Text('Eraser'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: isErasing 
+                                            ? Theme.of(context).colorScheme.secondary
+                                            : null,
+                                        foregroundColor: isErasing 
+                                            ? Theme.of(context).colorScheme.onSecondary
+                                            : null,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+
+                          const SizedBox(height: 12),
+                          
+                          // Eraser Width Slider
+                          ValueListenableBuilder(
+                            valueListenable: notifier,
+                            builder: (context, state, _) {
+                              final isErasing = state is Erasing;
+                              return AnimatedOpacity(
+                                opacity: isErasing ? 1.0 : 0.5,
+                                duration: const Duration(milliseconds: 200),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Eraser Width: ${selectedEraserWidth.toStringAsFixed(1)}px',
+                                        style: const TextStyle(fontSize: 12)),
+                                    Slider(
+                                      value: selectedEraserWidth,
+                                      min: 2.0,
+                                      max: 20.0,
+                                      divisions: 18,
+                                      onChanged: (v) {
+                                        setState(() => selectedEraserWidth = v);
+                                        notifier.setEraserWidth(v);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
                   // Row Line Settings
                   Card(
                     child: Padding(
@@ -551,6 +644,7 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
               child: LineByLineCanvas(
                 notifier: notifier,
                 simulatePressure: false,
+                drawEraser: true,
                 showPaperShadow: true,
                 showPaperBorder: true,
                 canvasWidth: 700,

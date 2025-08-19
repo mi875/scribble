@@ -22,6 +22,9 @@ class LineByLineNotifier extends ScribbleNotifier {
     /// The supported widths for drawing.
     super.widths = const [5, 10, 15],
 
+    /// The supported eraser widths.
+    super.eraserWidths = const [10, 15, 20],
+
     /// The curve used to map pen pressure.
     super.pressureCurve = Curves.linear,
 
