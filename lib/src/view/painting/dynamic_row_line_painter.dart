@@ -173,6 +173,42 @@ class DynamicRowLinePainter extends CustomPainter {
     return ((y - topMargin) / lineSpacing).floor();
   }
 
+  /// Gets the visible line number for a given Y coordinate, counting only text lines.
+  /// Returns 0 if the Y coordinate is within an image row or before the first text line.
+  int _getVisibleLineNumberForY(double y) {
+    // Check if this Y coordinate is within an image row
+    if (_isLineInImageRow(y)) {
+      return 0; // Not a visible text line
+    }
+    
+    // Calculate the raw row index
+    final rowIndex = _getRowIndexForY(y);
+    if (rowIndex < 0) return 0;
+    
+    // Count how many visible text lines come before this row
+    int visibleLineCount = 0;
+    
+    // Iterate through all rows up to this row index
+    for (int i = 0; i <= rowIndex; i++) {
+      final rowY = topMargin + (i * lineSpacing);
+      
+      // Skip this row if it's within an image row
+      if (_isLineInImageRow(rowY)) {
+        continue;
+      }
+      
+      // This is a visible text line
+      visibleLineCount++;
+      
+      // If this is the row we're asking about, return the line number
+      if (i == rowIndex) {
+        return visibleLineCount;
+      }
+    }
+    
+    return visibleLineCount;
+  }
+
   /// Paints row highlights for highlighted rows.
   void _paintRowHighlights(Canvas canvas, double drawingLeft, double drawingRight) {
     if (highlightedRows.isEmpty) return;
@@ -228,11 +264,11 @@ class DynamicRowLinePainter extends CustomPainter {
 
   /// Calculates the opacity for a line based on proximity to content.
   double _calculateLineOpacity(double lineY, List<Offset> contentPoints) {
-    // Calculate which row this line corresponds to
-    final rowIndex = _getRowIndexForY(lineY);
+    // Calculate which visible line number this corresponds to (ignoring image rows)
+    final visibleLineNumber = _getVisibleLineNumberForY(lineY);
     
-    // Always show first two row lines at full opacity (matching line numbers)
-    if (rowIndex == 0 || rowIndex == 1) {
+    // Always show first two visible text lines at full opacity (matching line numbers)
+    if (visibleLineNumber == 1 || visibleLineNumber == 2) {
       return 1.0;
     }
     

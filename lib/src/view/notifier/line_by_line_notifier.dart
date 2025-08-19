@@ -292,15 +292,45 @@ class LineByLineNotifier extends ScribbleNotifier {
       return 0.0;
     }
 
-    // Calculate which line the content has reached
-    final contentLineIndex = getRowIndexForY(maxContentY);
+    // Calculate which visible line number the content has reached
+    final contentRowIndex = getRowIndexForY(maxContentY);
+    final contentVisibleLineNumber = _getVisibleLineNumberForRowIndex(contentRowIndex);
 
-    // Show line numbers progressively: if content reached line N, show numbers 1 through N+2
-    if (lineIndex <= contentLineIndex + 2) {
+    // Show line numbers progressively: if content reached visible line N, show numbers 1 through N+2
+    if (lineIndex <= contentVisibleLineNumber + 1) { // +1 because lineIndex is 0-based
       return 1.0;
     } else {
       return 0.0;
     }
+  }
+
+  /// Converts a raw row index to a visible line number (0-based).
+  /// Returns -1 if the row index corresponds to an image row or invalid position.
+  int _getVisibleLineNumberForRowIndex(int rowIndex) {
+    if (rowIndex < 0) return -1;
+    
+    // Count how many visible text lines come before this row index
+    int visibleLineCount = 0;
+    
+    for (int i = 0; i <= rowIndex; i++) {
+      final rowY = _topMargin + (i * _rowLineSpacing);
+      
+      // Skip this row if it's within an image row
+      if (isInImageRow(rowY)) {
+        continue;
+      }
+      
+      // This is a visible text line
+      if (i == rowIndex) {
+        // If the target row itself is a text line, return its line number
+        return visibleLineCount;
+      }
+      
+      visibleLineCount++;
+    }
+    
+    // If we get here, the target row index was within an image row
+    return -1;
   }
 
   /// Gets the number of visible rows based on current content.
@@ -360,7 +390,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     _freeDrawingSpaces.addAll(updatedSpaces);
 
     // Shift all sketch content that is below this position
-    _shiftSketchContentDown(yPosition, spaceHeight);
+    _shiftSketchContentDown(yPosition, spaceHeight, addToUndoHistory: true);
 
     // Extend canvas to accommodate the new space
     _checkAndExtendCanvas();
@@ -402,7 +432,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     _removeStrokesInRegion(spaceStartY, spaceStartY + spaceHeight);
 
     // Shift all sketch content that is below this position up
-    _shiftSketchContentUp(spaceStartY + spaceHeight, spaceHeight);
+    _shiftSketchContentUp(spaceStartY + spaceHeight, spaceHeight, addToUndoHistory: true);
 
     // Recalculate canvas height
     _checkAndExtendCanvas();
@@ -436,7 +466,7 @@ class LineByLineNotifier extends ScribbleNotifier {
 
     // Shift all sketch content that is below the end of this space down
     final shiftStartY = currentSpace.endY;
-    _shiftSketchContentDown(shiftStartY, additionalHeight);
+    _shiftSketchContentDown(shiftStartY, additionalHeight, addToUndoHistory: true);
 
     // Extend canvas to accommodate the expanded space
     _checkAndExtendCanvas();
@@ -460,7 +490,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   }
 
   /// Shifts all sketch content down by the specified amount starting from startY.
-  void _shiftSketchContentDown(double startY, double shiftAmount) {
+  void _shiftSketchContentDown(double startY, double shiftAmount, {bool addToUndoHistory = true}) {
     final currentSketch = value.sketch;
     final shiftedLines = <SketchLine>[];
 
@@ -479,7 +509,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     }
 
     final newSketch = currentSketch.copyWith(lines: shiftedLines);
-    setSketch(sketch: newSketch, addToUndoHistory: true);
+    setSketch(sketch: newSketch, addToUndoHistory: addToUndoHistory);
   }
 
   /// Removes all strokes that are within the specified Y region.
@@ -503,7 +533,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   }
 
   /// Shifts all sketch content up by the specified amount starting from startY.
-  void _shiftSketchContentUp(double startY, double shiftAmount) {
+  void _shiftSketchContentUp(double startY, double shiftAmount, {bool addToUndoHistory = true}) {
     final currentSketch = value.sketch;
     final shiftedLines = <SketchLine>[];
 
@@ -522,7 +552,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     }
 
     final newSketch = currentSketch.copyWith(lines: shiftedLines);
-    setSketch(sketch: newSketch, addToUndoHistory: true);
+    setSketch(sketch: newSketch, addToUndoHistory: addToUndoHistory);
   }
 
   /// Clears all free drawing spaces.
@@ -537,7 +567,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   static const double _defaultImageRowHeight = 96.0; // 4 * 24px
 
   /// Inserts an image row above the specified Y position.
-  Future<void> insertImageRow(double yPosition, ImageProvider image, {double? height, bool shiftContent = true}) async {
+  Future<void> insertImageRow(double yPosition, ImageProvider image, {double? height, bool shiftContent = true, bool addToUndoHistory = false}) async {
     final rowHeight = height ?? _defaultImageRowHeight;
 
     try {
@@ -587,7 +617,7 @@ class LineByLineNotifier extends ScribbleNotifier {
         _freeDrawingSpaces.addAll(updatedSpaces);
 
         // Shift all sketch content that is below this position
-        _shiftSketchContentDown(yPosition, rowHeight);
+        _shiftSketchContentDown(yPosition, rowHeight, addToUndoHistory: addToUndoHistory);
       } else {
         // Just add the image row without shifting anything
         _imageRows.add(newImageRow);
@@ -611,7 +641,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   }
 
   /// Inserts an image row with byte data above the specified Y position.
-  void insertImageRowWithBytes(double yPosition, List<int> imageBytes, {double? height, bool shiftContent = true}) {
+  void insertImageRowWithBytes(double yPosition, List<int> imageBytes, {double? height, bool shiftContent = true, bool addToUndoHistory = false}) {
     final rowHeight = height ?? _defaultImageRowHeight;
 
     // Create the new image row
@@ -654,7 +684,7 @@ class LineByLineNotifier extends ScribbleNotifier {
       _freeDrawingSpaces.addAll(updatedSpaces);
 
       // Shift all sketch content that is below this position
-      _shiftSketchContentDown(yPosition, rowHeight);
+      _shiftSketchContentDown(yPosition, rowHeight, addToUndoHistory: addToUndoHistory);
     } else {
       // Just add the image row without shifting anything
       _imageRows.add(newImageRow);
@@ -674,7 +704,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   }
 
   /// Deletes an image row at the specified Y position.
-  void deleteImageRow(double yPosition) {
+  void deleteImageRow(double yPosition, {bool addToUndoHistory = false}) {
     // Find the image row that contains this Y position
     final imageRowToDelete = _imageRows.firstWhere(
       (imageRow) => imageRow.containsY(yPosition),
@@ -721,7 +751,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     _freeDrawingSpaces.addAll(updatedSpaces);
 
     // Shift all sketch content that is below this position up
-    _shiftSketchContentUp(rowStartY + rowHeight, rowHeight);
+    _shiftSketchContentUp(rowStartY + rowHeight, rowHeight, addToUndoHistory: addToUndoHistory);
 
     // Recalculate canvas height
     _checkAndExtendCanvas();

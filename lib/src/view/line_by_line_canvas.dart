@@ -482,7 +482,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
 
       // Get opacity based on content progress (but always show image rows)
       final opacity = imageRow != null ? 1.0 : 
-          widget.notifier.getLineNumberOpacity(i);
+          widget.notifier.getLineNumberOpacity(sequentialLineNumber - 1);
 
       // Skip if too transparent (but not for image rows)
       if (opacity < 0.01) continue;
