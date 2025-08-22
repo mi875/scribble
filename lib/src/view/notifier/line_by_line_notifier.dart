@@ -1074,11 +1074,29 @@ class LineByLineNotifier extends ScribbleNotifier {
     required Sketch sketch, 
     bool addToUndoHistory = true,
     Map<String, ImageProvider>? imageProviders,
+    List<ImageRow>? imageRows,
+    List<FreeDrawingSpace>? freeDrawingSpaces,
   }) async {
     // Note: We no longer automatically store image rows and free drawing spaces
     // on every sketch change. They should persist independently unless explicitly
     // modified through their dedicated operations.
     super.setSketch(sketch: sketch, addToUndoHistory: addToUndoHistory);
+    
+    // Restore image rows if provided
+    if (imageRows != null) {
+      _imageRows.clear();
+      _imageRows.addAll(imageRows);
+      // Sort by startY to maintain proper order
+      _imageRows.sort((a, b) => a.startY.compareTo(b.startY));
+    }
+    
+    // Restore free drawing spaces if provided
+    if (freeDrawingSpaces != null) {
+      _freeDrawingSpaces.clear();
+      _freeDrawingSpaces.addAll(freeDrawingSpaces);
+      // Sort by startY to maintain proper order
+      _freeDrawingSpaces.sort((a, b) => a.startY.compareTo(b.startY));
+    }
     
     // Load image data if provided
     if (imageProviders != null) {
@@ -1094,6 +1112,77 @@ class LineByLineNotifier extends ScribbleNotifier {
         }
       }
     }
+  }
+
+  /// Exports the complete notebook data to JSON format.
+  /// 
+  /// Returns a Map containing:
+  /// - sketch: The drawing data (lines, points)
+  /// - imageRows: Image metadata (position, size, id - excludes image bytes)
+  /// - freeDrawingSpaces: Free drawing space data
+  /// - canvasHeight: Current canvas height
+  /// - rowLineSpacing: Current row line spacing
+  /// - topMargin: Top margin setting
+  /// - bottomMargin: Bottom margin setting
+  Map<String, dynamic> exportToJson() {
+    return {
+      'sketch': value.sketch.toJson(),
+      'imageRows': imageRows.map((row) => row.toJson()).toList(),
+      'freeDrawingSpaces': freeDrawingSpaces.map((space) => space.toJson()).toList(),
+      'canvasHeight': canvasHeight,
+      'rowLineSpacing': rowLineSpacing,
+      'topMargin': topMargin,
+      'bottomMargin': bottomMargin,
+    };
+  }
+
+  /// Imports notebook data from JSON format.
+  /// 
+  /// Takes a Map (from exportToJson) and optional ImageProviders for loading
+  /// actual image data. The JSON contains sketch data, image metadata, and 
+  /// free drawing spaces, but not the actual image bytes.
+  /// 
+  /// [jsonData] - The JSON data from exportToJson()
+  /// [imageProviders] - Optional map of image providers keyed by image row ID
+  /// [addToUndoHistory] - Whether to add this import to undo history
+  Future<void> importFromJson(
+    Map<String, dynamic> jsonData, {
+    Map<String, ImageProvider>? imageProviders,
+    bool addToUndoHistory = true,
+  }) async {
+    // Parse the JSON data
+    final sketch = Sketch.fromJson(jsonData['sketch'] as Map<String, dynamic>);
+    
+    final imageRowsData = jsonData['imageRows'] as List<dynamic>?;
+    final imageRows = imageRowsData
+        ?.map((json) => ImageRow.fromJson(json as Map<String, dynamic>))
+        .toList();
+    
+    final freeDrawingSpacesData = jsonData['freeDrawingSpaces'] as List<dynamic>?;
+    final freeDrawingSpaces = freeDrawingSpacesData
+        ?.map((json) => FreeDrawingSpace.fromJson(json as Map<String, dynamic>))
+        .toList();
+    
+    // Restore canvas properties if provided
+    final canvasHeight = jsonData['canvasHeight'] as double?;
+    final rowLineSpacing = jsonData['rowLineSpacing'] as double?;
+    
+    // Apply canvas properties
+    if (canvasHeight != null) {
+      setCanvasHeight(canvasHeight);
+    }
+    if (rowLineSpacing != null) {
+      setRowLineSpacing(rowLineSpacing);
+    }
+    
+    // Import the data using setSketch
+    await setSketch(
+      sketch: sketch,
+      imageRows: imageRows,
+      freeDrawingSpaces: freeDrawingSpaces,
+      imageProviders: imageProviders,
+      addToUndoHistory: addToUndoHistory,
+    );
   }
 
   @override
