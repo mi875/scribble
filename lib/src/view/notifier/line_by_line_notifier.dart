@@ -1070,23 +1070,27 @@ class LineByLineNotifier extends ScribbleNotifier {
   final Map<Sketch, List<ImageRow>> _sketchToImageRowsMap = {};
 
   @override
-  void setSketch({
+  Future<void> setSketch({
     required Sketch sketch, 
     bool addToUndoHistory = true,
-    Map<String, Uint8List>? imageData,
-  }) {
+    Map<String, ImageProvider>? imageProviders,
+  }) async {
     // Note: We no longer automatically store image rows and free drawing spaces
     // on every sketch change. They should persist independently unless explicitly
     // modified through their dedicated operations.
     super.setSketch(sketch: sketch, addToUndoHistory: addToUndoHistory);
     
     // Load image data if provided
-    if (imageData != null) {
+    if (imageProviders != null) {
       for (final imageRow in _imageRows) {
         final id = imageRow.id;
-        if (id != null && imageData.containsKey(id)) {
-          // Load the image asynchronously
-          loadImageForRow(id, imageData[id]!).ignore();
+        if (id != null && imageProviders.containsKey(id)) {
+          // Convert ImageProvider to bytes and load the image asynchronously
+          final imageProvider = imageProviders[id]!;
+          final imageBytes = await _imageProviderToBytes(imageProvider);
+          if (imageBytes != null) {
+            await loadImageForRow(id, imageBytes);
+          }
         }
       }
     }
