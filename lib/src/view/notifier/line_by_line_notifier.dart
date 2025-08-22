@@ -2,11 +2,16 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:scribble/scribble.dart';
 import 'package:scribble/src/view/simplification/sketch_simplifier.dart';
 import 'package:scribble/src/domain/model/image_row/image_row.dart';
 import 'package:scribble/src/domain/model/row/row.dart';
+import 'package:scribble/src/domain/model/row_range_content/row_range_content.dart';
+import 'package:scribble/src/view/painting/reusable_painter_export.dart';
+import 'package:scribble/src/view/painting/scribble_painter.dart';
 
 /// A notifier that extends ScribbleNotifier with line-by-line writing
 /// capabilities and dynamic canvas extension.
@@ -393,10 +398,14 @@ class LineByLineNotifier extends ScribbleNotifier {
     _freeDrawingSpaces.addAll(updatedSpaces);
 
     // Shift all sketch content that is below this position
-    _shiftSketchContentDown(yPosition, spaceHeight, addToUndoHistory: true);
+    _shiftSketchContentDown(yPosition, spaceHeight);
 
     // Extend canvas to accommodate the new space
     _checkAndExtendCanvas();
+
+    // Store current state for undo/redo of free space operations
+    _sketchToSpacesMap[value.sketch] = List.from(_freeDrawingSpaces);
+    _sketchToImageRowsMap[value.sketch] = List.from(_imageRows);
 
     // Notify listeners
     notifyListeners();
@@ -435,10 +444,14 @@ class LineByLineNotifier extends ScribbleNotifier {
     _removeStrokesInRegion(spaceStartY, spaceStartY + spaceHeight);
 
     // Shift all sketch content that is below this position up
-    _shiftSketchContentUp(spaceStartY + spaceHeight, spaceHeight, addToUndoHistory: true);
+    _shiftSketchContentUp(spaceStartY + spaceHeight, spaceHeight);
 
     // Recalculate canvas height
     _checkAndExtendCanvas();
+
+    // Store current state for undo/redo of free space operations
+    _sketchToSpacesMap[value.sketch] = List.from(_freeDrawingSpaces);
+    _sketchToImageRowsMap[value.sketch] = List.from(_imageRows);
 
     // Notify listeners
     notifyListeners();
@@ -469,10 +482,14 @@ class LineByLineNotifier extends ScribbleNotifier {
 
     // Shift all sketch content that is below the end of this space down
     final shiftStartY = currentSpace.endY;
-    _shiftSketchContentDown(shiftStartY, additionalHeight, addToUndoHistory: true);
+    _shiftSketchContentDown(shiftStartY, additionalHeight);
 
     // Extend canvas to accommodate the expanded space
     _checkAndExtendCanvas();
+
+    // Store current state for undo/redo of free space operations
+    _sketchToSpacesMap[value.sketch] = List.from(_freeDrawingSpaces);
+    _sketchToImageRowsMap[value.sketch] = List.from(_imageRows);
 
     // Notify listeners
     notifyListeners();
@@ -570,7 +587,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   static const double _defaultImageRowHeight = 96.0; // 4 * 24px
 
   /// Inserts an image row above the specified Y position.
-  Future<void> insertImageRow(double yPosition, ImageProvider image, {double? height, bool shiftContent = true, bool addToUndoHistory = false}) async {
+  Future<void> insertImageRow(double yPosition, ImageProvider image, {double? height, bool shiftContent = true, String? id}) async {
     final rowHeight = height ?? _defaultImageRowHeight;
 
     try {
@@ -585,7 +602,7 @@ class LineByLineNotifier extends ScribbleNotifier {
         startY: yPosition,
         height: rowHeight,
         imageBytes: imageBytes,
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        id: id ?? DateTime.now().millisecondsSinceEpoch.toString(),
       );
 
       if (shiftContent) {
@@ -620,7 +637,7 @@ class LineByLineNotifier extends ScribbleNotifier {
         _freeDrawingSpaces.addAll(updatedSpaces);
 
         // Shift all sketch content that is below this position
-        _shiftSketchContentDown(yPosition, rowHeight, addToUndoHistory: addToUndoHistory);
+        _shiftSketchContentDown(yPosition, rowHeight);
       } else {
         // Just add the image row without shifting anything
         _imageRows.add(newImageRow);
@@ -635,6 +652,10 @@ class LineByLineNotifier extends ScribbleNotifier {
         loadImageForRow(newImageRow.id!, newImageRow.imageBytes!).ignore();
       }
 
+      // Store current state for undo/redo of image operations
+      _sketchToSpacesMap[value.sketch] = List.from(_freeDrawingSpaces);
+      _sketchToImageRowsMap[value.sketch] = List.from(_imageRows);
+
       // Notify listeners
       notifyListeners();
     } catch (e) {
@@ -644,7 +665,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   }
 
   /// Inserts an image row with byte data above the specified Y position.
-  void insertImageRowWithBytes(double yPosition, List<int> imageBytes, {double? height, bool shiftContent = true, bool addToUndoHistory = false}) {
+  void insertImageRowWithBytes(double yPosition, List<int> imageBytes, {double? height, bool shiftContent = true, String? id}) {
     final rowHeight = height ?? _defaultImageRowHeight;
 
     // Create the new image row
@@ -652,7 +673,7 @@ class LineByLineNotifier extends ScribbleNotifier {
       startY: yPosition,
       height: rowHeight,
       imageBytes: Uint8List.fromList(imageBytes),
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: id ?? DateTime.now().millisecondsSinceEpoch.toString(),
     );
 
     if (shiftContent) {
@@ -687,7 +708,7 @@ class LineByLineNotifier extends ScribbleNotifier {
       _freeDrawingSpaces.addAll(updatedSpaces);
 
       // Shift all sketch content that is below this position
-      _shiftSketchContentDown(yPosition, rowHeight, addToUndoHistory: addToUndoHistory);
+      _shiftSketchContentDown(yPosition, rowHeight);
     } else {
       // Just add the image row without shifting anything
       _imageRows.add(newImageRow);
@@ -702,12 +723,16 @@ class LineByLineNotifier extends ScribbleNotifier {
       loadImageForRow(newImageRow.id!, newImageRow.imageBytes!).ignore();
     }
 
+    // Store current state for undo/redo of image operations
+    _sketchToSpacesMap[value.sketch] = List.from(_freeDrawingSpaces);
+    _sketchToImageRowsMap[value.sketch] = List.from(_imageRows);
+
     // Notify listeners
     notifyListeners();
   }
 
   /// Deletes an image row at the specified Y position.
-  void deleteImageRow(double yPosition, {bool addToUndoHistory = false}) {
+  void deleteImageRow(double yPosition) {
     // Find the image row that contains this Y position
     final imageRowToDelete = _imageRows.firstWhere(
       (imageRow) => imageRow.containsY(yPosition),
@@ -754,10 +779,14 @@ class LineByLineNotifier extends ScribbleNotifier {
     _freeDrawingSpaces.addAll(updatedSpaces);
 
     // Shift all sketch content that is below this position up
-    _shiftSketchContentUp(rowStartY + rowHeight, rowHeight, addToUndoHistory: addToUndoHistory);
+    _shiftSketchContentUp(rowStartY + rowHeight, rowHeight);
 
     // Recalculate canvas height
     _checkAndExtendCanvas();
+
+    // Store current state for undo/redo of image operations
+    _sketchToSpacesMap[value.sketch] = List.from(_freeDrawingSpaces);
+    _sketchToImageRowsMap[value.sketch] = List.from(_imageRows);
 
     // Notify listeners
     notifyListeners();
@@ -879,7 +908,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Line numbers correspond to what users see displayed on the UI.
   /// Free drawing spaces and image rows are skipped when counting line numbers.
   void highlightRow(int lineNumber) {
-    final rowIndex = _getRowIndexForLineNumber(lineNumber);
+    final rowIndex = getRowIndexForLineNumber(lineNumber);
     if (rowIndex == null) return; // Invalid line number
     
     if (_highlightedRows.add(rowIndex)) {
@@ -892,7 +921,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Line numbers correspond to what users see displayed on the UI.
   /// Free drawing spaces and image rows are skipped when counting line numbers.
   void unhighlightRow(int lineNumber) {
-    final rowIndex = _getRowIndexForLineNumber(lineNumber);
+    final rowIndex = getRowIndexForLineNumber(lineNumber);
     if (rowIndex == null) return; // Invalid line number
     
     if (_highlightedRows.remove(rowIndex)) {
@@ -905,7 +934,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Line numbers correspond to what users see displayed on the UI.
   /// Free drawing spaces and image rows are skipped when counting line numbers.
   void toggleRowHighlight(int lineNumber) {
-    final rowIndex = _getRowIndexForLineNumber(lineNumber);
+    final rowIndex = getRowIndexForLineNumber(lineNumber);
     if (rowIndex == null) return; // Invalid line number
     
     if (_highlightedRows.contains(rowIndex)) {
@@ -922,7 +951,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   void highlightRows(Iterable<int> lineNumbers) {
     bool changed = false;
     for (final lineNumber in lineNumbers) {
-      final rowIndex = _getRowIndexForLineNumber(lineNumber);
+      final rowIndex = getRowIndexForLineNumber(lineNumber);
       if (rowIndex != null) {
         if (_highlightedRows.add(rowIndex)) {
           changed = true;
@@ -941,7 +970,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   void unhighlightRows(Iterable<int> lineNumbers) {
     bool changed = false;
     for (final lineNumber in lineNumbers) {
-      final rowIndex = _getRowIndexForLineNumber(lineNumber);
+      final rowIndex = getRowIndexForLineNumber(lineNumber);
       if (rowIndex != null) {
         if (_highlightedRows.remove(rowIndex)) {
           changed = true;
@@ -966,7 +995,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Line numbers correspond to what users see displayed on the UI.
   /// Free drawing spaces and image rows are skipped when counting line numbers.
   bool isRowHighlighted(int lineNumber) {
-    final rowIndex = _getRowIndexForLineNumber(lineNumber);
+    final rowIndex = getRowIndexForLineNumber(lineNumber);
     if (rowIndex == null) return false; // Invalid line number
     
     return _highlightedRows.contains(rowIndex);
@@ -979,7 +1008,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// image rows when counting line numbers.
   /// 
   /// Returns null if the line number doesn't exist or is invalid.
-  int? _getRowIndexForLineNumber(int lineNumber) {
+  int? getRowIndexForLineNumber(int lineNumber) {
     if (lineNumber < 1) return null; // Line numbers start at 1
     
     int sequentialLineNumber = 1;
@@ -1005,6 +1034,31 @@ class LineByLineNotifier extends ScribbleNotifier {
     return null; // Line number not found
   }
 
+  /// Gets the maximum line number currently available.
+  /// 
+  /// This counts only regular text rows, skipping image rows and free drawing spaces.
+  /// Returns 0 if there are no text rows.
+  int getMaxLineNumber() {
+    int maxLineNumber = 0;
+    
+    for (var i = 0; i < _rows.length; i++) {
+      final row = _rows[i];
+      final currentRowY = row.startY;
+      final freeSpace = getFreeDrawingSpaceAt(currentRowY);
+      final imageRow = getImageRowAt(currentRowY);
+      
+      // Skip rows that are within free drawing spaces or image rows
+      if (freeSpace != null || imageRow != null) {
+        continue;
+      }
+      
+      // This is a regular text row
+      maxLineNumber++;
+    }
+    
+    return maxLineNumber;
+  }
+
   // Note: Free drawing space undo/redo is handled through the sketch operations
   // Since all free space operations trigger sketch modifications with addToUndoHistory: true,
   // the undo/redo functionality works through the existing sketch history system.
@@ -1016,32 +1070,321 @@ class LineByLineNotifier extends ScribbleNotifier {
   final Map<Sketch, List<ImageRow>> _sketchToImageRowsMap = {};
 
   @override
-  void setSketch({required Sketch sketch, bool addToUndoHistory = true}) {
-    if (addToUndoHistory) {
-      // Store current free drawing spaces and image rows with current sketch
-      _sketchToSpacesMap[value.sketch] = List.from(_freeDrawingSpaces);
-      _sketchToImageRowsMap[value.sketch] = List.from(_imageRows);
-    }
+  void setSketch({
+    required Sketch sketch, 
+    bool addToUndoHistory = true,
+    Map<String, Uint8List>? imageData,
+  }) {
+    // Note: We no longer automatically store image rows and free drawing spaces
+    // on every sketch change. They should persist independently unless explicitly
+    // modified through their dedicated operations.
     super.setSketch(sketch: sketch, addToUndoHistory: addToUndoHistory);
+    
+    // Load image data if provided
+    if (imageData != null) {
+      for (final imageRow in _imageRows) {
+        final id = imageRow.id;
+        if (id != null && imageData.containsKey(id)) {
+          // Load the image asynchronously
+          loadImageForRow(id, imageData[id]!).ignore();
+        }
+      }
+    }
   }
 
   @override
   ScribbleState transformHistoryValue(
     ScribbleState historyValue,
-    ScribbleState currentValue,
+    ScribbleState currentState,
   ) {
-    // Restore free drawing spaces and image rows when transforming history
-    final spaces =
-        _sketchToSpacesMap[historyValue.sketch] ?? <FreeDrawingSpace>[];
-    final imageRows =
-        _sketchToImageRowsMap[historyValue.sketch] ?? <ImageRow>[];
+    // Note: We no longer restore image rows and free drawing spaces from
+    // sketch-based maps during undo/redo. They should persist independently
+    // unless explicitly modified through dedicated operations.
+    // This prevents image rows from disappearing when undoing strokes.
     
-    _freeDrawingSpaces.clear();
-    _freeDrawingSpaces.addAll(spaces);
-    _imageRows.clear();
-    _imageRows.addAll(imageRows);
+    return super.transformHistoryValue(historyValue, currentState);
+  }
 
-    return super.transformHistoryValue(historyValue, currentValue);
+  // Row Range Export Methods
+
+  /// Extracts content (sketch lines, free drawing spaces, and image rows) 
+  /// within the specified row range for export.
+  /// 
+  /// [startRowIndex] and [endRowIndex] are 0-based row indices.
+  /// Returns a RowRangeContent object containing all content in the range.
+  RowRangeContent getContentInRowRange(int startRowIndex, int endRowIndex) {
+    if (startRowIndex < 0 || endRowIndex < startRowIndex) {
+      throw ArgumentError('Invalid row range: $startRowIndex to $endRowIndex');
+    }
+
+    // Get Y coordinates for the row range
+    final startRow = getRowByIndex(startRowIndex);
+    final endRow = getRowByIndex(endRowIndex);
+    
+    if (startRow == null) {
+      throw ArgumentError('Start row index $startRowIndex does not exist');
+    }
+    
+    final startY = startRow.startY;
+    final endY = endRow?.endY ?? (startRow.startY + _rowLineSpacing);
+
+    // Filter sketch lines within the Y range
+    final filteredLines = <SketchLine>[];
+    for (final line in value.sketch.lines) {
+      final lineMinY = line.points.map((p) => p.y).reduce((a, b) => a < b ? a : b);
+      final lineMaxY = line.points.map((p) => p.y).reduce((a, b) => a > b ? a : b);
+      
+      // Include line if any part of it is within the row range
+      if (lineMaxY >= startY && lineMinY <= endY) {
+        filteredLines.add(line);
+      }
+    }
+
+    // Filter free drawing spaces within the Y range
+    final filteredSpaces = _freeDrawingSpaces.where((space) {
+      return space.endY >= startY && space.startY <= endY;
+    }).toList();
+
+    // Filter image rows within the Y range
+    final filteredImageRows = _imageRows.where((imageRow) {
+      return imageRow.endY >= startY && imageRow.startY <= endY;
+    }).toList();
+
+    return RowRangeContent(
+      startY: startY,
+      endY: endY,
+      sketchLines: filteredLines,
+      freeDrawingSpaces: filteredSpaces,
+      imageRows: filteredImageRows,
+    );
+  }
+
+  /// Renders the content within the specified row range to an image using the actual painters.
+  /// 
+  /// [startRowIndex] and [endRowIndex] are 0-based row indices.
+  /// [pixelRatio] can be used to increase the resolution of the output image.
+  /// [theme] the theme to use for rendering (affects colors, etc.)
+  /// Returns the image as ByteData in the specified format.
+  /// 
+  /// Note: This method does not include line numbers in the export.
+  Future<ByteData> exportRowRangeToImage({
+    required int startRowIndex,
+    required int endRowIndex,
+    required ScribbleTheme theme,
+    double pixelRatio = 1.0,
+    ui.ImageByteFormat format = ui.ImageByteFormat.png,
+    bool simulatePressure = true,
+  }) async {
+    // Validate row indices
+    if (startRowIndex < 0 || endRowIndex < startRowIndex || startRowIndex >= _rows.length) {
+      throw ArgumentError('Invalid row range: $startRowIndex to $endRowIndex');
+    }
+
+    // Calculate Y coordinates for the row range
+    final startRow = _rows[startRowIndex];
+    final endRow = endRowIndex < _rows.length ? _rows[endRowIndex] : _rows.last;
+    final startY = startRow.startY;
+    final endY = endRow.endY;
+
+    // Validate that Y coordinates are sensible
+    if (startY < 0 || endY <= startY) {
+      throw StateError('Invalid Y coordinates: startY=$startY, endY=$endY');
+    }
+
+    // Create the painter stack using the exact same painters as LineByLineCanvas
+    // Use the same hardcoded margins as LineByLineCanvas for visual consistency
+    final painterStack = ReusablePainterExport.createPainterStack(
+      sketch: value.sketch,
+      rows: _rows,
+      freeDrawingSpaces: _freeDrawingSpaces,
+      imageRows: _imageRows,
+      loadedImages: _loadedImages,
+      highlightedRows: _highlightedRows,
+      theme: theme,
+      canvasWidth: _canvasWidth,
+      canvasHeight: _canvasHeight,
+      rowLineSpacing: _rowLineSpacing,
+      rowLineWidth: 1.0,
+      leftMargin: 60.0,    // Match LineByLineCanvas hardcoded values
+      rightMargin: 20.0,   // Match LineByLineCanvas hardcoded values
+      topMargin: 30.0,     // Match LineByLineCanvas hardcoded values
+      bottomMargin: 30.0,  // Match LineByLineCanvas hardcoded values
+      simulatePressure: simulatePressure,
+    );
+
+    // Render the row range using the reusable painters
+    return await ReusablePainterExport.renderRowRange(
+      painters: painterStack,
+      startY: startY,
+      endY: endY,
+      canvasWidth: _canvasWidth,
+      pixelRatio: pixelRatio,
+      format: format,
+    );
+  }
+
+  /// Exports a row range to an image including line numbers by capturing the RepaintBoundary.
+  /// 
+  /// This method captures the full canvas including line number widgets and crops
+  /// the specified row range. This ensures line numbers appear exactly as shown on screen.
+  /// 
+  /// [startRowIndex] and [endRowIndex] are 0-based row indices.
+  /// [pixelRatio] can be used to increase the resolution of the output image.
+  /// [forceLightBackground] ensures exported images have white background for consistency.
+  /// Returns the image as ByteData in the specified format.
+  Future<ByteData> exportRowRangeWithLineNumbers({
+    required int startRowIndex,
+    required int endRowIndex,
+    double pixelRatio = 1.0,
+    ui.ImageByteFormat format = ui.ImageByteFormat.png,
+    bool forceLightBackground = true,
+  }) async {
+    // Validate row indices
+    if (startRowIndex < 0 || endRowIndex < startRowIndex || startRowIndex >= _rows.length) {
+      throw ArgumentError('Invalid row range: $startRowIndex to $endRowIndex');
+    }
+
+    // Calculate Y coordinates for the row range
+    final startRow = _rows[startRowIndex];
+    final endRow = endRowIndex < _rows.length ? _rows[endRowIndex] : _rows.last;
+    final startY = startRow.startY;
+    final endY = endRow.endY;
+
+    // Validate that Y coordinates are sensible
+    if (startY < 0 || endY <= startY) {
+      throw StateError('Invalid Y coordinates: startY=$startY, endY=$endY');
+    }
+
+    // Capture the full RepaintBoundary (includes line numbers and all content)
+    final renderObject = repaintBoundaryKey.currentContext?.findRenderObject()
+        as RenderRepaintBoundary?;
+    if (renderObject == null) {
+      throw StateError(
+        "Tried to export row range, but no valid RenderObject was found!",
+      );
+    }
+
+    // Render the full canvas to an image
+    final fullImage = await renderObject.toImage(pixelRatio: pixelRatio);
+    
+    // Convert to ByteData for manipulation
+    final fullImageByteData = await fullImage.toByteData(format: ui.ImageByteFormat.rawRgba);
+    if (fullImageByteData == null) {
+      fullImage.dispose();
+      throw StateError('Failed to convert full canvas to byte data');
+    }
+
+    // Calculate crop parameters
+    // Row coordinates are already relative to the RepaintBoundary coordinate system
+    // No additional margin adjustment needed since RepaintBoundary captures from (0,0)
+    final cropStartY = startY * pixelRatio;
+    final cropHeight = (endY - startY) * pixelRatio;
+    final cropWidth = fullImage.width.toDouble();
+
+    // Ensure crop dimensions are within bounds
+    final validCropStartY = cropStartY.clamp(0, fullImage.height.toDouble()).toDouble();
+    final validCropHeight = cropHeight.clamp(1, fullImage.height - validCropStartY).toDouble();
+
+    // Create a new image with just the row range
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    
+    // Create a source rect from the full image
+    final srcRect = Rect.fromLTWH(
+      0.0,
+      validCropStartY,
+      cropWidth,
+      validCropHeight,
+    );
+    
+    // Create a destination rect for the cropped image
+    final destRect = Rect.fromLTWH(
+      0.0,
+      0.0,
+      cropWidth,
+      validCropHeight,
+    );
+
+    // Draw white background first if light background is forced
+    if (forceLightBackground) {
+      final backgroundPaint = Paint()..color = Colors.white;
+      canvas.drawRect(destRect, backgroundPaint);
+    }
+
+    // Draw the cropped portion on top of the background
+    canvas.drawImageRect(fullImage, srcRect, destRect, Paint());
+
+    // Draw strokes with forced black color on top for consistency
+    if (forceLightBackground) {
+      // Create a modified sketch with all strokes in black
+      final blackStrokesSketch = _createBlackStrokesSketch(value.sketch);
+      
+      // Create a ScribblePainter with light theme to render black strokes
+      final scribblePainter = ScribblePainter(
+        sketch: blackStrokesSketch,
+        scaleFactor: pixelRatio, // Match the export scaling for consistent stroke size
+        simulatePressure: true,
+        theme: ScribbleTheme.light, // Force light theme for black strokes
+      );
+
+      // Apply canvas transform to match the crop region
+      canvas.save();
+      
+      // Scale canvas to match final image pixel ratio
+      canvas.scale(pixelRatio);
+      
+      // Create clip rectangle in scaled coordinate system
+      final scaledDestRect = Rect.fromLTWH(
+        0.0,
+        0.0,
+        cropWidth / pixelRatio,
+        validCropHeight / pixelRatio,
+      );
+      canvas.clipRect(scaledDestRect);
+      
+      // Use original coordinates for transform
+      canvas.translate(0, -startY);
+      
+      // Paint the black strokes on top using original canvas dimensions
+      scribblePainter.paint(canvas, Size(_canvasWidth, _canvasHeight));
+      
+      canvas.restore();
+    }
+
+    // End recording and create the cropped image
+    final picture = recorder.endRecording();
+    final croppedImage = await picture.toImage(
+      cropWidth.round(),
+      validCropHeight.round(),
+    );
+
+    // Convert to final byte data
+    final result = await croppedImage.toByteData(format: format);
+
+    // Clean up
+    fullImage.dispose();
+    picture.dispose();
+    croppedImage.dispose();
+
+    if (result == null) {
+      throw StateError('Failed to export row range to image');
+    }
+
+    return result;
+  }
+
+  /// Creates a copy of the sketch with all stroke colors forced to black.
+  /// 
+  /// This ensures consistent black strokes in exported images regardless of
+  /// the original stroke colors or current theme.
+  Sketch _createBlackStrokesSketch(Sketch originalSketch) {
+    const blackColor = 0xFF000000; // Black color value
+    
+    final blackLines = originalSketch.lines.map((line) {
+      return line.copyWith(color: blackColor);
+    }).toList();
+    
+    return originalSketch.copyWith(lines: blackLines);
   }
 
 }

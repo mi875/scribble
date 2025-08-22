@@ -9,14 +9,11 @@ part of 'image_row.dart';
 _ImageRow _$ImageRowFromJson(Map<String, dynamic> json) => _ImageRow(
       startY: (json['startY'] as num).toDouble(),
       height: (json['height'] as num).toDouble(),
-      imageBytes:
-          const Uint8ListConverter().fromJson(json['imageBytes'] as List<int>?),
       id: json['id'] as String?,
     );
 
 Map<String, dynamic> _$ImageRowToJson(_ImageRow instance) => <String, dynamic>{
       'startY': instance.startY,
       'height': instance.height,
-      'imageBytes': const Uint8ListConverter().toJson(instance.imageBytes),
       'id': instance.id,
     };

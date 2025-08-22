@@ -20,7 +20,8 @@ mixin _$ImageRow {
   /// The height of the image row region.
   double get height;
 
-  /// The image data as bytes (for JSON serialization).
+  /// The image data as bytes (excluded from JSON serialization).
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @Uint8ListConverter()
   Uint8List? get imageBytes;
 
@@ -68,7 +69,9 @@ abstract mixin class $ImageRowCopyWith<$Res> {
   $Res call(
       {double startY,
       double height,
-      @Uint8ListConverter() Uint8List? imageBytes,
+      @JsonKey(includeFromJson: false, includeToJson: false)
+      @Uint8ListConverter()
+      Uint8List? imageBytes,
       String? id});
 }
 
@@ -203,8 +206,13 @@ extension ImageRowPatterns on ImageRow {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(double startY, double height,
-            @Uint8ListConverter() Uint8List? imageBytes, String? id)?
+    TResult Function(
+            double startY,
+            double height,
+            @JsonKey(includeFromJson: false, includeToJson: false)
+            @Uint8ListConverter()
+            Uint8List? imageBytes,
+            String? id)?
         $default, {
     required TResult orElse(),
   }) {
@@ -232,8 +240,13 @@ extension ImageRowPatterns on ImageRow {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
-    TResult Function(double startY, double height,
-            @Uint8ListConverter() Uint8List? imageBytes, String? id)
+    TResult Function(
+            double startY,
+            double height,
+            @JsonKey(includeFromJson: false, includeToJson: false)
+            @Uint8ListConverter()
+            Uint8List? imageBytes,
+            String? id)
         $default,
   ) {
     final _that = this;
@@ -259,8 +272,13 @@ extension ImageRowPatterns on ImageRow {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(double startY, double height,
-            @Uint8ListConverter() Uint8List? imageBytes, String? id)?
+    TResult? Function(
+            double startY,
+            double height,
+            @JsonKey(includeFromJson: false, includeToJson: false)
+            @Uint8ListConverter()
+            Uint8List? imageBytes,
+            String? id)?
         $default,
   ) {
     final _that = this;
@@ -279,7 +297,9 @@ class _ImageRow extends ImageRow {
   const _ImageRow(
       {required this.startY,
       required this.height,
-      @Uint8ListConverter() this.imageBytes,
+      @JsonKey(includeFromJson: false, includeToJson: false)
+      @Uint8ListConverter()
+      this.imageBytes,
       this.id})
       : super._();
   factory _ImageRow.fromJson(Map<String, dynamic> json) =>
@@ -293,8 +313,9 @@ class _ImageRow extends ImageRow {
   @override
   final double height;
 
-  /// The image data as bytes (for JSON serialization).
+  /// The image data as bytes (excluded from JSON serialization).
   @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @Uint8ListConverter()
   final Uint8List? imageBytes;
 
@@ -350,7 +371,9 @@ abstract mixin class _$ImageRowCopyWith<$Res>
   $Res call(
       {double startY,
       double height,
-      @Uint8ListConverter() Uint8List? imageBytes,
+      @JsonKey(includeFromJson: false, includeToJson: false)
+      @Uint8ListConverter()
+      Uint8List? imageBytes,
       String? id});
 }
 

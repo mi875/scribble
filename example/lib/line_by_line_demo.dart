@@ -93,10 +93,10 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
 
       // Get image dimensions to calculate appropriate height
       final dimensions = await ImageService.getImageDimensions(imageBytes);
-      
+
       if (!mounted) return; // Check if widget is still mounted
       double height = selectedImageHeight;
-      
+
       if (dimensions != null) {
         // Adjust height based on aspect ratio if needed
         const maxWidth = 300.0; // Approximate canvas width minus margins
@@ -104,12 +104,9 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
         height = scaledHeight.clamp(48.0, 300.0);
       }
 
-      notifier.insertImageRowWithBytes(
-        selectedInsertPosition,
-        imageBytes,
-        height: height,
-        shiftContent: shiftContentWhenInserting,
-      );
+      notifier.insertImageRowWithBytes(selectedInsertPosition, imageBytes,
+          height: height,
+          shiftContent: shiftContentWhenInserting);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -135,7 +132,6 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
       ),
     );
   }
-
 
   /// Deletes an image row at the current position.
   void _deleteImageRowAtPosition() {
@@ -181,6 +177,87 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
         ],
       ),
     );
+  }
+
+  void _exportRowRange(BuildContext context) async {
+    // Show dialog to select line number range
+    final maxLineNumber = notifier.getMaxLineNumber();
+    if (maxLineNumber == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No text lines available to export'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => _LineRangeSelectionDialog(
+        maxLineNumber: maxLineNumber,
+      ),
+    );
+
+    if (result == null) return;
+
+    final startLineNumber = result['start'] as int;
+    final endLineNumber = result['end'] as int;
+
+    // Convert line numbers to row indices
+    final startRowIndex = notifier.getRowIndexForLineNumber(startLineNumber);
+    final endRowIndex = notifier.getRowIndexForLineNumber(endLineNumber);
+
+    if (startRowIndex == null || endRowIndex == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Invalid line numbers: $startLineNumber to $endLineNumber'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      // Use the new method that includes line numbers from the RepaintBoundary
+      final image = await notifier.exportRowRangeWithLineNumbers(
+        startRowIndex: startRowIndex,
+        endRowIndex: endRowIndex,
+        pixelRatio: 2.0, // Higher quality
+      );
+
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text("Line Range Export ($startLineNumber-$endLineNumber)"),
+            content: SizedBox(
+              width: 400,
+              height: 300,
+              child: Image.memory(image.buffer.asUint8List()),
+            ),
+            actions: [
+              TextButton(
+                onPressed: Navigator.of(context).pop,
+                child: const Text("Close"),
+              )
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Export failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -231,6 +308,11 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
             icon: const Icon(Icons.image),
             tooltip: "Show PNG Image",
             onPressed: () => _showImage(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.crop),
+            tooltip: "Export Row Range",
+            onPressed: () => _exportRowRange(context),
           ),
           IconButton(
               icon: const Icon(Icons.highlight),
@@ -410,7 +492,7 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                           Text('Eraser Controls',
                               style: Theme.of(context).textTheme.titleSmall),
                           const SizedBox(height: 8),
-                          
+
                           // Mode Toggle Buttons
                           ValueListenableBuilder(
                             valueListenable: notifier,
@@ -424,11 +506,15 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                                       icon: const Icon(Icons.edit, size: 16),
                                       label: const Text('Pen'),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: !isErasing 
-                                            ? Theme.of(context).colorScheme.primary
+                                        backgroundColor: !isErasing
+                                            ? Theme.of(context)
+                                                .colorScheme
+                                                .primary
                                             : null,
-                                        foregroundColor: !isErasing 
-                                            ? Theme.of(context).colorScheme.onPrimary
+                                        foregroundColor: !isErasing
+                                            ? Theme.of(context)
+                                                .colorScheme
+                                                .onPrimary
                                             : null,
                                       ),
                                     ),
@@ -437,14 +523,19 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                                   Expanded(
                                     child: ElevatedButton.icon(
                                       onPressed: () => notifier.setEraser(),
-                                      icon: const Icon(Icons.cleaning_services, size: 16),
+                                      icon: const Icon(Icons.cleaning_services,
+                                          size: 16),
                                       label: const Text('Eraser'),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: isErasing 
-                                            ? Theme.of(context).colorScheme.secondary
+                                        backgroundColor: isErasing
+                                            ? Theme.of(context)
+                                                .colorScheme
+                                                .secondary
                                             : null,
-                                        foregroundColor: isErasing 
-                                            ? Theme.of(context).colorScheme.onSecondary
+                                        foregroundColor: isErasing
+                                            ? Theme.of(context)
+                                                .colorScheme
+                                                .onSecondary
                                             : null,
                                       ),
                                     ),
@@ -455,7 +546,7 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                           ),
 
                           const SizedBox(height: 12),
-                          
+
                           // Eraser Width Slider
                           ValueListenableBuilder(
                             valueListenable: notifier,
@@ -467,7 +558,8 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Eraser Width: ${selectedEraserWidth.toStringAsFixed(1)}px',
+                                    Text(
+                                        'Eraser Width: ${selectedEraserWidth.toStringAsFixed(1)}px',
                                         style: const TextStyle(fontSize: 12)),
                                     Slider(
                                       value: selectedEraserWidth,
@@ -565,10 +657,12 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                           // Shift Content Option
                           CheckboxListTile(
                             title: const Text('Shift content when inserting'),
-                            subtitle: const Text('Move strokes down to make space'),
+                            subtitle:
+                                const Text('Move strokes down to make space'),
                             value: shiftContentWhenInserting,
                             onChanged: (value) {
-                              setState(() => shiftContentWhenInserting = value ?? true);
+                              setState(() =>
+                                  shiftContentWhenInserting = value ?? true);
                             },
                             contentPadding: EdgeInsets.zero,
                             dense: true,
@@ -582,7 +676,7 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                               style: const TextStyle(
                                   fontSize: 12, fontWeight: FontWeight.w500)),
                           const SizedBox(height: 8),
-                          
+
                           // Gallery Button
                           SizedBox(
                             width: double.infinity,
@@ -591,13 +685,14 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                               icon: const Icon(Icons.photo_library, size: 16),
                               label: const Text('From Gallery'),
                               style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
                               ),
                             ),
                           ),
-                          
+
                           const SizedBox(height: 8),
-                          
+
                           // Camera Button
                           SizedBox(
                             width: double.infinity,
@@ -606,7 +701,8 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                               icon: const Icon(Icons.photo_camera, size: 16),
                               label: const Text('From Camera'),
                               style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
                               ),
                             ),
                           ),
@@ -656,6 +752,118 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Dialog for selecting a line number range to export.
+class _LineRangeSelectionDialog extends StatefulWidget {
+  const _LineRangeSelectionDialog({
+    required this.maxLineNumber,
+  });
+
+  final int maxLineNumber;
+
+  @override
+  State<_LineRangeSelectionDialog> createState() =>
+      _LineRangeSelectionDialogState();
+}
+
+class _LineRangeSelectionDialogState extends State<_LineRangeSelectionDialog> {
+  late int startLine;
+  late int endLine;
+
+  @override
+  void initState() {
+    super.initState();
+    startLine = 1; // Line numbers start at 1
+    endLine = (widget.maxLineNumber).clamp(1, 5); // Default to first 5 lines
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Export Line Range'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('Select the line range to export (1-${widget.maxLineNumber}):'),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Text('Start Line: '),
+              Expanded(
+                child: Slider(
+                  value: startLine.toDouble(),
+                  min: 1,
+                  max: widget.maxLineNumber.toDouble(),
+                  divisions: widget.maxLineNumber - 1,
+                  label: startLine.toString(),
+                  onChanged: (value) {
+                    setState(() {
+                      startLine = value.round();
+                      if (endLine < startLine) {
+                        endLine = startLine;
+                      }
+                    });
+                  },
+                ),
+              ),
+              Text(startLine.toString()),
+            ],
+          ),
+          Row(
+            children: [
+              const Text('End Line: '),
+              Expanded(
+                child: Slider(
+                  value: endLine.toDouble(),
+                  min: startLine.toDouble(),
+                  max: widget.maxLineNumber.toDouble(),
+                  divisions: widget.maxLineNumber - startLine,
+                  label: endLine.toString(),
+                  onChanged: (value) {
+                    setState(() {
+                      endLine = value.round();
+                    });
+                  },
+                ),
+              ),
+              Text(endLine.toString()),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Export lines $startLine to $endLine (${endLine - startLine + 1} lines)',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Line numbers match what you see on the canvas. Image rows and free spaces are included automatically.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontStyle: FontStyle.italic,
+                  color: Colors.grey[600],
+                ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: widget.maxLineNumber > 0
+              ? () {
+                  Navigator.of(context).pop({
+                    'start': startLine,
+                    'end': endLine,
+                  });
+                }
+              : null,
+          child: const Text('Export'),
+        ),
+      ],
     );
   }
 }

@@ -19,8 +19,10 @@ abstract class ImageRow with _$ImageRow {
     /// The height of the image row region.
     required double height,
 
-    /// The image data as bytes (for JSON serialization).
-    @Uint8ListConverter() Uint8List? imageBytes,
+    /// The image data as bytes (excluded from JSON serialization).
+    @JsonKey(includeFromJson: false, includeToJson: false) 
+    @Uint8ListConverter() 
+    Uint8List? imageBytes,
 
     /// Optional identifier for the image row.
     String? id,
