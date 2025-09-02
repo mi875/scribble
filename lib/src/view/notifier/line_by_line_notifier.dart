@@ -1072,34 +1072,22 @@ class LineByLineNotifier extends ScribbleNotifier {
     return _highlightedRows.contains(lineNumber);
   }
 
-  /// Converts a line number (1, 2, 3...) to the corresponding row index (0, 1, 2...).
+  /// Converts a line number (1, 2, 3...) to the corresponding renderer index (0, 1, 2...).
   /// 
-  /// Line numbers are what users see displayed on the UI, while row indices
-  /// are internal array positions. This method skips free drawing spaces and
-  /// image rows when counting line numbers.
+  /// Line numbers are what users see displayed on the UI (normal indices), while
+  /// renderer indices are internal array positions used to access the _rows array.
+  /// This method uses the dual index system to find the row with the matching normalIndex.
   /// 
-  /// Returns null if the line number doesn't exist or is invalid.
+  /// Returns the renderer index for the row, or null if the line number doesn't exist.
   int? getRowIndexForLineNumber(int lineNumber) {
-    if (lineNumber < 1) return null; // Line numbers start at 1
+    if (lineNumber < 1) return null; // Line numbers (normal indices) start at 1
     
-    int sequentialLineNumber = 1;
-    
+    // Use the dual index system: find the row with matching normalIndex
     for (var i = 0; i < _rows.length; i++) {
       final row = _rows[i];
-      final currentRowY = row.startY;
-      final freeSpace = getFreeDrawingSpaceAt(currentRowY);
-      final imageRow = getImageRowAt(currentRowY);
-      
-      // Skip rows that are within free drawing spaces or image rows
-      if (freeSpace != null || imageRow != null) {
-        continue;
+      if (row.normalIndex == lineNumber) {
+        return i; // Return the renderer index (array position)
       }
-      
-      // This is a regular text row with a line number
-      if (sequentialLineNumber == lineNumber) {
-        return i; // Return the row index
-      }
-      sequentialLineNumber++;
     }
     
     return null; // Line number not found
@@ -1392,7 +1380,10 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// This method captures the full canvas including line number widgets and crops
   /// the specified row range. This ensures line numbers appear exactly as shown on screen.
   /// 
-  /// [startRowIndex] and [endRowIndex] are 0-based row indices.
+  /// [startRowIndex] and [endRowIndex] are 0-based renderer indices (internal array positions).
+  /// To convert from user-visible line numbers, use [getRowIndexForLineNumber] first.
+  /// Example: `startRowIndex = getRowIndexForLineNumber(2) ?? 0` for line number 2.
+  /// 
   /// [pixelRatio] can be used to increase the resolution of the output image.
   /// [forceLightBackground] ensures exported images have white background for consistency.
   /// Returns the image as ByteData in the specified format.
