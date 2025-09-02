@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:scribble/scribble.dart';
@@ -452,7 +451,6 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
     const leftMargin = 20.0;
     final buttons = <Widget>[];
     final rows = widget.notifier.rows;
-    int sequentialLineNumber = 1; // Counter for actual text lines
 
     for (var i = 0; i < rows.length; i++) {
       final row = rows[i];
@@ -480,22 +478,21 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
         if (i != spaceStartRowIndex) continue;
       }
 
+      // Use the normal index for text rows, null for image/free space rows
+      final normalIndex = row.normalIndex;
+      
       // Get opacity based on content progress (but always show image rows)
-      final opacity = imageRow != null ? 1.0 : 
-          widget.notifier.getLineNumberOpacity(sequentialLineNumber - 1);
+      final opacity = imageRow != null 
+          ? 1.0 
+          : normalIndex != null 
+              ? widget.notifier.getLineNumberOpacity(normalIndex) 
+              : 0.0;
 
       // Skip if too transparent (but not for image rows)
       if (opacity < 0.01) continue;
 
-      // Get the current line number for display
-      final currentLine = (imageRow != null || freeSpace != null) 
-          ? null // Don't show line numbers for image rows or free spaces
-          : sequentialLineNumber;
-
-      // Increment sequential line number only for regular text rows
-      if (imageRow == null && freeSpace == null) {
-        sequentialLineNumber++;
-      }
+      // Get the current line number for display (use normal index directly)
+      final currentLine = normalIndex; // This is already 1-based or null for non-text rows
 
       // Position the button (centered in left margin)
       const buttonX = leftMargin - 6; // Center horizontally in margin

@@ -17,8 +17,14 @@ mixin _$NotebookRow {
   /// The Y coordinate where the row line is positioned.
   double get startY;
 
-  /// The zero-based index of this row.
-  int get index;
+  /// The renderer index - physical array position (0-based) for canvas operations.
+  /// This maps directly to the position in the _rows array.
+  int get rendererIndex;
+
+  /// The normal index - user-visible line number (1-based).
+  /// This is null for rows that contain image rows or free drawing spaces,
+  /// since they don't have user-visible line numbers.
+  int? get normalIndex;
 
   /// The height/spacing of this row (distance to next row).
   /// Defaults to the standard row line spacing.
@@ -43,19 +49,18 @@ mixin _$NotebookRow {
         (other.runtimeType == runtimeType &&
             other is NotebookRow &&
             (identical(other.startY, startY) || other.startY == startY) &&
-            (identical(other.index, index) || other.index == index) &&
+            (identical(other.rendererIndex, rendererIndex) ||
+                other.rendererIndex == rendererIndex) &&
+            (identical(other.normalIndex, normalIndex) ||
+                other.normalIndex == normalIndex) &&
             (identical(other.height, height) || other.height == height) &&
             (identical(other.id, id) || other.id == id));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, startY, index, height, id);
-
-  @override
-  String toString() {
-    return 'NotebookRow(startY: $startY, index: $index, height: $height, id: $id)';
-  }
+  int get hashCode =>
+      Object.hash(runtimeType, startY, rendererIndex, normalIndex, height, id);
 }
 
 /// @nodoc
@@ -64,7 +69,12 @@ abstract mixin class $NotebookRowCopyWith<$Res> {
           NotebookRow value, $Res Function(NotebookRow) _then) =
       _$NotebookRowCopyWithImpl;
   @useResult
-  $Res call({double startY, int index, double height, String? id});
+  $Res call(
+      {double startY,
+      int rendererIndex,
+      int? normalIndex,
+      double height,
+      String? id});
 }
 
 /// @nodoc
@@ -80,7 +90,8 @@ class _$NotebookRowCopyWithImpl<$Res> implements $NotebookRowCopyWith<$Res> {
   @override
   $Res call({
     Object? startY = null,
-    Object? index = null,
+    Object? rendererIndex = null,
+    Object? normalIndex = freezed,
     Object? height = null,
     Object? id = freezed,
   }) {
@@ -89,10 +100,14 @@ class _$NotebookRowCopyWithImpl<$Res> implements $NotebookRowCopyWith<$Res> {
           ? _self.startY
           : startY // ignore: cast_nullable_to_non_nullable
               as double,
-      index: null == index
-          ? _self.index
-          : index // ignore: cast_nullable_to_non_nullable
+      rendererIndex: null == rendererIndex
+          ? _self.rendererIndex
+          : rendererIndex // ignore: cast_nullable_to_non_nullable
               as int,
+      normalIndex: freezed == normalIndex
+          ? _self.normalIndex
+          : normalIndex // ignore: cast_nullable_to_non_nullable
+              as int?,
       height: null == height
           ? _self.height
           : height // ignore: cast_nullable_to_non_nullable
@@ -198,14 +213,16 @@ extension NotebookRowPatterns on NotebookRow {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(double startY, int index, double height, String? id)?
+    TResult Function(double startY, int rendererIndex, int? normalIndex,
+            double height, String? id)?
         $default, {
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
       case _NotebookRow() when $default != null:
-        return $default(_that.startY, _that.index, _that.height, _that.id);
+        return $default(_that.startY, _that.rendererIndex, _that.normalIndex,
+            _that.height, _that.id);
       case _:
         return orElse();
     }
@@ -226,13 +243,15 @@ extension NotebookRowPatterns on NotebookRow {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
-    TResult Function(double startY, int index, double height, String? id)
+    TResult Function(double startY, int rendererIndex, int? normalIndex,
+            double height, String? id)
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _NotebookRow():
-        return $default(_that.startY, _that.index, _that.height, _that.id);
+        return $default(_that.startY, _that.rendererIndex, _that.normalIndex,
+            _that.height, _that.id);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -252,13 +271,15 @@ extension NotebookRowPatterns on NotebookRow {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(double startY, int index, double height, String? id)?
+    TResult? Function(double startY, int rendererIndex, int? normalIndex,
+            double height, String? id)?
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _NotebookRow() when $default != null:
-        return $default(_that.startY, _that.index, _that.height, _that.id);
+        return $default(_that.startY, _that.rendererIndex, _that.normalIndex,
+            _that.height, _that.id);
       case _:
         return null;
     }
@@ -269,7 +290,11 @@ extension NotebookRowPatterns on NotebookRow {
 @JsonSerializable()
 class _NotebookRow extends NotebookRow {
   const _NotebookRow(
-      {required this.startY, required this.index, this.height = 24.0, this.id})
+      {required this.startY,
+      required this.rendererIndex,
+      this.normalIndex,
+      this.height = 24.0,
+      this.id})
       : super._();
   factory _NotebookRow.fromJson(Map<String, dynamic> json) =>
       _$NotebookRowFromJson(json);
@@ -278,9 +303,16 @@ class _NotebookRow extends NotebookRow {
   @override
   final double startY;
 
-  /// The zero-based index of this row.
+  /// The renderer index - physical array position (0-based) for canvas operations.
+  /// This maps directly to the position in the _rows array.
   @override
-  final int index;
+  final int rendererIndex;
+
+  /// The normal index - user-visible line number (1-based).
+  /// This is null for rows that contain image rows or free drawing spaces,
+  /// since they don't have user-visible line numbers.
+  @override
+  final int? normalIndex;
 
   /// The height/spacing of this row (distance to next row).
   /// Defaults to the standard row line spacing.
@@ -313,19 +345,18 @@ class _NotebookRow extends NotebookRow {
         (other.runtimeType == runtimeType &&
             other is _NotebookRow &&
             (identical(other.startY, startY) || other.startY == startY) &&
-            (identical(other.index, index) || other.index == index) &&
+            (identical(other.rendererIndex, rendererIndex) ||
+                other.rendererIndex == rendererIndex) &&
+            (identical(other.normalIndex, normalIndex) ||
+                other.normalIndex == normalIndex) &&
             (identical(other.height, height) || other.height == height) &&
             (identical(other.id, id) || other.id == id));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, startY, index, height, id);
-
-  @override
-  String toString() {
-    return 'NotebookRow(startY: $startY, index: $index, height: $height, id: $id)';
-  }
+  int get hashCode =>
+      Object.hash(runtimeType, startY, rendererIndex, normalIndex, height, id);
 }
 
 /// @nodoc
@@ -336,7 +367,12 @@ abstract mixin class _$NotebookRowCopyWith<$Res>
       __$NotebookRowCopyWithImpl;
   @override
   @useResult
-  $Res call({double startY, int index, double height, String? id});
+  $Res call(
+      {double startY,
+      int rendererIndex,
+      int? normalIndex,
+      double height,
+      String? id});
 }
 
 /// @nodoc
@@ -352,7 +388,8 @@ class __$NotebookRowCopyWithImpl<$Res> implements _$NotebookRowCopyWith<$Res> {
   @pragma('vm:prefer-inline')
   $Res call({
     Object? startY = null,
-    Object? index = null,
+    Object? rendererIndex = null,
+    Object? normalIndex = freezed,
     Object? height = null,
     Object? id = freezed,
   }) {
@@ -361,10 +398,14 @@ class __$NotebookRowCopyWithImpl<$Res> implements _$NotebookRowCopyWith<$Res> {
           ? _self.startY
           : startY // ignore: cast_nullable_to_non_nullable
               as double,
-      index: null == index
-          ? _self.index
-          : index // ignore: cast_nullable_to_non_nullable
+      rendererIndex: null == rendererIndex
+          ? _self.rendererIndex
+          : rendererIndex // ignore: cast_nullable_to_non_nullable
               as int,
+      normalIndex: freezed == normalIndex
+          ? _self.normalIndex
+          : normalIndex // ignore: cast_nullable_to_non_nullable
+              as int?,
       height: null == height
           ? _self.height
           : height // ignore: cast_nullable_to_non_nullable

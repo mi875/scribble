@@ -73,7 +73,7 @@ class DynamicRowLinePainter extends CustomPainter {
   final double fadeDistance;
 
   /// List of regions (unused in simplified version, kept for compatibility).
-  final List regions;
+  final List<dynamic> regions;
 
   /// List of free drawing spaces where lines should not be drawn.
   final List<FreeDrawingSpace> freeDrawingSpaces;
@@ -167,47 +167,6 @@ class DynamicRowLinePainter extends CustomPainter {
     return points;
   }
 
-  /// Gets the row index for a given Y coordinate.
-  int _getRowIndexForY(double y) {
-    if (y < topMargin) return -1;
-    return ((y - topMargin) / lineSpacing).floor();
-  }
-
-  /// Gets the visible line number for a given Y coordinate, counting only text lines.
-  /// Returns 0 if the Y coordinate is within an image row or before the first text line.
-  int _getVisibleLineNumberForY(double y) {
-    // Check if this Y coordinate is within an image row
-    if (_isLineInImageRow(y)) {
-      return 0; // Not a visible text line
-    }
-    
-    // Calculate the raw row index
-    final rowIndex = _getRowIndexForY(y);
-    if (rowIndex < 0) return 0;
-    
-    // Count how many visible text lines come before this row
-    int visibleLineCount = 0;
-    
-    // Iterate through all rows up to this row index
-    for (int i = 0; i <= rowIndex; i++) {
-      final rowY = topMargin + (i * lineSpacing);
-      
-      // Skip this row if it's within an image row
-      if (_isLineInImageRow(rowY)) {
-        continue;
-      }
-      
-      // This is a visible text line
-      visibleLineCount++;
-      
-      // If this is the row we're asking about, return the line number
-      if (i == rowIndex) {
-        return visibleLineCount;
-      }
-    }
-    
-    return visibleLineCount;
-  }
 
   /// Paints row highlights for highlighted rows.
   void _paintRowHighlights(Canvas canvas, double drawingLeft, double drawingRight) {
@@ -218,7 +177,13 @@ class DynamicRowLinePainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     for (final row in rows) {
-      if (highlightedRows.contains(row.index)) {
+      // Convert normal index to renderer index for highlighting
+      // highlightedRows contains user-facing normal indices, but we need 
+      // renderer indices for physical positioning
+      final shouldHighlight = row.normalIndex != null && 
+          highlightedRows.contains(row.normalIndex);
+      
+      if (shouldHighlight) {
         // Calculate extended highlight area including free spaces
         double highlightStartY = row.startY;
         double highlightEndY = row.endY;
@@ -262,14 +227,24 @@ class DynamicRowLinePainter extends CustomPainter {
     }
   }
 
-  /// Calculates the opacity for a line based on proximity to content.
+  /// Calculates the opacity for a line based on normal index and content proximity.
   double _calculateLineOpacity(double lineY, List<Offset> contentPoints) {
-    // Calculate which visible line number this corresponds to (ignoring image rows)
-    final visibleLineNumber = _getVisibleLineNumberForY(lineY);
+    // Find the row with this Y coordinate to get its normal index
+    NotebookRow? rowAtY;
+    for (final row in rows) {
+      if ((row.startY - lineY).abs() < 1.0) { // Allow small tolerance for floating point
+        rowAtY = row;
+        break;
+      }
+    }
     
-    // Always show first two visible text lines at full opacity (matching line numbers)
-    if (visibleLineNumber == 1 || visibleLineNumber == 2) {
-      return 1.0;
+    // If this row has a normal index, use it for opacity calculation
+    if (rowAtY?.normalIndex != null) {
+      final normalIndex = rowAtY!.normalIndex!;
+      // Always show normal index 1 and 2 at full opacity
+      if (normalIndex == 1 || normalIndex == 2) {
+        return 1.0;
+      }
     }
     
     if (contentPoints.isEmpty) return 0.1; // Very faint when no content

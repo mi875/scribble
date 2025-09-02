@@ -98,7 +98,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Map of loaded ui.Image objects keyed by image row ID.
   final Map<String, ui.Image> _loadedImages = <String, ui.Image>{};
 
-  /// Set of highlighted row indices.
+  /// Set of highlighted normal indices (user-visible line numbers).
   final Set<int> _highlightedRows = <int>{};
 
   /// Gets an immutable list of rows.
@@ -155,21 +155,85 @@ class LineByLineNotifier extends ScribbleNotifier {
     final drawingHeight = _canvasHeight - _topMargin - _bottomMargin;
     final numberOfRows = (drawingHeight / _rowLineSpacing).floor();
     
-    for (int i = 0; i < numberOfRows; i++) {
-      final rowY = _topMargin + (i * _rowLineSpacing);
+    _createRowsWithIndices(numberOfRows);
+  }
+
+  /// Creates rows with properly calculated dual indices.
+  void _createRowsWithIndices(int numberOfRows) {
+    int normalIndex = 1; // User-visible line numbers start at 1
+    
+    for (int rendererIndex = 0; rendererIndex < numberOfRows; rendererIndex++) {
+      final rowY = _topMargin + (rendererIndex * _rowLineSpacing);
+      
+      // Check if this row position overlaps with an image row
+      final overlapsImageRow = _imageRows.any((imageRow) => 
+          imageRow.containsY(rowY) || imageRow.containsY(rowY + _rowLineSpacing));
+      
+      // Check if this row position overlaps with a free drawing space
+      final overlapsFreespace = _freeDrawingSpaces.any((space) => 
+          space.containsY(rowY) || space.containsY(rowY + _rowLineSpacing));
+      
+      // Only assign normal index if this is a text row (not image/free space)
+      final assignedNormalIndex = (!overlapsImageRow && !overlapsFreespace) 
+          ? normalIndex++ 
+          : null;
+      
       _rows.add(NotebookRow(
         startY: rowY,
-        index: i,
+        rendererIndex: rendererIndex,
+        normalIndex: assignedNormalIndex,
         height: _rowLineSpacing,
-        id: 'row_$i',
+        id: 'row_$rendererIndex',
       ));
     }
   }
 
+  /// Recalculates normal indices for all existing rows.
+  /// This should be called after image row or free space operations.
+  void _recalculateNormalIndices() {
+    int normalIndex = 1;
+    
+    for (int rendererIndex = 0; rendererIndex < _rows.length; rendererIndex++) {
+      final row = _rows[rendererIndex];
+      final rowY = row.startY;
+      
+      // Check if this row position overlaps with an image row or free space
+      final overlapsImageRow = _imageRows.any((imageRow) => 
+          imageRow.containsY(rowY) || imageRow.containsY(rowY + row.height));
+      final overlapsFreespace = _freeDrawingSpaces.any((space) => 
+          space.containsY(rowY) || space.containsY(rowY + row.height));
+      
+      // Update the row with the correct normal index
+      final assignedNormalIndex = (!overlapsImageRow && !overlapsFreespace) 
+          ? normalIndex++ 
+          : null;
+      
+      _rows[rendererIndex] = row.withNormalIndex(assignedNormalIndex);
+    }
+  }
+
+  /// Gets a row by its renderer index (physical array position).
+  /// This method should be used for canvas operations and image row positioning.
+  NotebookRow? getRowByRendererIndex(int rendererIndex) {
+    if (rendererIndex < 0 || rendererIndex >= _rows.length) return null;
+    return _rows[rendererIndex];
+  }
+
+  /// Gets a row by its normal index (user-visible line number).
+  /// This method should be used for user-facing operations like highlighting.
+  NotebookRow? getRowByNormalIndex(int normalIndex) {
+    if (normalIndex < 1) return null;
+    return _rows.cast<NotebookRow?>().firstWhere(
+      (row) => row?.normalIndex == normalIndex,
+      orElse: () => null,
+    );
+  }
+
   /// Gets a row by its index, returns null if not found.
+  /// @deprecated Use getRowByRendererIndex or getRowByNormalIndex instead.
+  @Deprecated('Use getRowByRendererIndex or getRowByNormalIndex instead')
   NotebookRow? getRowByIndex(int index) {
-    if (index < 0 || index >= _rows.length) return null;
-    return _rows[index];
+    return getRowByRendererIndex(index);
   }
 
   /// Gets the row that contains the specified Y position, returns null if not found.
@@ -287,10 +351,14 @@ class LineByLineNotifier extends ScribbleNotifier {
     _checkAndExtendCanvas();
   }
 
-  /// Gets the progress-based opacity for a line number.
-  double getLineNumberOpacity(int lineIndex) {
+  /// Gets the progress-based opacity for a normal index (user-visible line number).
+  /// 
+  /// [normalIndex] should be a 1-based line number (1, 2, 3...).
+  /// Normal index 1 will always have opacity 1.0.
+  double getLineNumberOpacity(int normalIndex) {
     // Always show the first two line numbers at full opacity
-    if (lineIndex == 0 || lineIndex == 1) {
+    // Normal index 1 (first visible line) must always be visible
+    if (normalIndex == 1 || normalIndex == 2) {
       return 1.0;
     }
 
@@ -305,7 +373,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     final contentVisibleLineNumber = _getVisibleLineNumberForRowIndex(contentRowIndex);
 
     // Show line numbers progressively: if content reached visible line N, show numbers 1 through N+2
-    if (lineIndex <= contentVisibleLineNumber + 1) { // +1 because lineIndex is 0-based
+    if (normalIndex <= contentVisibleLineNumber + 2) {
       return 1.0;
     } else {
       return 0.0;
@@ -353,7 +421,7 @@ class LineByLineNotifier extends ScribbleNotifier {
 
     final maxContentY = _getMaxContentY();
     final maxRowIndex = getRowIndexForY(maxContentY);
-    final maxRow = getRowByIndex(maxRowIndex);
+    final maxRow = getRowByRendererIndex(maxRowIndex);
     
     if (maxRow == null) return y >= _topMargin;
     
@@ -647,6 +715,9 @@ class LineByLineNotifier extends ScribbleNotifier {
       // Extend canvas to accommodate the new image row
       _checkAndExtendCanvas();
 
+      // Recalculate normal indices after image row operation
+      _recalculateNormalIndices();
+
       // Load the image asynchronously for rendering (fire and forget)
       if (newImageRow.id != null && newImageRow.imageBytes != null) {
         loadImageForRow(newImageRow.id!, newImageRow.imageBytes!).ignore();
@@ -718,6 +789,9 @@ class LineByLineNotifier extends ScribbleNotifier {
     // Extend canvas to accommodate the new image row
     _checkAndExtendCanvas();
 
+    // Recalculate normal indices after image row operation
+    _recalculateNormalIndices();
+
     // Load the image asynchronously (fire and forget)
     if (newImageRow.id != null && newImageRow.imageBytes != null) {
       loadImageForRow(newImageRow.id!, newImageRow.imageBytes!).ignore();
@@ -783,6 +857,9 @@ class LineByLineNotifier extends ScribbleNotifier {
 
     // Recalculate canvas height
     _checkAndExtendCanvas();
+
+    // Recalculate normal indices after image row deletion
+    _recalculateNormalIndices();
 
     // Store current state for undo/redo of image operations
     _sketchToSpacesMap[value.sketch] = List.from(_freeDrawingSpaces);
@@ -908,10 +985,9 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Line numbers correspond to what users see displayed on the UI.
   /// Free drawing spaces and image rows are skipped when counting line numbers.
   void highlightRow(int lineNumber) {
-    final rowIndex = getRowIndexForLineNumber(lineNumber);
-    if (rowIndex == null) return; // Invalid line number
+    if (lineNumber < 1) return; // Line numbers start at 1
     
-    if (_highlightedRows.add(rowIndex)) {
+    if (_highlightedRows.add(lineNumber)) {
       notifyListeners();
     }
   }
@@ -921,10 +997,9 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Line numbers correspond to what users see displayed on the UI.
   /// Free drawing spaces and image rows are skipped when counting line numbers.
   void unhighlightRow(int lineNumber) {
-    final rowIndex = getRowIndexForLineNumber(lineNumber);
-    if (rowIndex == null) return; // Invalid line number
+    if (lineNumber < 1) return; // Line numbers start at 1
     
-    if (_highlightedRows.remove(rowIndex)) {
+    if (_highlightedRows.remove(lineNumber)) {
       notifyListeners();
     }
   }
@@ -934,10 +1009,9 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Line numbers correspond to what users see displayed on the UI.
   /// Free drawing spaces and image rows are skipped when counting line numbers.
   void toggleRowHighlight(int lineNumber) {
-    final rowIndex = getRowIndexForLineNumber(lineNumber);
-    if (rowIndex == null) return; // Invalid line number
+    if (lineNumber < 1) return; // Line numbers start at 1
     
-    if (_highlightedRows.contains(rowIndex)) {
+    if (_highlightedRows.contains(lineNumber)) {
       unhighlightRow(lineNumber);
     } else {
       highlightRow(lineNumber);
@@ -951,9 +1025,8 @@ class LineByLineNotifier extends ScribbleNotifier {
   void highlightRows(Iterable<int> lineNumbers) {
     bool changed = false;
     for (final lineNumber in lineNumbers) {
-      final rowIndex = getRowIndexForLineNumber(lineNumber);
-      if (rowIndex != null) {
-        if (_highlightedRows.add(rowIndex)) {
+      if (lineNumber >= 1) {
+        if (_highlightedRows.add(lineNumber)) {
           changed = true;
         }
       }
@@ -970,9 +1043,8 @@ class LineByLineNotifier extends ScribbleNotifier {
   void unhighlightRows(Iterable<int> lineNumbers) {
     bool changed = false;
     for (final lineNumber in lineNumbers) {
-      final rowIndex = getRowIndexForLineNumber(lineNumber);
-      if (rowIndex != null) {
-        if (_highlightedRows.remove(rowIndex)) {
+      if (lineNumber >= 1) {
+        if (_highlightedRows.remove(lineNumber)) {
           changed = true;
         }
       }
@@ -995,10 +1067,9 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Line numbers correspond to what users see displayed on the UI.
   /// Free drawing spaces and image rows are skipped when counting line numbers.
   bool isRowHighlighted(int lineNumber) {
-    final rowIndex = getRowIndexForLineNumber(lineNumber);
-    if (rowIndex == null) return false; // Invalid line number
+    if (lineNumber < 1) return false; // Line numbers start at 1
     
-    return _highlightedRows.contains(rowIndex);
+    return _highlightedRows.contains(lineNumber);
   }
 
   /// Converts a line number (1, 2, 3...) to the corresponding row index (0, 1, 2...).
@@ -1203,19 +1274,19 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Extracts content (sketch lines, free drawing spaces, and image rows) 
   /// within the specified row range for export.
   /// 
-  /// [startRowIndex] and [endRowIndex] are 0-based row indices.
+  /// [startRendererIndex] and [endRendererIndex] are 0-based renderer indices.
   /// Returns a RowRangeContent object containing all content in the range.
-  RowRangeContent getContentInRowRange(int startRowIndex, int endRowIndex) {
-    if (startRowIndex < 0 || endRowIndex < startRowIndex) {
-      throw ArgumentError('Invalid row range: $startRowIndex to $endRowIndex');
+  RowRangeContent getContentInRowRange(int startRendererIndex, int endRendererIndex) {
+    if (startRendererIndex < 0 || endRendererIndex < startRendererIndex) {
+      throw ArgumentError('Invalid row range: $startRendererIndex to $endRendererIndex');
     }
 
-    // Get Y coordinates for the row range
-    final startRow = getRowByIndex(startRowIndex);
-    final endRow = getRowByIndex(endRowIndex);
+    // Get Y coordinates for the row range using renderer indices
+    final startRow = getRowByRendererIndex(startRendererIndex);
+    final endRow = getRowByRendererIndex(endRendererIndex);
     
     if (startRow == null) {
-      throw ArgumentError('Start row index $startRowIndex does not exist');
+      throw ArgumentError('Start row index $startRendererIndex does not exist');
     }
     
     final startY = startRow.startY;
