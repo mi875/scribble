@@ -169,7 +169,8 @@ class DynamicRowLinePainter extends CustomPainter {
 
 
   /// Paints row highlights for highlighted rows.
-  void _paintRowHighlights(Canvas canvas, double drawingLeft, double drawingRight) {
+  void _paintRowHighlights(
+      Canvas canvas, double drawingLeft, double drawingRight,) {
     if (highlightedRows.isEmpty) return;
 
     final highlightPaint = Paint()
@@ -185,8 +186,8 @@ class DynamicRowLinePainter extends CustomPainter {
       
       if (shouldHighlight) {
         // Calculate extended highlight area including free spaces
-        double highlightStartY = row.startY;
-        double highlightEndY = row.endY;
+        var highlightStartY = row.startY;
+        var highlightEndY = row.endY;
         
         // Find free spaces that belong to this row and extend the highlight
         for (final freeSpace in freeDrawingSpaces) {
@@ -199,7 +200,7 @@ class DynamicRowLinePainter extends CustomPainter {
         
         // Find any chained free spaces that should also be included
         // (free spaces that start where the previous one ended)
-        bool foundMoreSpaces = true;
+        var foundMoreSpaces = true;
         while (foundMoreSpaces) {
           foundMoreSpaces = false;
           for (final freeSpace in freeDrawingSpaces) {
@@ -227,12 +228,12 @@ class DynamicRowLinePainter extends CustomPainter {
     }
   }
 
-  /// Calculates the opacity for a line based on normal index and content proximity.
+  /// Calculates the opacity for a line based on normal index and content.
   double _calculateLineOpacity(double lineY, List<Offset> contentPoints) {
     // Find the row with this Y coordinate to get its normal index
     NotebookRow? rowAtY;
     for (final row in rows) {
-      if ((row.startY - lineY).abs() < 1.0) { // Allow small tolerance for floating point
+      if ((row.startY - lineY).abs() < 1) { // Allow small tolerance
         rowAtY = row;
         break;
       }
@@ -243,14 +244,14 @@ class DynamicRowLinePainter extends CustomPainter {
       final normalIndex = rowAtY!.normalIndex!;
       // Always show normal index 1 and 2 at full opacity
       if (normalIndex == 1 || normalIndex == 2) {
-        return 1.0;
+        return 1;
       }
     }
     
     if (contentPoints.isEmpty) return 0.1; // Very faint when no content
 
     // Find the minimum distance to any content point
-    double minDistance = double.infinity;
+    var minDistance = double.infinity;
     for (final point in contentPoints) {
       final distance = (point.dy - lineY).abs();
       if (distance < minDistance) {
@@ -260,11 +261,11 @@ class DynamicRowLinePainter extends CustomPainter {
 
     // Calculate opacity based on distance
     if (minDistance <= proximityRadius) {
-      return 1.0; // Full opacity near content
+      return 1; // Full opacity near content
     } else if (minDistance <= proximityRadius + fadeDistance) {
       // Fade out over distance
       final fadeProgress = (minDistance - proximityRadius) / fadeDistance;
-      return (1.0 - fadeProgress).clamp(0.1, 1.0);
+      return (1 - fadeProgress).clamp(0.1, 1);
     } else {
       return 0.1; // Minimum visibility for distant lines
     }
@@ -314,7 +315,7 @@ class DynamicRowLinePainter extends CustomPainter {
   /// Compares two lists of free drawing spaces for equality.
   bool _freeDrawingSpacesEqual(List<FreeDrawingSpace> other) {
     if (freeDrawingSpaces.length != other.length) return false;
-    for (int i = 0; i < freeDrawingSpaces.length; i++) {
+    for (var i = 0; i < freeDrawingSpaces.length; i++) {
       if (freeDrawingSpaces[i] != other[i]) return false;
     }
     return true;
@@ -323,7 +324,7 @@ class DynamicRowLinePainter extends CustomPainter {
   /// Compares two lists of image rows for equality.
   bool _imageRowsEqual(List<ImageRow> other) {
     if (imageRows.length != other.length) return false;
-    for (int i = 0; i < imageRows.length; i++) {
+    for (var i = 0; i < imageRows.length; i++) {
       if (imageRows[i] != other[i]) return false;
     }
     return true;
@@ -339,7 +340,7 @@ class DynamicRowLinePainter extends CustomPainter {
   /// 
   /// A free space belongs to a row if:
   /// 1. The free space starts within the row bounds, OR
-  /// 2. The free space starts immediately after the row ends (within small tolerance)
+  /// 2. The free space starts immediately after the row ends (tolerance)
   bool _freeSpaceBelongsToRow(FreeDrawingSpace freeSpace, NotebookRow row) {
     const tolerance = 2.0; // Small tolerance for floating point precision
     
@@ -368,7 +369,7 @@ class DynamicRowLinePainter extends CustomPainter {
     
     final direction = (end - start) / distance;
     
-    for (int i = 0; i < dashCount; i++) {
+    for (var i = 0; i < dashCount; i++) {
       final dashStart = start + direction * (i * (dashWidth + dashSpace));
       final dashEnd = dashStart + direction * dashWidth;
       

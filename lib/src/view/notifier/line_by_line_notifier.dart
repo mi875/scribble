@@ -1242,6 +1242,9 @@ class LineByLineNotifier extends ScribbleNotifier {
       imageProviders: imageProviders,
       addToUndoHistory: addToUndoHistory,
     );
+    
+    // Recalculate normal indices after import to ensure row numbers are correct
+    _recalculateNormalIndices();
   }
 
   @override
