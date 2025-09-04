@@ -21,6 +21,7 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
   double selectedEraserWidth = 5.0;
   double rowLineSpacing = 64.0;
   bool sequentialMode = false;
+  Color? selectedHighlightColor; // null means use theme color
 
   // Image insertion settings
   double selectedInsertPosition = 100.0;
@@ -314,13 +315,28 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
             tooltip: "Export Row Range",
             onPressed: () => _exportRowRange(context),
           ),
-          IconButton(
-              icon: const Icon(Icons.highlight),
-              tooltip: "Highlight Line 3",
-              onPressed: () {
-                // Toggle highlight for line number 3 (what users see on screen)
-                notifier..highlightRows([1, 2, 3]);
-              })
+          ValueListenableBuilder(
+            valueListenable: notifier,
+            builder: (context, state, _) {
+              final hasHighlights = notifier.highlightedRows.isNotEmpty;
+              return IconButton(
+                icon: Icon(
+                  hasHighlights ? Icons.highlight_off : Icons.highlight,
+                ),
+                tooltip: hasHighlights 
+                    ? "Clear Highlights" 
+                    : "Highlight Lines 1-3",
+                onPressed: () {
+                  if (hasHighlights) {
+                    notifier.clearAllHighlights();
+                  } else {
+                    // Highlight the first few lines to demonstrate
+                    notifier.highlightRows([1, 2, 3]);
+                  }
+                },
+              );
+            },
+          )
         ],
       ),
       body: Row(
@@ -604,6 +620,108 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                               setState(() => rowLineSpacing = v);
                               notifier.setRowLineSpacing(v);
                             },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Highlight Color Settings
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Highlight Color',
+                              style: Theme.of(context).textTheme.titleSmall),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              // Theme color option (null)
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() => selectedHighlightColor = null);
+                                  notifier.setHighlightColor(null);
+                                },
+                                child: Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: selectedHighlightColor == null
+                                          ? (isDark
+                                              ? Colors.grey.shade300
+                                              : Colors.grey.shade800)
+                                          : Colors.grey.shade300,
+                                      width: selectedHighlightColor == null ? 3 : 1,
+                                    ),
+                                    gradient: const LinearGradient(
+                                      colors: [Colors.yellow, Colors.amber],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                  ),
+                                  child: selectedHighlightColor == null
+                                      ? const Icon(
+                                          Icons.palette,
+                                          size: 14,
+                                          color: Colors.white,
+                                        )
+                                      : null,
+                                ),
+                              ),
+                              // Specific color options
+                              ...([
+                                Colors.yellow.shade300,
+                                Colors.green.shade200,
+                                Colors.blue.shade200,
+                                Colors.pink.shade200,
+                                Colors.orange.shade200,
+                                Colors.purple.shade200,
+                                Colors.cyan.shade200,
+                              ].map((color) {
+                                final selected = selectedHighlightColor == color;
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() => selectedHighlightColor = color);
+                                    notifier.setHighlightColor(color);
+                                  },
+                                  child: Container(
+                                    width: 28,
+                                    height: 28,
+                                    decoration: BoxDecoration(
+                                      color: color,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: selected
+                                            ? (isDark
+                                                ? Colors.grey.shade300
+                                                : Colors.grey.shade800)
+                                            : Colors.grey.shade300,
+                                        width: selected ? 3 : 1,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList()),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            selectedHighlightColor == null
+                                ? 'Using theme color'
+                                : 'Custom color selected',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
                         ],
                       ),

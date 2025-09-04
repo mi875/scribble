@@ -715,7 +715,8 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                                   widget.notifier.freeDrawingSpaces,
                               imageRows: widget.notifier.imageRows,
                               highlightedRows: widget.notifier.highlightedRows,
-                              highlightColor: theme.rowHighlightColor,
+                              highlightColor: widget.notifier.highlightColor ??
+                                  theme.rowHighlightColor,
                               highlightOpacity: 0.3,
                             ),
                           ),

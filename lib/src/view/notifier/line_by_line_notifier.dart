@@ -50,12 +50,19 @@ class LineByLineNotifier extends ScribbleNotifier {
 
     /// Initial canvas height.
     double initialCanvasHeight = 400.0,
+
+    /// Custom highlight color for rows. If null, uses theme color.
+    Color? highlightColor,
   })  : _rowLineSpacing = rowLineSpacing,
         _topMargin = topMargin,
         _bottomMargin = bottomMargin,
         _canvasHeight = initialCanvasHeight,
         _freeDrawingSpaces = [],
-        _imageRows = [] {
+        _imageRows = [],
+        _highlightColor = highlightColor {
+    // Store initial canvas height as minimum
+    _initialCanvasHeight = initialCanvasHeight;
+    
     // Initialize rows based on initial canvas height
     _initializeRows();
   }
@@ -75,6 +82,9 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Current canvas height.
   double _canvasHeight;
   double get canvasHeight => _canvasHeight;
+
+  /// Initial canvas height to use as minimum.
+  late final double _initialCanvasHeight;
 
   /// Whether sequential writing mode is enabled.
   bool _sequentialMode = false;
@@ -101,6 +111,9 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Set of highlighted normal indices (user-visible line numbers).
   final Set<int> _highlightedRows = <int>{};
 
+  /// Custom highlight color for rows. If null, uses theme color.
+  Color? _highlightColor;
+
   /// Gets an immutable list of rows.
   List<NotebookRow> get rows => List.unmodifiable(_rows);
 
@@ -117,6 +130,9 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Gets an immutable set of highlighted row indices.
   Set<int> get highlightedRows => Set.unmodifiable(_highlightedRows);
 
+  /// Gets the current highlight color. Returns null if using theme color.
+  Color? get highlightColor => _highlightColor;
+
   /// Sets the callback for canvas height changes.
   void setCanvasHeightChangeCallback(
       void Function(double newHeight)? callback) {
@@ -126,12 +142,27 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Sets the row line spacing.
   void setRowLineSpacing(double spacing) {
     _rowLineSpacing = spacing;
-    _checkAndExtendCanvas();
+    _checkAndResizeCanvas();
   }
 
   /// Sets the sequential writing mode.
   void setSequentialMode(bool enabled) {
     _sequentialMode = enabled;
+  }
+
+  /// Sets the highlight color for rows. Pass null to use theme color.
+  void setHighlightColor(Color? color) {
+    if (_highlightColor != color) {
+      _highlightColor = color;
+      notifyListeners();
+    }
+  }
+
+  @override
+  void clear() {
+    super.clear();
+    // After clearing, check if canvas needs to be resized (likely shrunk)
+    _checkAndResizeCanvas();
   }
 
   /// Sets the canvas height and notifies listeners.
@@ -276,14 +307,23 @@ class LineByLineNotifier extends ScribbleNotifier {
     return contentProgress.ceil() + 2;
   }
 
-  /// Checks if canvas needs to be extended and extends it if necessary.
-  void _checkAndExtendCanvas() {
+  /// Checks if canvas needs to be resized and resizes it if necessary.
+  void _checkAndResizeCanvas() {
     final requiredRows = _getRequiredRows();
     final requiredHeight =
         _topMargin + (requiredRows * _rowLineSpacing) + _bottomMargin;
 
-    if (requiredHeight > _canvasHeight) {
-      setCanvasHeight(requiredHeight);
+    // Calculate minimum height (initial height or based on minimum content)
+    final minimumHeight = _initialCanvasHeight;
+    final targetHeight = requiredHeight < minimumHeight 
+        ? minimumHeight 
+        : requiredHeight;
+
+    // Resize if the target height is different from current height
+    // Add some tolerance to prevent frequent small changes
+    const resizeTolerance = 5.0; // pixels
+    if ((targetHeight - _canvasHeight).abs() > resizeTolerance) {
+      setCanvasHeight(targetHeight);
     }
   }
 
@@ -323,7 +363,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     }
 
     super.onPointerDown(event);
-    _checkAndExtendCanvas();
+    _checkAndResizeCanvas();
   }
 
   @override
@@ -342,13 +382,13 @@ class LineByLineNotifier extends ScribbleNotifier {
     }
 
     super.onPointerUpdate(event);
-    _checkAndExtendCanvas();
+    _checkAndResizeCanvas();
   }
 
   @override
   void onPointerUp(PointerUpEvent event) {
     super.onPointerUp(event);
-    _checkAndExtendCanvas();
+    _checkAndResizeCanvas();
   }
 
   /// Gets the progress-based opacity for a normal index (user-visible line number).
@@ -469,7 +509,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     _shiftSketchContentDown(yPosition, spaceHeight);
 
     // Extend canvas to accommodate the new space
-    _checkAndExtendCanvas();
+    _checkAndResizeCanvas();
 
     // Store current state for undo/redo of free space operations
     _sketchToSpacesMap[value.sketch] = List.from(_freeDrawingSpaces);
@@ -515,7 +555,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     _shiftSketchContentUp(spaceStartY + spaceHeight, spaceHeight);
 
     // Recalculate canvas height
-    _checkAndExtendCanvas();
+    _checkAndResizeCanvas();
 
     // Store current state for undo/redo of free space operations
     _sketchToSpacesMap[value.sketch] = List.from(_freeDrawingSpaces);
@@ -553,7 +593,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     _shiftSketchContentDown(shiftStartY, additionalHeight);
 
     // Extend canvas to accommodate the expanded space
-    _checkAndExtendCanvas();
+    _checkAndResizeCanvas();
 
     // Store current state for undo/redo of free space operations
     _sketchToSpacesMap[value.sketch] = List.from(_freeDrawingSpaces);
@@ -713,7 +753,7 @@ class LineByLineNotifier extends ScribbleNotifier {
       }
 
       // Extend canvas to accommodate the new image row
-      _checkAndExtendCanvas();
+      _checkAndResizeCanvas();
 
       // Recalculate normal indices after image row operation
       _recalculateNormalIndices();
@@ -787,7 +827,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     }
 
     // Extend canvas to accommodate the new image row
-    _checkAndExtendCanvas();
+    _checkAndResizeCanvas();
 
     // Recalculate normal indices after image row operation
     _recalculateNormalIndices();
@@ -856,7 +896,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     _shiftSketchContentUp(rowStartY + rowHeight, rowHeight);
 
     // Recalculate canvas height
-    _checkAndExtendCanvas();
+    _checkAndResizeCanvas();
 
     // Recalculate normal indices after image row deletion
     _recalculateNormalIndices();
@@ -1171,6 +1211,9 @@ class LineByLineNotifier extends ScribbleNotifier {
         }
       }
     }
+    
+    // After sketch changes, check if canvas needs to be resized
+    _checkAndResizeCanvas();
   }
 
   /// Exports the complete notebook data to JSON format.
@@ -1365,6 +1408,7 @@ class LineByLineNotifier extends ScribbleNotifier {
       topMargin: 30.0,     // Match LineByLineCanvas hardcoded values
       bottomMargin: 30.0,  // Match LineByLineCanvas hardcoded values
       simulatePressure: simulatePressure,
+      customHighlightColor: _highlightColor,
     );
 
     // Render the row range using the reusable painters

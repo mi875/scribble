@@ -32,6 +32,7 @@ class ReusablePainterExport {
     double topMargin = 30.0,
     double bottomMargin = 30.0,
     bool simulatePressure = true,
+    Color? customHighlightColor,
   }) {
     // Create DynamicRowLinePainter (base layer)
     final rowLinePainter = DynamicRowLinePainter(
@@ -52,7 +53,7 @@ class ReusablePainterExport {
       freeDrawingSpaces: freeDrawingSpaces,
       imageRows: imageRows,
       highlightedRows: highlightedRows,
-      highlightColor: theme.rowHighlightColor,
+      highlightColor: customHighlightColor ?? theme.rowHighlightColor,
       highlightOpacity: 0.3,
     );
 
