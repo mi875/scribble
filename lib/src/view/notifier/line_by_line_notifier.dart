@@ -382,7 +382,8 @@ class LineByLineNotifier extends ScribbleNotifier {
     }
 
     super.onPointerUpdate(event);
-    _checkAndResizeCanvas();
+    // Don't resize canvas during pointer move to prevent jittering
+    // Canvas will be resized on pointer up
   }
 
   @override

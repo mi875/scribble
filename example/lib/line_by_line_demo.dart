@@ -106,8 +106,7 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
       }
 
       notifier.insertImageRowWithBytes(selectedInsertPosition, imageBytes,
-          height: height,
-          shiftContent: shiftContentWhenInserting);
+          height: height, shiftContent: shiftContentWhenInserting);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -323,9 +322,8 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                 icon: Icon(
                   hasHighlights ? Icons.highlight_off : Icons.highlight,
                 ),
-                tooltip: hasHighlights 
-                    ? "Clear Highlights" 
-                    : "Highlight Lines 1-3",
+                tooltip:
+                    hasHighlights ? "Clear Highlights" : "Highlight Lines 1-3",
                 onPressed: () {
                   if (hasHighlights) {
                     notifier.clearAllHighlights();
@@ -659,7 +657,9 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                                               ? Colors.grey.shade300
                                               : Colors.grey.shade800)
                                           : Colors.grey.shade300,
-                                      width: selectedHighlightColor == null ? 3 : 1,
+                                      width: selectedHighlightColor == null
+                                          ? 3
+                                          : 1,
                                     ),
                                     gradient: const LinearGradient(
                                       colors: [Colors.yellow, Colors.amber],
@@ -686,10 +686,12 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                                 Colors.purple.shade200,
                                 Colors.cyan.shade200,
                               ].map((color) {
-                                final selected = selectedHighlightColor == color;
+                                final selected =
+                                    selectedHighlightColor == color;
                                 return GestureDetector(
                                   onTap: () {
-                                    setState(() => selectedHighlightColor = color);
+                                    setState(
+                                        () => selectedHighlightColor = color);
                                     notifier.setHighlightColor(color);
                                   },
                                   child: Container(

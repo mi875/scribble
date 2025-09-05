@@ -1,5 +1,5 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:scribble/scribble.dart';
 import 'package:scribble/src/view/painting/dynamic_row_line_painter.dart';
 import 'package:scribble/src/view/painting/image_row_painter.dart';
@@ -137,23 +137,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
   final TransformationController _transformationController =
       TransformationController();
   double _currentCanvasHeight = 400;
-  bool _isPenActive = false;
-  
-  /// Checks if the pointer event indicates stylus/pen usage
-  bool _isDrawingPointer(PointerEvent event) {
-    // Check for explicit stylus device kind
-    if (event.kind == PointerDeviceKind.stylus ||
-        event.kind == PointerDeviceKind.invertedStylus) {
-      return true;
-    }
-    
-    // Check for pressure-sensitive input (likely pen/stylus)
-    if (event.pressure > 0.1 && event.pressure < 1.0) {
-      return true;
-    }
-    
-    return false;
-  }
+  bool _isDrawingWithPen = true;
 
   ScribbleTheme _effectiveTheme(BuildContext context) {
     if (widget.theme != null) return widget.theme!;
@@ -280,9 +264,9 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
   void _showImageRowInsertionMessage(int rowIndex) {
     final row = widget.notifier.getRowByIndex(rowIndex);
     if (row == null) return;
-    
+
     final yPosition = row.startY;
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -304,7 +288,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
   void _deleteImageRowAtRowIndex(int rowIndex) {
     final row = widget.notifier.getRowByIndex(rowIndex);
     if (row == null) return;
-    
+
     final yPosition = row.startY;
 
     try {
@@ -329,7 +313,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
   void _insertRowAbove(int rowIndex) {
     final row = widget.notifier.getRowByIndex(rowIndex);
     if (row == null) return;
-    
+
     final rowY = row.startY;
 
     // Shift all content below this Y position down by one row spacing
@@ -352,7 +336,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
   void _eraseRow(int rowIndex) {
     final row = widget.notifier.getRowByIndex(rowIndex);
     if (row == null) return;
-    
+
     final rowY = row.startY;
     final nextRowY = row.endY;
 
@@ -391,7 +375,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
   void _clearRow(int rowIndex) {
     final row = widget.notifier.getRowByIndex(rowIndex);
     if (row == null) return;
-    
+
     final rowY = row.startY;
     final nextRowY = row.endY;
 
@@ -417,7 +401,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
   void _insertFreeDrawingSpace(int rowIndex) {
     final row = widget.notifier.getRowByIndex(rowIndex);
     if (row == null) return;
-    
+
     final yPosition = row.endY;
     widget.notifier.insertFreeDrawingSpace(yPosition);
   }
@@ -426,7 +410,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
   void _deleteFreeDrawingSpace(int rowIndex) {
     final row = widget.notifier.getRowByIndex(rowIndex);
     if (row == null) return;
-    
+
     final yPosition = row.startY;
 
     try {
@@ -446,7 +430,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
   void _expandFreeDrawingSpace(int rowIndex) {
     final row = widget.notifier.getRowByIndex(rowIndex);
     if (row == null) return;
-    
+
     final yPosition = row.startY;
 
     try {
@@ -476,7 +460,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
       final currentRowY = row.startY;
       final rowCenterY = row.startY + (row.height / 2);
       final freeSpace = widget.notifier.getFreeDrawingSpaceAt(currentRowY);
-      
+
       // Try multiple positions to detect image rows that might not align perfectly
       var imageRow = widget.notifier.getImageRowAt(currentRowY);
       imageRow ??= widget.notifier.getImageRowAt(rowCenterY);
@@ -485,30 +469,31 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
       // Skip rows that are completely within image rows or free spaces,
       // except show one button per image row or free space region
       if (imageRow != null) {
-        final imageRowStartRowIndex = 
+        final imageRowStartRowIndex =
             widget.notifier.getRowIndexForY(imageRow.startY);
         if (i != imageRowStartRowIndex) continue;
       } else if (freeSpace != null) {
-        final spaceStartRowIndex = 
+        final spaceStartRowIndex =
             widget.notifier.getRowIndexForY(freeSpace.startY);
         if (i != spaceStartRowIndex) continue;
       }
 
       // Use the normal index for text rows, null for image/free space rows
       final normalIndex = row.normalIndex;
-      
+
       // Get opacity based on content progress (but always show image rows)
-      final opacity = imageRow != null 
-          ? 1.0 
-          : normalIndex != null 
-              ? widget.notifier.getLineNumberOpacity(normalIndex) 
+      final opacity = imageRow != null
+          ? 1.0
+          : normalIndex != null
+              ? widget.notifier.getLineNumberOpacity(normalIndex)
               : 0.0;
 
       // Skip if too transparent (but not for image rows)
       if (opacity < 0.01) continue;
 
       // Get the current line number for display (use normal index directly)
-      final currentLine = normalIndex; // This is already 1-based or null for non-text rows
+      final currentLine =
+          normalIndex; // This is already 1-based or null for non-text rows
 
       // Position the button (centered in left margin)
       const buttonX = leftMargin - 6; // Center horizontally in margin
@@ -529,8 +514,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                 final currentY = row.startY;
                 final isInFreeSpace =
                     widget.notifier.isInFreeDrawingSpace(currentY);
-                final isInImageRow =
-                    widget.notifier.isInImageRow(currentY);
+                final isInImageRow = widget.notifier.isInImageRow(currentY);
 
                 return [
                   const PopupMenuItem(
@@ -674,45 +658,76 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
           return Container(
             color: theme.paperShadowColor.withValues(alpha: 0.1),
             child: ClipRect(
-              child: GestureDetector(
-                // Prevent any gesture recognition during pen drawing
-                onPanStart: _isPenActive ? (_) {} : null,
-                onPanUpdate: _isPenActive ? (_) {} : null,
-                onPanEnd: _isPenActive ? (_) {} : null,
-                child: InteractiveViewer(
-                  transformationController: _transformationController,
-                  minScale: 0.5,
-                  maxScale: 3.0,
-                  constrained: false,
-                  panEnabled: !_isPenActive,
-                  scaleEnabled: !_isPenActive,
-                  boundaryMargin: const EdgeInsets.all(double.infinity),
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-                  child: Container(
-                    width: widget.canvasWidth,
-                    height: _currentCanvasHeight,
-                    margin: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      color: theme.paperColor,
-                      border: widget.showPaperBorder
-                          ? Border.all(
-                              color: theme.paperBorderColor,
-                              width: widget.paperBorderWidth,
-                            )
-                          : null,
-                      boxShadow: widget.showPaperShadow
-                          ? [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
-                                blurRadius: 4,
-                                offset: const Offset(2, 2),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: RepaintBoundary(
-                      key: widget.notifier.repaintBoundaryKey,
+              child: InteractiveViewer(
+                transformationController: _transformationController,
+                minScale: 0.5,
+                maxScale: 3,
+                constrained: false,
+                // Keep pan/scale enabled but gestures are absorbed by parent GestureDetector
+                panEnabled: !_isDrawingWithPen,
+                scaleEnabled: !_isDrawingWithPen,
+                boundaryMargin: const EdgeInsets.all(double.infinity),
+                child: Container(
+                  width: widget.canvasWidth,
+                  height: _currentCanvasHeight,
+                  margin: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: theme.paperColor,
+                    border: widget.showPaperBorder
+                        ? Border.all(
+                            color: theme.paperBorderColor,
+                            width: widget.paperBorderWidth,
+                          )
+                        : null,
+                    boxShadow: widget.showPaperShadow
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 4,
+                              offset: const Offset(2, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: RepaintBoundary(
+                    key: widget.notifier.repaintBoundaryKey,
+                    child: Listener(
+                      onPointerDown: (event) {
+                        if (event.kind == PointerDeviceKind.stylus ||
+                            event.kind == PointerDeviceKind.invertedStylus) {
+                          setState(() {
+                            _isDrawingWithPen = true;
+                          });
+                          widget.notifier.onPointerDown(event);
+                        } else if (event.kind == PointerDeviceKind.touch) {
+                          setState(() {
+                            _isDrawingWithPen = false;
+                          });
+                        }
+                      },
+                      onPointerMove: (event) {
+                        if (event.kind == PointerDeviceKind.stylus ||
+                            event.kind == PointerDeviceKind.invertedStylus) {
+                          if (!_isDrawingWithPen) {
+                            setState(() {
+                              _isDrawingWithPen = true;
+                            });
+                          }
+                          widget.notifier.onPointerUpdate(event);
+                        }
+                      },
+                      onPointerUp: (event) {
+                        if (event.kind == PointerDeviceKind.stylus ||
+                            event.kind == PointerDeviceKind.invertedStylus) {
+                          widget.notifier.onPointerUp(event);
+                        }
+                      },
+                      onPointerCancel: (event) {
+                        if (event.kind == PointerDeviceKind.stylus ||
+                            event.kind == PointerDeviceKind.invertedStylus) {
+                          widget.notifier.onPointerCancel(event);
+                        }
+                      },
                       child: Stack(
                         children: [
                           // Row lines painter
@@ -725,10 +740,10 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                               lineWidth: widget.rowLineWidth,
                               sketch: state.sketch,
                               rows: widget.notifier.rows,
-                              leftMargin: 60.0,
-                              rightMargin: 20.0,
-                              topMargin: 30.0,
-                              bottomMargin: 30.0,
+                              leftMargin: 60,
+                              rightMargin: 20,
+                              topMargin: 30,
+                              bottomMargin: 30,
                               proximityRadius: 40,
                               fadeDistance: 80,
                               regions: const [],
@@ -749,76 +764,44 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                                     imageRows: widget.notifier.imageRows,
                                     canvasWidth: widget.canvasWidth,
                                     loadedImages: widget.notifier.loadedImages,
-                                    leftMargin: 60.0,
-                                    rightMargin: 20.0,
-                                    borderColor: theme.rowLineColor.withOpacity(0.5),
-                                    borderWidth: 1.0,
-                                    showBorders: true,
+                                    leftMargin: 60,
+                                    rightMargin: 20,
+                                    borderColor: theme.rowLineColor
+                                        .withValues(alpha: 0.5),
+                                    borderWidth: 1,
                                   )
                                 : ImageRowPainter(
                                     imageRows: widget.notifier.imageRows,
                                     canvasWidth: widget.canvasWidth,
-                                    leftMargin: 60.0,
-                                    rightMargin: 20.0,
-                                    borderColor: theme.rowLineColor.withOpacity(0.5),
-                                    borderWidth: 1.0,
-                                    showBorders: true,
+                                    leftMargin: 60,
+                                    rightMargin: 20,
+                                    borderColor: theme.rowLineColor
+                                        .withValues(alpha: 0.5),
+                                    borderWidth: 1,
                                   ),
                           ),
 
                           // Main drawing canvas
-                          Listener(
-                            onPointerDown: (event) {
-                              // Immediately set pen active flag to prevent InteractiveViewer panning
-                              if (_isDrawingPointer(event)) {
-                                _isPenActive = true;
-                                setState(() {}); // Trigger rebuild to disable InteractiveViewer panning
-                              }
-                              widget.notifier.onPointerDown(event);
-                            },
-                            onPointerMove: (event) {
-                              // Ensure pen stays active during drawing
-                              if (_isDrawingPointer(event) && !_isPenActive) {
-                                _isPenActive = true;
-                                setState(() {}); // Trigger rebuild to disable InteractiveViewer panning
-                              }
-                              widget.notifier.onPointerUpdate(event);
-                            },
-                            onPointerUp: (event) {
-                              widget.notifier.onPointerUp(event);
-                              // Only disable pen mode for drawing pointers
-                              if (_isDrawingPointer(event) && _isPenActive) {
-                                _isPenActive = false;
-                                setState(() {}); // Trigger rebuild to re-enable InteractiveViewer panning
-                              }
-                            },
-                            onPointerCancel: (event) {
-                              widget.notifier.onPointerCancel(event);
-                              // Reset pen active state on cancel
-                              if (_isPenActive) {
-                                _isPenActive = false;
-                                setState(() {}); // Trigger rebuild to re-enable InteractiveViewer panning
-                              }
-                            },
-                            child: CustomPaint(
-                              size: Size(
-                                  widget.canvasWidth, _currentCanvasHeight),
-                              painter: ScribblePainter(
-                                sketch: state.sketch,
-                                scaleFactor: 1.0,
-                                simulatePressure: widget.simulatePressure,
-                                theme: theme,
-                              ),
-                              foregroundPainter: state.active
-                                  ? ScribbleEditingPainter(
-                                      state: state,
-                                      drawPointer: widget.drawPen,
-                                      drawEraser: widget.drawEraser,
-                                      simulatePressure: widget.simulatePressure,
-                                      theme: theme,
-                                    )
-                                  : null,
+                          CustomPaint(
+                            size: Size(
+                              widget.canvasWidth,
+                              _currentCanvasHeight,
                             ),
+                            painter: ScribblePainter(
+                              sketch: state.sketch,
+                              scaleFactor: 1,
+                              simulatePressure: widget.simulatePressure,
+                              theme: theme,
+                            ),
+                            foregroundPainter: state.active
+                                ? ScribbleEditingPainter(
+                                    state: state,
+                                    drawPointer: widget.drawPen,
+                                    drawEraser: widget.drawEraser,
+                                    simulatePressure: widget.simulatePressure,
+                                    theme: theme,
+                                  )
+                                : null,
                           ),
 
                           // Line number buttons
@@ -827,7 +810,6 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                       ),
                     ),
                   ),
-                ),
                 ),
               ),
             ),
