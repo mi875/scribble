@@ -138,6 +138,22 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
       TransformationController();
   double _currentCanvasHeight = 400;
   bool _isPenActive = false;
+  
+  /// Checks if the pointer event indicates stylus/pen usage
+  bool _isDrawingPointer(PointerEvent event) {
+    // Check for explicit stylus device kind
+    if (event.kind == PointerDeviceKind.stylus ||
+        event.kind == PointerDeviceKind.invertedStylus) {
+      return true;
+    }
+    
+    // Check for pressure-sensitive input (likely pen/stylus)
+    if (event.pressure > 0.1 && event.pressure < 1.0) {
+      return true;
+    }
+    
+    return false;
+  }
 
   ScribbleTheme _effectiveTheme(BuildContext context) {
     if (widget.theme != null) return widget.theme!;
@@ -658,14 +674,19 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
           return Container(
             color: theme.paperShadowColor.withValues(alpha: 0.1),
             child: ClipRect(
-              child: InteractiveViewer(
-                transformationController: _transformationController,
-                minScale: 0.5,
-                maxScale: 3.0,
-                constrained: false,
-                panEnabled: !_isPenActive,
-                scaleEnabled: !_isPenActive,
-                boundaryMargin: const EdgeInsets.all(double.infinity),
+              child: GestureDetector(
+                // Prevent any gesture recognition during pen drawing
+                onPanStart: _isPenActive ? (_) {} : null,
+                onPanUpdate: _isPenActive ? (_) {} : null,
+                onPanEnd: _isPenActive ? (_) {} : null,
+                child: InteractiveViewer(
+                  transformationController: _transformationController,
+                  minScale: 0.5,
+                  maxScale: 3.0,
+                  constrained: false,
+                  panEnabled: !_isPenActive,
+                  scaleEnabled: !_isPenActive,
+                  boundaryMargin: const EdgeInsets.all(double.infinity),
                 child: SingleChildScrollView(
                   controller: _scrollController,
                   child: Container(
@@ -748,20 +769,35 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                           // Main drawing canvas
                           Listener(
                             onPointerDown: (event) {
-                              if (event.kind == PointerDeviceKind.stylus ||
-                                  event.kind ==
-                                      PointerDeviceKind.invertedStylus) {
-                                setState(() => _isPenActive = true);
+                              // Immediately set pen active flag to prevent InteractiveViewer panning
+                              if (_isDrawingPointer(event)) {
+                                _isPenActive = true;
+                                setState(() {}); // Trigger rebuild to disable InteractiveViewer panning
                               }
                               widget.notifier.onPointerDown(event);
                             },
-                            onPointerMove: widget.notifier.onPointerUpdate,
+                            onPointerMove: (event) {
+                              // Ensure pen stays active during drawing
+                              if (_isDrawingPointer(event) && !_isPenActive) {
+                                _isPenActive = true;
+                                setState(() {}); // Trigger rebuild to disable InteractiveViewer panning
+                              }
+                              widget.notifier.onPointerUpdate(event);
+                            },
                             onPointerUp: (event) {
                               widget.notifier.onPointerUp(event);
-                              if (event.kind == PointerDeviceKind.stylus ||
-                                  event.kind ==
-                                      PointerDeviceKind.invertedStylus) {
-                                setState(() => _isPenActive = false);
+                              // Only disable pen mode for drawing pointers
+                              if (_isDrawingPointer(event) && _isPenActive) {
+                                _isPenActive = false;
+                                setState(() {}); // Trigger rebuild to re-enable InteractiveViewer panning
+                              }
+                            },
+                            onPointerCancel: (event) {
+                              widget.notifier.onPointerCancel(event);
+                              // Reset pen active state on cancel
+                              if (_isPenActive) {
+                                _isPenActive = false;
+                                setState(() {}); // Trigger rebuild to re-enable InteractiveViewer panning
                               }
                             },
                             child: CustomPaint(
@@ -791,6 +827,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                       ),
                     ),
                   ),
+                ),
                 ),
               ),
             ),
