@@ -201,8 +201,9 @@ class LineByLineNotifier extends ScribbleNotifier {
           imageRow.containsY(rowY) || imageRow.containsY(rowY + _rowLineSpacing));
       
       // Check if this row position overlaps with a free drawing space
-      final overlapsFreespace = _freeDrawingSpaces.any((space) => 
-          space.containsY(rowY) || space.containsY(rowY + _rowLineSpacing));
+      final overlapsFreespace = _freeDrawingSpaces.any(
+        (space) => space.containsY(rowY),
+      );
       
       // Only assign normal index if this is a text row (not image/free space)
       final assignedNormalIndex = (!overlapsImageRow && !overlapsFreespace) 
@@ -231,8 +232,9 @@ class LineByLineNotifier extends ScribbleNotifier {
       // Check if this row position overlaps with an image row or free space
       final overlapsImageRow = _imageRows.any((imageRow) => 
           imageRow.containsY(rowY) || imageRow.containsY(rowY + row.height));
-      final overlapsFreespace = _freeDrawingSpaces.any((space) => 
-          space.containsY(rowY) || space.containsY(rowY + row.height));
+      final overlapsFreespace = _freeDrawingSpaces.any(
+        (space) => space.containsY(rowY),
+      );
       
       // Update the row with the correct normal index
       final assignedNormalIndex = (!overlapsImageRow && !overlapsFreespace) 
@@ -512,6 +514,9 @@ class LineByLineNotifier extends ScribbleNotifier {
     // Extend canvas to accommodate the new space
     _checkAndResizeCanvas();
 
+    // Recalculate normal indices after free space operation
+    _recalculateNormalIndices();
+
     // Store current state for undo/redo of free space operations
     _sketchToSpacesMap[value.sketch] = List.from(_freeDrawingSpaces);
     _sketchToImageRowsMap[value.sketch] = List.from(_imageRows);
@@ -558,6 +563,9 @@ class LineByLineNotifier extends ScribbleNotifier {
     // Recalculate canvas height
     _checkAndResizeCanvas();
 
+    // Recalculate normal indices after free space operation
+    _recalculateNormalIndices();
+
     // Store current state for undo/redo of free space operations
     _sketchToSpacesMap[value.sketch] = List.from(_freeDrawingSpaces);
     _sketchToImageRowsMap[value.sketch] = List.from(_imageRows);
@@ -595,6 +603,9 @@ class LineByLineNotifier extends ScribbleNotifier {
 
     // Extend canvas to accommodate the expanded space
     _checkAndResizeCanvas();
+
+    // Recalculate normal indices after free space operation
+    _recalculateNormalIndices();
 
     // Store current state for undo/redo of free space operations
     _sketchToSpacesMap[value.sketch] = List.from(_freeDrawingSpaces);

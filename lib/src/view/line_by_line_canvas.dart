@@ -262,7 +262,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
 
   /// Shows a message directing users to use external image insertion controls.
   void _showImageRowInsertionMessage(int rowIndex) {
-    final row = widget.notifier.getRowByIndex(rowIndex);
+    final row = widget.notifier.getRowByRendererIndex(rowIndex);
     if (row == null) return;
 
     final yPosition = row.startY;
@@ -270,10 +270,9 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'To insert an image row, use the Image Rows controls in the left panel. '
-          'Set the insert position to ${yPosition.round()}px.',
+          'To insert an image row, use the Image Rows controls in the '
+          'left panel. Set the insert position to ${yPosition.round()}px.',
         ),
-        duration: const Duration(seconds: 4),
         action: SnackBarAction(
           label: 'Got it',
           onPressed: () {
@@ -286,7 +285,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
 
   /// Deletes an image row at the specified row index.
   void _deleteImageRowAtRowIndex(int rowIndex) {
-    final row = widget.notifier.getRowByIndex(rowIndex);
+    final row = widget.notifier.getRowByRendererIndex(rowIndex);
     if (row == null) return;
 
     final yPosition = row.startY;
@@ -311,7 +310,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
 
   /// Inserts a new row above the specified row.
   void _insertRowAbove(int rowIndex) {
-    final row = widget.notifier.getRowByIndex(rowIndex);
+    final row = widget.notifier.getRowByRendererIndex(rowIndex);
     if (row == null) return;
 
     final rowY = row.startY;
@@ -329,12 +328,12 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
     }).toList();
 
     final newSketch = currentSketch.copyWith(lines: shiftedLines);
-    widget.notifier.setSketch(sketch: newSketch, addToUndoHistory: true);
+    widget.notifier.setSketch(sketch: newSketch);
   }
 
   /// Erases/deletes the specified row.
   void _eraseRow(int rowIndex) {
-    final row = widget.notifier.getRowByIndex(rowIndex);
+    final row = widget.notifier.getRowByRendererIndex(rowIndex);
     if (row == null) return;
 
     final rowY = row.startY;
@@ -368,12 +367,12 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
     }
 
     final newSketch = currentSketch.copyWith(lines: filteredAndShiftedLines);
-    widget.notifier.setSketch(sketch: newSketch, addToUndoHistory: true);
+    widget.notifier.setSketch(sketch: newSketch);
   }
 
   /// Clears content in the specified row without shifting other rows.
   void _clearRow(int rowIndex) {
-    final row = widget.notifier.getRowByIndex(rowIndex);
+    final row = widget.notifier.getRowByRendererIndex(rowIndex);
     if (row == null) return;
 
     final rowY = row.startY;
@@ -394,12 +393,12 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
     }
 
     final newSketch = currentSketch.copyWith(lines: filteredLines);
-    widget.notifier.setSketch(sketch: newSketch, addToUndoHistory: true);
+    widget.notifier.setSketch(sketch: newSketch);
   }
 
   /// Inserts a free drawing space below the specified row.
   void _insertFreeDrawingSpace(int rowIndex) {
-    final row = widget.notifier.getRowByIndex(rowIndex);
+    final row = widget.notifier.getRowByRendererIndex(rowIndex);
     if (row == null) return;
 
     final yPosition = row.endY;
@@ -408,7 +407,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
 
   /// Deletes a free drawing space at the specified row.
   void _deleteFreeDrawingSpace(int rowIndex) {
-    final row = widget.notifier.getRowByIndex(rowIndex);
+    final row = widget.notifier.getRowByRendererIndex(rowIndex);
     if (row == null) return;
 
     final yPosition = row.startY;
@@ -428,7 +427,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
 
   /// Expands a free drawing space at the specified row.
   void _expandFreeDrawingSpace(int rowIndex) {
-    final row = widget.notifier.getRowByIndex(rowIndex);
+    final row = widget.notifier.getRowByRendererIndex(rowIndex);
     if (row == null) return;
 
     final yPosition = row.startY;
@@ -461,7 +460,8 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
       final rowCenterY = row.startY + (row.height / 2);
       final freeSpace = widget.notifier.getFreeDrawingSpaceAt(currentRowY);
 
-      // Try multiple positions to detect image rows that might not align perfectly
+      // Try multiple positions to detect image rows that might not align
+      // perfectly
       var imageRow = widget.notifier.getImageRowAt(currentRowY);
       imageRow ??= widget.notifier.getImageRowAt(rowCenterY);
       imageRow ??= widget.notifier.getImageRowAt(row.startY + row.height);
@@ -481,22 +481,24 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
       // Use the normal index for text rows, null for image/free space rows
       final normalIndex = row.normalIndex;
 
-      // Get opacity based on content progress (but always show image rows)
-      final opacity = imageRow != null
-          ? 1.0
-          : normalIndex != null
-              ? widget.notifier.getLineNumberOpacity(normalIndex)
-              : 0.0;
+      // Get opacity based on content progress (fully visible for free spaces)
+      final opacity = freeSpace != null
+          ? 1.0 // Fully visible for free spaces
+          : imageRow != null
+              ? 1.0
+              : normalIndex != null
+                  ? widget.notifier.getLineNumberOpacity(normalIndex)
+                  : 0.0;
 
-      // Skip if too transparent (but not for image rows)
-      if (opacity < 0.01) continue;
+      // Skip if too transparent (but not for image rows or free spaces)
+      if (opacity < 0.01 && imageRow == null && freeSpace == null) continue;
 
       // Get the current line number for display (use normal index directly)
       final currentLine =
           normalIndex; // This is already 1-based or null for non-text rows
 
-      // Position the button (centered in left margin)
-      const buttonX = leftMargin - 6; // Center horizontally in margin
+      // Position the button (left side for all controls)
+      final buttonX = leftMargin - 6; // Left side position for all controls
       final buttonY = betweenRowsY - 16; // Center button vertically
 
       buttons.add(
@@ -510,7 +512,8 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
             child: PopupMenuButton<String>(
               offset: const Offset(32, 0),
               itemBuilder: (context) {
-                // Check if current position is in a free drawing space or image row
+                // Check if current position is in a free drawing space or
+                // image row
                 final currentY = row.startY;
                 final isInFreeSpace =
                     widget.notifier.isInFreeDrawingSpace(currentY);
@@ -655,7 +658,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
       child: ValueListenableBuilder<ScribbleState>(
         valueListenable: widget.notifier,
         builder: (context, state, _) {
-          return Container(
+          return ColoredBox(
             color: theme.paperShadowColor.withValues(alpha: 0.1),
             child: ClipRect(
               child: InteractiveViewer(
@@ -746,14 +749,12 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                               bottomMargin: 30,
                               proximityRadius: 40,
                               fadeDistance: 80,
-                              regions: const [],
                               freeDrawingSpaces:
                                   widget.notifier.freeDrawingSpaces,
                               imageRows: widget.notifier.imageRows,
                               highlightedRows: widget.notifier.highlightedRows,
                               highlightColor: widget.notifier.highlightColor ??
                                   theme.rowHighlightColor,
-                              highlightOpacity: 0.3,
                             ),
                           ),
 
@@ -768,7 +769,6 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                                     rightMargin: 20,
                                     borderColor: theme.rowLineColor
                                         .withValues(alpha: 0.5),
-                                    borderWidth: 1,
                                   )
                                 : ImageRowPainter(
                                     imageRows: widget.notifier.imageRows,
@@ -777,7 +777,6 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                                     rightMargin: 20,
                                     borderColor: theme.rowLineColor
                                         .withValues(alpha: 0.5),
-                                    borderWidth: 1,
                                   ),
                           ),
 
