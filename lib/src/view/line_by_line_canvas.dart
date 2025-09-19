@@ -315,19 +315,54 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
 
     final rowY = row.startY;
 
-    // Shift all content below this Y position down by one row spacing
+    // Process all strokes, splitting those that cross the insertion boundary
     final currentSketch = widget.notifier.currentSketch;
-    final shiftedLines = currentSketch.lines.map((line) {
-      final shiftedPoints = line.points.map((point) {
-        if (point.y >= rowY) {
-          return point.copyWith(y: point.y + widget.notifier.rowLineSpacing);
-        }
-        return point;
-      }).toList();
-      return line.copyWith(points: shiftedPoints);
-    }).toList();
+    final processedLines = <SketchLine>[];
 
-    final newSketch = currentSketch.copyWith(lines: shiftedLines);
+    for (final line in currentSketch.lines) {
+      // Check if line crosses the insertion boundary
+      final hasPointsAbove = line.points.any((p) => p.y < rowY);
+      final hasPointsBelow = line.points.any((p) => p.y >= rowY);
+
+      if (!hasPointsAbove && !hasPointsBelow) {
+        // Empty line, skip it
+        continue;
+      } else if (hasPointsAbove && !hasPointsBelow) {
+        // Line is entirely above the insertion point, keep as-is
+        processedLines.add(line);
+      } else if (!hasPointsAbove && hasPointsBelow) {
+        // Line is entirely below the insertion point, shift all points
+        final shiftedPoints = line.points
+            .map((p) => p.copyWith(y: p.y + widget.notifier.rowLineSpacing))
+            .toList();
+        processedLines.add(line.copyWith(points: shiftedPoints));
+      } else {
+        // Line crosses the boundary, split it into two strokes
+        final pointsAbove = <Point>[];
+        final pointsBelow = <Point>[];
+
+        for (final point in line.points) {
+          if (point.y < rowY) {
+            pointsAbove.add(point);
+          } else {
+            // Shift points at or below the boundary
+            pointsBelow.add(
+              point.copyWith(y: point.y + widget.notifier.rowLineSpacing),
+            );
+          }
+        }
+
+        // Create two separate strokes
+        if (pointsAbove.isNotEmpty) {
+          processedLines.add(line.copyWith(points: pointsAbove));
+        }
+        if (pointsBelow.isNotEmpty) {
+          processedLines.add(line.copyWith(points: pointsBelow));
+        }
+      }
+    }
+
+    final newSketch = currentSketch.copyWith(lines: processedLines);
     widget.notifier.setSketch(sketch: newSketch);
   }
 
@@ -339,34 +374,42 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
     final rowY = row.startY;
     final nextRowY = row.endY;
 
-    // Remove all content in this row and shift content below up
+    // Process all strokes, splitting those that cross row boundaries
     final currentSketch = widget.notifier.currentSketch;
-    final filteredAndShiftedLines = <SketchLine>[];
+    final processedLines = <SketchLine>[];
 
     for (final line in currentSketch.lines) {
-      final filteredPoints = <Point>[];
+      // Check where the line's points are relative to the row boundaries
+      final pointsBefore = <Point>[];
+      final pointsInRow = <Point>[];
+      final pointsAfter = <Point>[];
 
       for (final point in line.points) {
-        if (point.y >= rowY && point.y < nextRowY) {
-          // Skip points in the deleted row
-          continue;
-        } else if (point.y >= nextRowY) {
-          // Shift points above the deleted row down
-          filteredPoints.add(
+        if (point.y < rowY) {
+          // Point is before the deleted row
+          pointsBefore.add(point);
+        } else if (point.y >= rowY && point.y < nextRowY) {
+          // Point is in the deleted row
+          pointsInRow.add(point);
+        } else {
+          // Point is after the deleted row, shift it up
+          pointsAfter.add(
             point.copyWith(y: point.y - widget.notifier.rowLineSpacing),
           );
-        } else {
-          // Keep points below the deleted row as-is
-          filteredPoints.add(point);
         }
       }
 
-      if (filteredPoints.isNotEmpty) {
-        filteredAndShiftedLines.add(line.copyWith(points: filteredPoints));
+      // Create separate strokes for portions before and after the deleted row
+      // Skip the portion within the deleted row
+      if (pointsBefore.isNotEmpty) {
+        processedLines.add(line.copyWith(points: pointsBefore));
+      }
+      if (pointsAfter.isNotEmpty) {
+        processedLines.add(line.copyWith(points: pointsAfter));
       }
     }
 
-    final newSketch = currentSketch.copyWith(lines: filteredAndShiftedLines);
+    final newSketch = currentSketch.copyWith(lines: processedLines);
     widget.notifier.setSketch(sketch: newSketch);
   }
 
@@ -526,7 +569,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                       children: [
                         Icon(Icons.add, size: 16),
                         SizedBox(width: 8),
-                        Text('Insert Row Above'),
+                        Text('上に行を挿入'),
                       ],
                     ),
                   ),
@@ -536,7 +579,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                       children: [
                         Icon(Icons.space_bar, size: 16),
                         SizedBox(width: 8),
-                        Text('Add Free Drawing Space'),
+                        Text('フリー描画スペースを追加'),
                       ],
                     ),
                   ),
@@ -546,7 +589,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                       children: [
                         Icon(Icons.image, size: 16),
                         SizedBox(width: 8),
-                        Text('Insert Image Row'),
+                        Text('画像行を挿入'),
                       ],
                     ),
                   ),
@@ -557,7 +600,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                         children: [
                           Icon(Icons.delete_outline, size: 16),
                           SizedBox(width: 8),
-                          Text('Delete Image Row'),
+                          Text('画像行を削除'),
                         ],
                       ),
                     ),
@@ -568,7 +611,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                         children: [
                           Icon(Icons.expand, size: 16),
                           SizedBox(width: 8),
-                          Text('Expand Free Space'),
+                          Text('スペースを拡張'),
                         ],
                       ),
                     ),
@@ -578,7 +621,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                         children: [
                           Icon(Icons.compress, size: 16),
                           SizedBox(width: 8),
-                          Text('Delete Free Space'),
+                          Text('スペースを削除'),
                         ],
                       ),
                     ),
@@ -589,7 +632,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                         children: [
                           Icon(Icons.clear, size: 16),
                           SizedBox(width: 8),
-                          Text('Clear Row'),
+                          Text('行をクリア'),
                         ],
                       ),
                     ),
@@ -599,7 +642,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                         children: [
                           Icon(Icons.delete_outline, size: 16),
                           SizedBox(width: 8),
-                          Text('Delete Row'),
+                          Text('行を削除'),
                         ],
                       ),
                     ),
