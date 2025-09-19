@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:scribble/scribble.dart';
@@ -792,8 +791,8 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                           const SizedBox(height: 8),
 
                           // Insert Images
-                          Text('Insert Image:',
-                              style: const TextStyle(
+                          const Text('Insert Image:',
+                              style: TextStyle(
                                   fontSize: 12, fontWeight: FontWeight.w500)),
                           const SizedBox(height: 8),
 

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:example/line_by_line_demo.dart';
+import 'package:example/row_change_detection_demo.dart';
 import 'package:example/simple_scrollable_notebook_demo.dart';
 import 'package:flutter/material.dart';
 import 'package:scribble/scribble.dart';
@@ -171,6 +172,25 @@ class _HomePageState extends State<HomePage> {
                       label: const Text('Simple Notebook Demo'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.all(16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Row Change Detection Demo
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const RowChangeDetectionDemo(),
+                        ),
+                      ),
+                      icon: const Icon(Icons.track_changes),
+                      label: const Text('Row Change Detection Demo'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.all(16),
                       ),

@@ -1,13 +1,12 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:scribble/scribble.dart';
+import 'package:scribble/src/domain/model/row/row.dart';
 import 'package:scribble/src/view/painting/dynamic_row_line_painter.dart';
 import 'package:scribble/src/view/painting/image_row_painter.dart';
 import 'package:scribble/src/view/painting/scribble_painter.dart';
-import 'package:scribble/src/domain/model/row/row.dart';
-import 'package:scribble/src/domain/model/free_drawing_space/free_drawing_space.dart';
-import 'package:scribble/src/domain/model/image_row/image_row.dart';
 
 /// Utility class for reusing the actual painters from LineByLineCanvas for export.
 /// 
@@ -49,12 +48,10 @@ class ReusablePainterExport {
       bottomMargin: bottomMargin,
       proximityRadius: 40,
       fadeDistance: 80,
-      regions: const [],
       freeDrawingSpaces: freeDrawingSpaces,
       imageRows: imageRows,
       highlightedRows: highlightedRows,
       highlightColor: customHighlightColor ?? theme.rowHighlightColor,
-      highlightOpacity: 0.3,
     );
 
     // Create ImageRowPainter (middle layer)
@@ -66,8 +63,6 @@ class ReusablePainterExport {
             leftMargin: leftMargin,
             rightMargin: rightMargin,
             borderColor: theme.rowLineColor.withValues(alpha: 0.5),
-            borderWidth: 1.0,
-            showBorders: true,
           )
         : ImageRowPainter(
             imageRows: imageRows,
@@ -75,14 +70,12 @@ class ReusablePainterExport {
             leftMargin: leftMargin,
             rightMargin: rightMargin,
             borderColor: theme.rowLineColor.withValues(alpha: 0.5),
-            borderWidth: 1.0,
-            showBorders: true,
           );
 
     // Create ScribblePainter (content layer)
     final scribblePainter = ScribblePainter(
       sketch: sketch,
-      scaleFactor: 1.0,
+      scaleFactor: 1,
       simulatePressure: simulatePressure,
       theme: theme,
     );

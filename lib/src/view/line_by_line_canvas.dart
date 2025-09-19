@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
 import 'package:scribble/scribble.dart';
 import 'package:scribble/src/view/painting/dynamic_row_line_painter.dart';
 import 'package:scribble/src/view/painting/image_row_painter.dart';
@@ -498,7 +498,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
           normalIndex; // This is already 1-based or null for non-text rows
 
       // Position the button (left side for all controls)
-      final buttonX = leftMargin - 6; // Left side position for all controls
+      const buttonX = leftMargin - 6; // Left side position for all controls
       final buttonY = betweenRowsY - 16; // Center button vertically
 
       buttons.add(

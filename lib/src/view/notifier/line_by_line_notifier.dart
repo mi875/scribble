@@ -1,17 +1,16 @@
 import 'dart:async';
-import 'dart:typed_data';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/widgets.dart';
 import 'package:scribble/scribble.dart';
-import 'package:scribble/src/view/simplification/sketch_simplifier.dart';
-import 'package:scribble/src/domain/model/image_row/image_row.dart';
 import 'package:scribble/src/domain/model/row/row.dart';
-import 'package:scribble/src/domain/model/row_range_content/row_range_content.dart';
+import 'package:scribble/src/domain/model/row_change/row_change.dart';
 import 'package:scribble/src/view/painting/reusable_painter_export.dart';
 import 'package:scribble/src/view/painting/scribble_painter.dart';
+import 'package:scribble/src/view/simplification/sketch_simplifier.dart';
 
 /// A notifier that extends ScribbleNotifier with line-by-line writing
 /// capabilities and dynamic canvas extension.
@@ -72,11 +71,11 @@ class LineByLineNotifier extends ScribbleNotifier {
   double get rowLineSpacing => _rowLineSpacing;
 
   /// Top margin for the canvas.
-  double _topMargin;
+  final double _topMargin;
   double get topMargin => _topMargin;
 
   /// Bottom margin buffer for the canvas.
-  double _bottomMargin;
+  final double _bottomMargin;
   double get bottomMargin => _bottomMargin;
 
   /// Current canvas height.
@@ -135,7 +134,7 @@ class LineByLineNotifier extends ScribbleNotifier {
 
   /// Sets the callback for canvas height changes.
   void setCanvasHeightChangeCallback(
-      void Function(double newHeight)? callback) {
+      void Function(double newHeight)? callback,) {
     _onCanvasHeightChanged = callback;
   }
 
@@ -191,14 +190,14 @@ class LineByLineNotifier extends ScribbleNotifier {
 
   /// Creates rows with properly calculated dual indices.
   void _createRowsWithIndices(int numberOfRows) {
-    int normalIndex = 1; // User-visible line numbers start at 1
+    var normalIndex = 1; // User-visible line numbers start at 1
     
-    for (int rendererIndex = 0; rendererIndex < numberOfRows; rendererIndex++) {
+    for (var rendererIndex = 0; rendererIndex < numberOfRows; rendererIndex++) {
       final rowY = _topMargin + (rendererIndex * _rowLineSpacing);
       
       // Check if this row position overlaps with an image row
       final overlapsImageRow = _imageRows.any((imageRow) => 
-          imageRow.containsY(rowY) || imageRow.containsY(rowY + _rowLineSpacing));
+          imageRow.containsY(rowY) || imageRow.containsY(rowY + _rowLineSpacing),);
       
       // Check if this row position overlaps with a free drawing space
       final overlapsFreespace = _freeDrawingSpaces.any(
@@ -216,22 +215,22 @@ class LineByLineNotifier extends ScribbleNotifier {
         normalIndex: assignedNormalIndex,
         height: _rowLineSpacing,
         id: 'row_$rendererIndex',
-      ));
+      ),);
     }
   }
 
   /// Recalculates normal indices for all existing rows.
   /// This should be called after image row or free space operations.
   void _recalculateNormalIndices() {
-    int normalIndex = 1;
+    var normalIndex = 1;
     
-    for (int rendererIndex = 0; rendererIndex < _rows.length; rendererIndex++) {
+    for (var rendererIndex = 0; rendererIndex < _rows.length; rendererIndex++) {
       final row = _rows[rendererIndex];
       final rowY = row.startY;
       
       // Check if this row position overlaps with an image row or free space
       final overlapsImageRow = _imageRows.any((imageRow) => 
-          imageRow.containsY(rowY) || imageRow.containsY(rowY + row.height));
+          imageRow.containsY(rowY) || imageRow.containsY(rowY + row.height),);
       final overlapsFreespace = _freeDrawingSpaces.any(
         (space) => space.containsY(rowY),
       );
@@ -272,7 +271,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Gets the row that contains the specified Y position, returns null if not found.
   NotebookRow? getRowAt(double y) {
     return _rows.cast<NotebookRow?>().firstWhere(
-      (row) => row?.containsY(y) == true,
+      (row) => row?.containsY(y) ?? false,
       orElse: () => null,
     );
   }
@@ -289,7 +288,7 @@ class LineByLineNotifier extends ScribbleNotifier {
       return _topMargin;
     }
 
-    double maxY = _topMargin;
+    var maxY = _topMargin;
     for (final line in value.sketch.lines) {
       for (final point in line.points) {
         if (point.y > maxY) {
@@ -402,13 +401,13 @@ class LineByLineNotifier extends ScribbleNotifier {
     // Always show the first two line numbers at full opacity
     // Normal index 1 (first visible line) must always be visible
     if (normalIndex == 1 || normalIndex == 2) {
-      return 1.0;
+      return 1;
     }
 
     final maxContentY = _getMaxContentY();
     if (maxContentY <= _topMargin) {
       // No content yet, only show first two lines
-      return 0.0;
+      return 0;
     }
 
     // Calculate which visible line number the content has reached
@@ -417,9 +416,9 @@ class LineByLineNotifier extends ScribbleNotifier {
 
     // Show line numbers progressively: if content reached visible line N, show numbers 1 through N+2
     if (normalIndex <= contentVisibleLineNumber + 2) {
-      return 1.0;
+      return 1;
     } else {
-      return 0.0;
+      return 0;
     }
   }
 
@@ -429,9 +428,9 @@ class LineByLineNotifier extends ScribbleNotifier {
     if (rowIndex < 0) return -1;
     
     // Count how many visible text lines come before this row index
-    int visibleLineCount = 0;
+    var visibleLineCount = 0;
     
-    for (int i = 0; i <= rowIndex; i++) {
+    for (var i = 0; i <= rowIndex; i++) {
       final rowY = _topMargin + (i * _rowLineSpacing);
       
       // Skip this row if it's within an image row
@@ -477,7 +476,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   // Free Drawing Space Management Methods
 
   /// Default height for plenty of free drawing space (equivalent to ~6 rows).
-  static const double _defaultFreeSpaceHeight = 144.0; // 6 * 24px
+  static const double _defaultFreeSpaceHeight = 144; // 6 * 24px
 
   /// Inserts a free drawing space (line-free region) above the specified Y position.
   void insertFreeDrawingSpace(double yPosition, {double? height}) {
@@ -531,7 +530,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     final spaceToDelete = _freeDrawingSpaces.firstWhere(
       (space) => space.containsY(yPosition),
       orElse: () => throw StateError(
-          'No free drawing space found at Y position $yPosition'),
+          'No free drawing space found at Y position $yPosition',),
     );
 
     final spaceHeight = spaceToDelete.height;
@@ -576,7 +575,7 @@ class LineByLineNotifier extends ScribbleNotifier {
 
   /// Expands an existing free drawing space by the specified additional height.
   void expandFreeDrawingSpace(double yPosition,
-      {double additionalHeight = 72.0}) {
+      {double additionalHeight = 72.0,}) {
     // Find the free drawing space that contains this Y position
     final spaceIndex = _freeDrawingSpaces.indexWhere(
       (space) => space.containsY(yPosition),
@@ -593,7 +592,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     _freeDrawingSpaces[spaceIndex] = expandedSpace;
 
     // Shift all free drawing spaces that are below this space down
-    for (int i = spaceIndex + 1; i < _freeDrawingSpaces.length; i++) {
+    for (var i = spaceIndex + 1; i < _freeDrawingSpaces.length; i++) {
       _freeDrawingSpaces[i] = _freeDrawingSpaces[i].moveBy(additionalHeight);
     }
 
@@ -638,7 +637,7 @@ class LineByLineNotifier extends ScribbleNotifier {
       final shiftedPoints = line.points.map((point) {
         if (point.y >= startY) {
           return Point(point.x, point.y + shiftAmount,
-              pressure: point.pressure);
+              pressure: point.pressure,);
         }
         return point;
       }).toList();
@@ -660,7 +659,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     for (final line in currentSketch.lines) {
       // Check if any point in this line is within the region to be deleted
       final hasPointInRegion = line.points.any((point) =>
-          point.y >= startY && point.y <= endY);
+          point.y >= startY && point.y <= endY,);
 
       // Only keep lines that have no points in the deletion region
       if (!hasPointInRegion) {
@@ -669,7 +668,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     }
 
     final newSketch = currentSketch.copyWith(lines: filteredLines);
-    setSketch(sketch: newSketch, addToUndoHistory: true);
+    setSketch(sketch: newSketch);
   }
 
   /// Shifts all sketch content up by the specified amount starting from startY.
@@ -681,7 +680,7 @@ class LineByLineNotifier extends ScribbleNotifier {
       final shiftedPoints = line.points.map((point) {
         if (point.y >= startY) {
           return Point(point.x, point.y - shiftAmount,
-              pressure: point.pressure);
+              pressure: point.pressure,);
         }
         return point;
       }).toList();
@@ -704,7 +703,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   // Image Row Management Methods
 
   /// Default height for image rows (equivalent to ~4 rows).
-  static const double _defaultImageRowHeight = 96.0; // 4 * 24px
+  static const double _defaultImageRowHeight = 96; // 4 * 24px
 
   /// Inserts an image row above the specified Y position.
   Future<void> insertImageRow(double yPosition, ImageProvider image, {double? height, bool shiftContent = true, String? id}) async {
@@ -863,7 +862,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     final imageRowToDelete = _imageRows.firstWhere(
       (imageRow) => imageRow.containsY(yPosition),
       orElse: () => throw StateError(
-          'No image row found at Y position $yPosition'),
+          'No image row found at Y position $yPosition',),
     );
 
     final rowHeight = imageRowToDelete.height;
@@ -999,8 +998,8 @@ class LineByLineNotifier extends ScribbleNotifier {
       }
       
       // For other ImageProvider types, load the image and encode it
-      final ImageStream stream = imageProvider.resolve(const ImageConfiguration());
-      final Completer<Uint8List?> completer = Completer<Uint8List?>();
+      final stream = imageProvider.resolve(const ImageConfiguration());
+      final completer = Completer<Uint8List?>();
       
       late ImageStreamListener listener;
       listener = ImageStreamListener((ImageInfo info, bool synchronousCall) {
@@ -1013,13 +1012,11 @@ class LineByLineNotifier extends ScribbleNotifier {
           } else {
             completer.complete(null);
           }
-        }).catchError((Object error) {
-          completer.completeError(error);
-        });
+        }).catchError(completer.completeError);
       }, onError: (Object error, StackTrace? stackTrace) {
         stream.removeListener(listener);
         completer.completeError(error);
-      });
+      },);
       
       stream.addListener(listener);
       
@@ -1075,7 +1072,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Line numbers correspond to what users see displayed on the UI.
   /// Free drawing spaces and image rows are skipped when counting line numbers.
   void highlightRows(Iterable<int> lineNumbers) {
-    bool changed = false;
+    var changed = false;
     for (final lineNumber in lineNumbers) {
       if (lineNumber >= 1) {
         if (_highlightedRows.add(lineNumber)) {
@@ -1093,7 +1090,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Line numbers correspond to what users see displayed on the UI.
   /// Free drawing spaces and image rows are skipped when counting line numbers.
   void unhighlightRows(Iterable<int> lineNumbers) {
-    bool changed = false;
+    var changed = false;
     for (final lineNumber in lineNumbers) {
       if (lineNumber >= 1) {
         if (_highlightedRows.remove(lineNumber)) {
@@ -1150,7 +1147,7 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// This counts only regular text rows, skipping image rows and free drawing spaces.
   /// Returns 0 if there are no text rows.
   int getMaxLineNumber() {
-    int maxLineNumber = 0;
+    var maxLineNumber = 0;
     
     for (var i = 0; i < _rows.length; i++) {
       final row = _rows[i];
@@ -1414,17 +1411,13 @@ class LineByLineNotifier extends ScribbleNotifier {
       canvasWidth: _canvasWidth,
       canvasHeight: _canvasHeight,
       rowLineSpacing: _rowLineSpacing,
-      rowLineWidth: 1.0,
-      leftMargin: 60.0,    // Match LineByLineCanvas hardcoded values
-      rightMargin: 20.0,   // Match LineByLineCanvas hardcoded values
-      topMargin: 30.0,     // Match LineByLineCanvas hardcoded values
-      bottomMargin: 30.0,  // Match LineByLineCanvas hardcoded values
+      rowLineWidth: 1,
       simulatePressure: simulatePressure,
       customHighlightColor: _highlightColor,
     );
 
     // Render the row range using the reusable painters
-    return await ReusablePainterExport.renderRowRange(
+    return ReusablePainterExport.renderRowRange(
       painters: painterStack,
       startY: startY,
       endY: endY,
@@ -1482,7 +1475,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     final fullImage = await renderObject.toImage(pixelRatio: pixelRatio);
     
     // Convert to ByteData for manipulation
-    final fullImageByteData = await fullImage.toByteData(format: ui.ImageByteFormat.rawRgba);
+    final fullImageByteData = await fullImage.toByteData();
     if (fullImageByteData == null) {
       fullImage.dispose();
       throw StateError('Failed to convert full canvas to byte data');
@@ -1505,7 +1498,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     
     // Create a source rect from the full image
     final srcRect = Rect.fromLTWH(
-      0.0,
+      0,
       validCropStartY,
       cropWidth,
       validCropHeight,
@@ -1513,8 +1506,8 @@ class LineByLineNotifier extends ScribbleNotifier {
     
     // Create a destination rect for the cropped image
     final destRect = Rect.fromLTWH(
-      0.0,
-      0.0,
+      0,
+      0,
       cropWidth,
       validCropHeight,
     );
@@ -1549,8 +1542,8 @@ class LineByLineNotifier extends ScribbleNotifier {
       
       // Create clip rectangle in scaled coordinate system
       final scaledDestRect = Rect.fromLTWH(
-        0.0,
-        0.0,
+        0,
+        0,
         cropWidth / pixelRatio,
         validCropHeight / pixelRatio,
       );
@@ -1599,6 +1592,330 @@ class LineByLineNotifier extends ScribbleNotifier {
     }).toList();
     
     return originalSketch.copyWith(lines: blackLines);
+  }
+
+  /// Checkpoint sketch state for comparison.
+  Sketch? _checkpoint;
+
+  /// Timestamp when the checkpoint was created.
+  DateTime? _checkpointTimestamp;
+
+  
+  /// Gets all rows that contain sketch content.
+  Set<NotebookRow> getRowsWithContent([Sketch? sketch]) {
+    sketch ??= value.sketch;
+    final rowsWithContent = <NotebookRow>{};
+    
+    for (final line in sketch.lines) {
+      final yRange = _getLineYRange(line);
+      if (yRange != null) {
+        rowsWithContent.addAll(_getRowsInRange(yRange.$1, yRange.$2));
+      }
+    }
+    
+    return rowsWithContent;
+  }
+  
+  /// Gets the Y-coordinate bounds of content within a specific row.
+  (double minY, double maxY)? getContentBoundsForRow(NotebookRow row, [Sketch? sketch]) {
+    sketch ??= value.sketch;
+    
+    double? minY;
+    double? maxY;
+    
+    for (final line in sketch.lines) {
+      for (final point in line.points) {
+        if (row.containsY(point.y)) {
+          minY = minY == null ? point.y : math.min(minY, point.y);
+          maxY = maxY == null ? point.y : math.max(maxY, point.y);
+        }
+      }
+    }
+    
+    if (minY != null && maxY != null) {
+      return (minY, maxY);
+    }
+    return null;
+  }
+  
+  /// Checks if the sketch has any content within the specified Y range.
+  bool hasContentInRange(double startY, double endY, [Sketch? sketch]) {
+    sketch ??= value.sketch;
+    
+    for (final line in sketch.lines) {
+      for (final point in line.points) {
+        if (point.y >= startY && point.y <= endY) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+  
+  /// Gets rows that have content changes between two sketch states.
+  Set<NotebookRow> getRowsWithChanges(Sketch oldSketch, Sketch newSketch) {
+    final changedRows = <NotebookRow>{};
+    
+    // Get rows with content in old sketch
+    final oldRows = getRowsWithContent(oldSketch);
+    
+    // Get rows with content in new sketch
+    final newRows = getRowsWithContent(newSketch);
+    
+    // Rows that had content added or removed
+    changedRows.addAll(oldRows.difference(newRows)); // Removed content
+    changedRows.addAll(newRows.difference(oldRows)); // Added content
+    
+    // Check for modified content in rows that had content in both states
+    final commonRows = oldRows.intersection(newRows);
+    for (final row in commonRows) {
+      final oldBounds = getContentBoundsForRow(row, oldSketch);
+      final newBounds = getContentBoundsForRow(row, newSketch);
+      
+      // If bounds changed, content was modified
+      if (oldBounds != newBounds) {
+        changedRows.add(row);
+      } else {
+        // Check if actual points changed even if bounds are same
+        final oldHasContent = hasContentInRange(row.startY, row.endY, oldSketch);
+        final newHasContent = hasContentInRange(row.startY, row.endY, newSketch);
+        if (oldHasContent != newHasContent) {
+          changedRows.add(row);
+        }
+      }
+    }
+    
+    return changedRows;
+  }
+  
+
+  // Checkpoint Management Methods
+
+  /// Sets a checkpoint at the current sketch state.
+  /// This stores the current state for later comparison.
+  void setCheckpoint() {
+    _checkpoint = value.sketch;
+    _checkpointTimestamp = DateTime.now();
+  }
+
+  /// Clears the current checkpoint.
+  void clearCheckpoint() {
+    _checkpoint = null;
+    _checkpointTimestamp = null;
+  }
+
+  /// Checks if a checkpoint is currently set.
+  bool hasCheckpoint() {
+    return _checkpoint != null;
+  }
+
+  /// Gets the timestamp when the checkpoint was created.
+  /// Returns null if no checkpoint is set.
+  DateTime? getCheckpointTimestamp() {
+    return _checkpointTimestamp;
+  }
+
+  // Checkpoint Comparison Methods
+
+  /// Detects which rows have changed since the set checkpoint.
+  /// 
+  /// Returns change information comparing the current sketch with the
+  /// stored checkpoint. If no checkpoint is set, returns empty change info.
+  RowChangeInfo detectChangesSinceCheckpoint() {
+    if (_checkpoint == null) {
+      return const RowChangeInfo(
+        affectedRendererIndices: {},
+        affectedNormalIndices: {},
+        changeType: RowChangeType.contentModified,
+        isCheckpointComparison: true,
+      );
+    }
+
+    final currentSketch = value.sketch;
+    final checkpointSketch = _checkpoint!;
+
+    // Quick check: if nothing changed, return empty change info
+    if (_areSketchesEqual(checkpointSketch.lines, currentSketch.lines)) {
+      return RowChangeInfo(
+        affectedRendererIndices: const {},
+        affectedNormalIndices: const {},
+        changeType: RowChangeType.contentModified,
+        isCheckpointComparison: true,
+        checkpointTimestamp: _checkpointTimestamp,
+      );
+    }
+
+    // Get only the rows that have actual changes
+    final affectedRows = getRowsWithChanges(checkpointSketch, currentSketch);
+
+    // Determine change type
+    final changeType = _determineChangeType(
+      checkpointSketch.lines,
+      currentSketch.lines,
+      affectedRows,
+    );
+
+    return _createChangeInfoWithCheckpoint(affectedRows, changeType);
+  }
+
+  /// Gets all rows that have changed since the checkpoint.
+  /// Returns empty set if no checkpoint is set.
+  Set<NotebookRow> getRowsChangedSinceCheckpoint() {
+    if (_checkpoint == null) {
+      return {};
+    }
+
+    return getRowsWithChanges(_checkpoint!, value.sketch);
+  }
+
+  /// Gets the Y-coordinate bounds of changes since the checkpoint.
+  /// Returns null if no checkpoint is set or no changes found.
+  (double minY, double maxY)? getContentBoundsSinceCheckpoint() {
+    final changeInfo = detectChangesSinceCheckpoint();
+    if (changeInfo.minY != null && changeInfo.maxY != null) {
+      return (changeInfo.minY!, changeInfo.maxY!);
+    }
+    return null;
+  }
+  
+  // Helper methods for change detection
+  
+  /// Gets the Y range of a sketch line.
+  (double, double)? _getLineYRange(SketchLine line) {
+    if (line.points.isEmpty) return null;
+    
+    var minY = line.points.first.y;
+    var maxY = line.points.first.y;
+    
+    for (final point in line.points) {
+      minY = math.min(minY, point.y);
+      maxY = math.max(maxY, point.y);
+    }
+    
+    return (minY, maxY);
+  }
+  
+  /// Gets all rows that overlap with the given Y range.
+  Set<NotebookRow> _getRowsInRange(double minY, double maxY) {
+    final rows = <NotebookRow>{};
+    
+    for (final row in _rows) {
+      if (row.overlaps(minY, maxY)) {
+        rows.add(row);
+      }
+    }
+    
+    return rows;
+  }
+  
+  /// Checks if two sketch line lists are equal.
+  bool _areSketchesEqual(List<SketchLine> lines1, List<SketchLine> lines2) {
+    if (lines1.length != lines2.length) return false;
+    
+    for (var i = 0; i < lines1.length; i++) {
+      if (!_areLinesEqual(lines1[i], lines2[i])) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+  
+  /// Checks if two sketch lines are equal.
+  bool _areLinesEqual(SketchLine line1, SketchLine line2) {
+    if (line1.color != line2.color || 
+        line1.width != line2.width ||
+        line1.points.length != line2.points.length) {
+      return false;
+    }
+    
+    for (var i = 0; i < line1.points.length; i++) {
+      final p1 = line1.points[i];
+      final p2 = line2.points[i];
+      if (p1.x != p2.x || p1.y != p2.y || p1.pressure != p2.pressure) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+  
+  /// Determines the type of change that occurred.
+  RowChangeType _determineChangeType(
+    List<SketchLine> oldLines,
+    List<SketchLine> newLines,
+    Set<NotebookRow> affectedRows,
+  ) {
+    if (oldLines.isEmpty && newLines.isNotEmpty) {
+      return RowChangeType.contentAdded;
+    } else if (oldLines.isNotEmpty && newLines.isEmpty) {
+      return RowChangeType.contentRemoved;
+    } else {
+      // Check if content was added or removed in affected rows
+      var hasAdditions = false;
+      var hasRemovals = false;
+      
+      for (final row in affectedRows) {
+        final oldHasContent = hasContentInRange(
+          row.startY, 
+          row.endY, 
+          Sketch(lines: oldLines),
+        );
+        final newHasContent = hasContentInRange(
+          row.startY,
+          row.endY,
+          Sketch(lines: newLines),
+        );
+        
+        if (!oldHasContent && newHasContent) {
+          hasAdditions = true;
+        } else if (oldHasContent && !newHasContent) {
+          hasRemovals = true;
+        }
+      }
+      
+      if (hasAdditions && hasRemovals) {
+        return RowChangeType.mixed;
+      } else if (hasAdditions) {
+        return RowChangeType.contentAdded;
+      } else if (hasRemovals) {
+        return RowChangeType.contentRemoved;
+      } else {
+        return RowChangeType.contentModified;
+      }
+    }
+  }
+  
+
+  /// Creates a RowChangeInfo from affected rows with checkpoint metadata.
+  RowChangeInfo _createChangeInfoWithCheckpoint(
+    Set<NotebookRow> affectedRows,
+    RowChangeType changeType,
+  ) {
+    final rendererIndices = <int>{};
+    final normalIndices = <int>{};
+    double? minY;
+    double? maxY;
+    
+    for (final row in affectedRows) {
+      rendererIndices.add(row.rendererIndex);
+      if (row.normalIndex != null) {
+        normalIndices.add(row.normalIndex!);
+      }
+      
+      minY = minY == null ? row.startY : math.min(minY, row.startY);
+      maxY = maxY == null ? row.endY : math.max(maxY, row.endY);
+    }
+    
+    return RowChangeInfo(
+      affectedRendererIndices: rendererIndices,
+      affectedNormalIndices: normalIndices,
+      changeType: changeType,
+      minY: minY,
+      maxY: maxY,
+      isCheckpointComparison: true,
+      checkpointTimestamp: _checkpointTimestamp,
+    );
   }
 
 }

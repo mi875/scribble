@@ -227,7 +227,7 @@ class ScribbleNotifier extends ScribbleNotifierBase
     temporaryValue = ScribbleState.drawing(
       sketch: value.sketch,
       selectedColor: switch (value) {
-        Drawing d => d.selectedColor,
+        final Drawing d => d.selectedColor,
         Erasing _ => 0xFF000000, // Default to black if coming from erasing
       },
       selectedWidth: value.selectedWidth,

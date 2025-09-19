@@ -213,7 +213,7 @@ class AsyncImageRowPainter extends CustomPainter {
     final imageAspectRatio = imageWidth / imageHeight;
     final rectAspectRatio = rect.width / rect.height;
 
-    Rect srcRect = Rect.fromLTWH(0, 0, imageWidth, imageHeight);
+    final srcRect = Rect.fromLTWH(0, 0, imageWidth, imageHeight);
     Rect destRect;
 
     // Scale to fit while maintaining aspect ratio

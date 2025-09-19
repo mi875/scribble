@@ -44,7 +44,7 @@ abstract class RowIndex with _$RowIndex {
   factory RowIndex.renderer(int arrayIndex) {
     if (arrayIndex < 0) {
       throw ArgumentError(
-          'Renderer row index must be >= 0, got $arrayIndex');
+          'Renderer row index must be >= 0, got $arrayIndex',);
     }
     return RowIndex(value: arrayIndex, type: RowIndexType.renderer);
   }
@@ -77,7 +77,7 @@ abstract class RowIndex with _$RowIndex {
   void ensureType(RowIndexType expectedType) {
     if (type != expectedType) {
       throw StateError(
-        'Expected ${expectedType.name} index, got ${type.name} index');
+        'Expected ${expectedType.name} index, got ${type.name} index',);
     }
   }
 
@@ -120,7 +120,7 @@ class RowIndexUtils {
     if (indices.isEmpty) return;
     
     final expectedType = indices.first.type;
-    for (int i = 1; i < indices.length; i++) {
+    for (var i = 1; i < indices.length; i++) {
       if (indices[i].type != expectedType) {
         throw ArgumentError(
           'Mixed index types: expected all ${expectedType.name}, '
@@ -136,7 +136,7 @@ class RowIndexUtils {
 
   /// Filters indices to only include those within bounds.
   static List<RowIndex> filterValidIndices(
-      List<RowIndex> indices, int maxValue) {
+      List<RowIndex> indices, int maxValue,) {
     return indices.where((index) => index.isValidWithinBounds(maxValue))
         .toList();
   }

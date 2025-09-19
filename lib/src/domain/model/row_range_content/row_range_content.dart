@@ -1,7 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:scribble/src/domain/model/sketch_line/sketch_line.dart';
 import 'package:scribble/src/domain/model/free_drawing_space/free_drawing_space.dart';
 import 'package:scribble/src/domain/model/image_row/image_row.dart';
+import 'package:scribble/src/domain/model/sketch_line/sketch_line.dart';
 
 part 'row_range_content.freezed.dart';
 part 'row_range_content.g.dart';

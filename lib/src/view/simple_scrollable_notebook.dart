@@ -221,7 +221,7 @@ class _SimpleScrollableNotebookState extends State<SimpleScrollableNotebook> {
       child: ValueListenableBuilder<SimpleNotebookState>(
         valueListenable: widget.notifier,
         builder: (context, state, child) {
-          return Container(
+          return ColoredBox(
             color: theme.paperShadowColor.withValues(alpha: 0.1),
             child: ClipRect(
               child: InteractiveViewer(
@@ -260,7 +260,7 @@ class _SimpleScrollableNotebookState extends State<SimpleScrollableNotebook> {
   }
 
   Widget _buildPage(
-      SimpleNotebookState state, int pageIndex, ScribbleTheme theme) {
+      SimpleNotebookState state, int pageIndex, ScribbleTheme theme,) {
     final page = state.pages[pageIndex];
     final isCurrentPage = pageIndex == state.currentPageIndex;
 
