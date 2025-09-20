@@ -19,6 +19,14 @@ abstract class ImageRow with _$ImageRow {
     /// The height of the image row region.
     required double height,
 
+    /// The renderer index - physical position in the image rows list (0-based).
+    /// This is used for internal canvas operations and ordering.
+    @Default(0) int rendererIndex,
+
+    /// The visual index - user-visible position (1-based).
+    /// This represents the visual order of the image row in the document.
+    @Default(1) int visualIndex,
+
     /// The image data as bytes (excluded from JSON serialization).
     @JsonKey(includeFromJson: false, includeToJson: false) 
     @Uint8ListConverter() 
@@ -53,6 +61,24 @@ abstract class ImageRow with _$ImageRow {
   /// Creates a new image row moved by the specified Y offset.
   ImageRow moveBy(double yOffset) {
     return copyWith(startY: startY + yOffset);
+  }
+
+  /// Creates a new image row with updated indices.
+  ImageRow withIndices({int? rendererIndex, int? visualIndex}) {
+    return copyWith(
+      rendererIndex: rendererIndex ?? this.rendererIndex,
+      visualIndex: visualIndex ?? this.visualIndex,
+    );
+  }
+
+  /// Creates a new image row with updated renderer index.
+  ImageRow withRendererIndex(int newRendererIndex) {
+    return copyWith(rendererIndex: newRendererIndex);
+  }
+
+  /// Creates a new image row with updated visual index.
+  ImageRow withVisualIndex(int newVisualIndex) {
+    return copyWith(visualIndex: newVisualIndex);
   }
 
   /// Creates an ImageProvider from the stored image bytes.

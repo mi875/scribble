@@ -253,60 +253,9 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
         _deleteFreeDrawingSpace(rowIndex);
       case 'expand_free_space':
         _expandFreeDrawingSpace(rowIndex);
-      case 'insert_image_row':
-        _showImageRowInsertionMessage(rowIndex);
-      case 'delete_image_row':
-        _deleteImageRowAtRowIndex(rowIndex);
     }
   }
 
-  /// Shows a message directing users to use external image insertion controls.
-  void _showImageRowInsertionMessage(int rowIndex) {
-    final row = widget.notifier.getRowByRendererIndex(rowIndex);
-    if (row == null) return;
-
-    final yPosition = row.startY;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'To insert an image row, use the Image Rows controls in the '
-          'left panel. Set the insert position to ${yPosition.round()}px.',
-        ),
-        action: SnackBarAction(
-          label: 'Got it',
-          onPressed: () {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          },
-        ),
-      ),
-    );
-  }
-
-  /// Deletes an image row at the specified row index.
-  void _deleteImageRowAtRowIndex(int rowIndex) {
-    final row = widget.notifier.getRowByRendererIndex(rowIndex);
-    if (row == null) return;
-
-    final yPosition = row.startY;
-
-    try {
-      widget.notifier.deleteImageRow(yPosition);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Image row deleted'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No image row found at this position: $e'),
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    }
-  }
 
   /// Inserts a new row above the specified row.
   void _insertRowAbove(int rowIndex) {
@@ -552,138 +501,130 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
           height: 32,
           child: Opacity(
             opacity: opacity,
-            child: PopupMenuButton<String>(
-              offset: const Offset(32, 0),
-              itemBuilder: (context) {
-                // Check if current position is in a free drawing space or
-                // image row
-                final currentY = row.startY;
-                final isInFreeSpace =
-                    widget.notifier.isInFreeDrawingSpace(currentY);
-                final isInImageRow = widget.notifier.isInImageRow(currentY);
+            child: imageRow != null
+                ? // Image rows: just show icon, no popup menu
+                Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: theme.lineNumberColor.withValues(alpha: 0.5),
+                      ),
+                      color: Colors.transparent,
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.image,
+                        size: widget.lineNumberFontSize + 2,
+                        color: theme.lineNumberColor,
+                      ),
+                    ),
+                  )
+                : // Text rows and free spaces: show popup menu
+                PopupMenuButton<String>(
+                    offset: const Offset(32, 0),
+                    itemBuilder: (context) {
+                      // Check if current position is in a free drawing space
+                      final currentY = row.startY;
+                      final isInFreeSpace =
+                          widget.notifier.isInFreeDrawingSpace(currentY);
 
-                return [
-                  const PopupMenuItem(
-                    value: 'insert',
-                    child: Row(
-                      children: [
-                        Icon(Icons.add, size: 16),
-                        SizedBox(width: 8),
-                        Text('上に行を挿入'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'insert_free_space',
-                    child: Row(
-                      children: [
-                        Icon(Icons.space_bar, size: 16),
-                        SizedBox(width: 8),
-                        Text('フリー描画スペースを追加'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'insert_image_row',
-                    child: Row(
-                      children: [
-                        Icon(Icons.image, size: 16),
-                        SizedBox(width: 8),
-                        Text('画像行を挿入'),
-                      ],
-                    ),
-                  ),
-                  if (isInImageRow) ...[
-                    const PopupMenuItem(
-                      value: 'delete_image_row',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete_outline, size: 16),
-                          SizedBox(width: 8),
-                          Text('画像行を削除'),
-                        ],
-                      ),
-                    ),
-                  ] else if (isInFreeSpace) ...[
-                    const PopupMenuItem(
-                      value: 'expand_free_space',
-                      child: Row(
-                        children: [
-                          Icon(Icons.expand, size: 16),
-                          SizedBox(width: 8),
-                          Text('スペースを拡張'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'delete_free_space',
-                      child: Row(
-                        children: [
-                          Icon(Icons.compress, size: 16),
-                          SizedBox(width: 8),
-                          Text('スペースを削除'),
-                        ],
-                      ),
-                    ),
-                  ] else ...[
-                    const PopupMenuItem(
-                      value: 'clear',
-                      child: Row(
-                        children: [
-                          Icon(Icons.clear, size: 16),
-                          SizedBox(width: 8),
-                          Text('行をクリア'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete_outline, size: 16),
-                          SizedBox(width: 8),
-                          Text('行を削除'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ];
-              },
-              onSelected: (value) => _handleRowAction(value, i),
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: theme.lineNumberColor.withValues(alpha: 0.5),
-                  ),
-                  color: Colors.transparent,
-                ),
-                child: Center(
-                  child: imageRow != null
-                      ? Icon(
-                          Icons.image,
-                          size: widget.lineNumberFontSize + 2,
-                          color: theme.lineNumberColor,
-                        )
-                      : freeSpace != null
-                          ? Icon(
-                              Icons.space_bar,
-                              size: widget.lineNumberFontSize + 2,
-                              color: theme.lineNumberColor,
-                            )
-                          : Text(
-                              currentLine?.toString() ?? '',
-                              style: TextStyle(
-                                fontSize: widget.lineNumberFontSize - 1,
-                                fontWeight: FontWeight.w500,
-                                color: theme.lineNumberColor,
-                              ),
+                      return [
+                        const PopupMenuItem(
+                          value: 'insert',
+                          child: Row(
+                            children: [
+                              Icon(Icons.add, size: 16),
+                              SizedBox(width: 8),
+                              Text('上に行を挿入'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'insert_free_space',
+                          child: Row(
+                            children: [
+                              Icon(Icons.space_bar, size: 16),
+                              SizedBox(width: 8),
+                              Text('フリー描画スペースを追加'),
+                            ],
+                          ),
+                        ),
+                        if (isInFreeSpace) ...[
+                          const PopupMenuItem(
+                            value: 'expand_free_space',
+                            child: Row(
+                              children: [
+                                Icon(Icons.expand, size: 16),
+                                SizedBox(width: 8),
+                                Text('スペースを拡張'),
+                              ],
                             ),
-                ),
-              ),
-            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete_free_space',
+                            child: Row(
+                              children: [
+                                Icon(Icons.compress, size: 16),
+                                SizedBox(width: 8),
+                                Text('スペースを削除'),
+                              ],
+                            ),
+                          ),
+                        ] else ...[
+                          const PopupMenuItem(
+                            value: 'clear',
+                            child: Row(
+                              children: [
+                                Icon(Icons.clear, size: 16),
+                                SizedBox(width: 8),
+                                Text('行をクリア'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline, size: 16),
+                                SizedBox(width: 8),
+                                Text('行を削除'),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ];
+                    },
+                    onSelected: (value) => _handleRowAction(value, i),
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: theme.lineNumberColor.withValues(alpha: 0.5),
+                        ),
+                        color: Colors.transparent,
+                      ),
+                      child: Center(
+                        child: freeSpace != null
+                            ? Icon(
+                                Icons.space_bar,
+                                size: widget.lineNumberFontSize + 2,
+                                color: theme.lineNumberColor,
+                              )
+                            : Text(
+                                currentLine?.toString() ?? '',
+                                style: TextStyle(
+                                  fontSize: widget.lineNumberFontSize - 1,
+                                  fontWeight: FontWeight.w500,
+                                  color: theme.lineNumberColor,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
           ),
         ),
       );

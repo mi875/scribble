@@ -244,6 +244,21 @@ class LineByLineNotifier extends ScribbleNotifier {
     }
   }
 
+  /// Recalculates the indices for all image rows after modifications.
+  /// This should be called after image row operations that affect order.
+  void _recalculateImageRowIndices() {
+    // Sort image rows by startY position first
+    _imageRows.sort((a, b) => a.startY.compareTo(b.startY));
+    
+    // Update each image row with correct indices
+    for (var i = 0; i < _imageRows.length; i++) {
+      _imageRows[i] = _imageRows[i].withIndices(
+        rendererIndex: i, // 0-based physical position
+        visualIndex: i + 1, // 1-based visual position
+      );
+    }
+  }
+
   /// Gets a row by its renderer index (physical array position).
   /// This method should be used for canvas operations and image row positioning.
   NotebookRow? getRowByRendererIndex(int rendererIndex) {
@@ -284,18 +299,33 @@ class LineByLineNotifier extends ScribbleNotifier {
 
   /// Gets the maximum Y coordinate of all drawn content.
   double _getMaxContentY() {
-    if (!value.sketch.lines.isNotEmpty) {
-      return _topMargin;
-    }
-
     var maxY = _topMargin;
-    for (final line in value.sketch.lines) {
-      for (final point in line.points) {
-        if (point.y > maxY) {
-          maxY = point.y;
+    
+    // Check sketch lines
+    if (value.sketch.lines.isNotEmpty) {
+      for (final line in value.sketch.lines) {
+        for (final point in line.points) {
+          if (point.y > maxY) {
+            maxY = point.y;
+          }
         }
       }
     }
+    
+    // Check image rows
+    for (final imageRow in _imageRows) {
+      if (imageRow.endY > maxY) {
+        maxY = imageRow.endY;
+      }
+    }
+    
+    // Check free drawing spaces
+    for (final space in _freeDrawingSpaces) {
+      if (space.endY > maxY) {
+        maxY = space.endY;
+      }
+    }
+    
     return maxY;
   }
 
@@ -716,10 +746,17 @@ class LineByLineNotifier extends ScribbleNotifier {
         throw Exception('Failed to load image from ImageProvider');
       }
 
-      // Create the new image row with the image bytes
+      // Calculate indices for the new image row
+      final existingImageRowIndex = _imageRows.indexWhere((row) => row.startY >= yPosition);
+      final rendererIndex = existingImageRowIndex != -1 ? existingImageRowIndex : _imageRows.length;
+      final visualIndex = rendererIndex + 1; // Visual index is 1-based
+      
+      // Create the new image row with the image bytes and indices
       final newImageRow = ImageRow(
         startY: yPosition,
         height: rowHeight,
+        rendererIndex: rendererIndex,
+        visualIndex: visualIndex,
         imageBytes: imageBytes,
         id: id ?? DateTime.now().millisecondsSinceEpoch.toString(),
       );
@@ -766,8 +803,9 @@ class LineByLineNotifier extends ScribbleNotifier {
       // Extend canvas to accommodate the new image row
       _checkAndResizeCanvas();
 
-      // Recalculate normal indices after image row operation
+      // Recalculate indices after image row operation
       _recalculateNormalIndices();
+      _recalculateImageRowIndices();
 
       // Load the image asynchronously for rendering (fire and forget)
       if (newImageRow.id != null && newImageRow.imageBytes != null) {
@@ -790,10 +828,20 @@ class LineByLineNotifier extends ScribbleNotifier {
   void insertImageRowWithBytes(double yPosition, List<int> imageBytes, {double? height, bool shiftContent = true, String? id}) {
     final rowHeight = height ?? _defaultImageRowHeight;
 
+    // Calculate indices for the new image row
+    final existingImageRowIndex = _imageRows.indexWhere(
+      (row) => row.startY >= yPosition,
+    );
+    final rendererIndex = 
+        existingImageRowIndex != -1 ? existingImageRowIndex : _imageRows.length;
+    final visualIndex = rendererIndex + 1; // Visual index is 1-based
+    
     // Create the new image row
     final newImageRow = ImageRow(
       startY: yPosition,
       height: rowHeight,
+      rendererIndex: rendererIndex,
+      visualIndex: visualIndex,
       imageBytes: Uint8List.fromList(imageBytes),
       id: id ?? DateTime.now().millisecondsSinceEpoch.toString(),
     );
@@ -840,8 +888,9 @@ class LineByLineNotifier extends ScribbleNotifier {
     // Extend canvas to accommodate the new image row
     _checkAndResizeCanvas();
 
-    // Recalculate normal indices after image row operation
+    // Recalculate indices after image row operation
     _recalculateNormalIndices();
+    _recalculateImageRowIndices();
 
     // Load the image asynchronously (fire and forget)
     if (newImageRow.id != null && newImageRow.imageBytes != null) {
@@ -909,8 +958,9 @@ class LineByLineNotifier extends ScribbleNotifier {
     // Recalculate canvas height
     _checkAndResizeCanvas();
 
-    // Recalculate normal indices after image row deletion
+    // Recalculate indices after image row deletion
     _recalculateNormalIndices();
+    _recalculateImageRowIndices();
 
     // Store current state for undo/redo of image operations
     _sketchToSpacesMap[value.sketch] = List.from(_freeDrawingSpaces);

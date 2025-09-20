@@ -20,6 +20,14 @@ mixin _$ImageRow {
   /// The height of the image row region.
   double get height;
 
+  /// The renderer index - physical position in the image rows list (0-based).
+  /// This is used for internal canvas operations and ordering.
+  int get rendererIndex;
+
+  /// The visual index - user-visible position (1-based).
+  /// This represents the visual order of the image row in the document.
+  int get visualIndex;
+
   /// The image data as bytes (excluded from JSON serialization).
   @JsonKey(includeFromJson: false, includeToJson: false)
   @Uint8ListConverter()
@@ -45,6 +53,10 @@ mixin _$ImageRow {
             other is ImageRow &&
             (identical(other.startY, startY) || other.startY == startY) &&
             (identical(other.height, height) || other.height == height) &&
+            (identical(other.rendererIndex, rendererIndex) ||
+                other.rendererIndex == rendererIndex) &&
+            (identical(other.visualIndex, visualIndex) ||
+                other.visualIndex == visualIndex) &&
             const DeepCollectionEquality()
                 .equals(other.imageBytes, imageBytes) &&
             (identical(other.id, id) || other.id == id));
@@ -52,12 +64,12 @@ mixin _$ImageRow {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, startY, height,
-      const DeepCollectionEquality().hash(imageBytes), id);
+  int get hashCode => Object.hash(runtimeType, startY, height, rendererIndex,
+      visualIndex, const DeepCollectionEquality().hash(imageBytes), id);
 
   @override
   String toString() {
-    return 'ImageRow(startY: $startY, height: $height, imageBytes: $imageBytes, id: $id)';
+    return 'ImageRow(startY: $startY, height: $height, rendererIndex: $rendererIndex, visualIndex: $visualIndex, imageBytes: $imageBytes, id: $id)';
   }
 }
 
@@ -69,6 +81,8 @@ abstract mixin class $ImageRowCopyWith<$Res> {
   $Res call(
       {double startY,
       double height,
+      int rendererIndex,
+      int visualIndex,
       @JsonKey(includeFromJson: false, includeToJson: false)
       @Uint8ListConverter()
       Uint8List? imageBytes,
@@ -89,6 +103,8 @@ class _$ImageRowCopyWithImpl<$Res> implements $ImageRowCopyWith<$Res> {
   $Res call({
     Object? startY = null,
     Object? height = null,
+    Object? rendererIndex = null,
+    Object? visualIndex = null,
     Object? imageBytes = freezed,
     Object? id = freezed,
   }) {
@@ -101,6 +117,14 @@ class _$ImageRowCopyWithImpl<$Res> implements $ImageRowCopyWith<$Res> {
           ? _self.height
           : height // ignore: cast_nullable_to_non_nullable
               as double,
+      rendererIndex: null == rendererIndex
+          ? _self.rendererIndex
+          : rendererIndex // ignore: cast_nullable_to_non_nullable
+              as int,
+      visualIndex: null == visualIndex
+          ? _self.visualIndex
+          : visualIndex // ignore: cast_nullable_to_non_nullable
+              as int,
       imageBytes: freezed == imageBytes
           ? _self.imageBytes
           : imageBytes // ignore: cast_nullable_to_non_nullable
@@ -209,6 +233,8 @@ extension ImageRowPatterns on ImageRow {
     TResult Function(
             double startY,
             double height,
+            int rendererIndex,
+            int visualIndex,
             @JsonKey(includeFromJson: false, includeToJson: false)
             @Uint8ListConverter()
             Uint8List? imageBytes,
@@ -219,7 +245,8 @@ extension ImageRowPatterns on ImageRow {
     final _that = this;
     switch (_that) {
       case _ImageRow() when $default != null:
-        return $default(_that.startY, _that.height, _that.imageBytes, _that.id);
+        return $default(_that.startY, _that.height, _that.rendererIndex,
+            _that.visualIndex, _that.imageBytes, _that.id);
       case _:
         return orElse();
     }
@@ -243,6 +270,8 @@ extension ImageRowPatterns on ImageRow {
     TResult Function(
             double startY,
             double height,
+            int rendererIndex,
+            int visualIndex,
             @JsonKey(includeFromJson: false, includeToJson: false)
             @Uint8ListConverter()
             Uint8List? imageBytes,
@@ -252,7 +281,8 @@ extension ImageRowPatterns on ImageRow {
     final _that = this;
     switch (_that) {
       case _ImageRow():
-        return $default(_that.startY, _that.height, _that.imageBytes, _that.id);
+        return $default(_that.startY, _that.height, _that.rendererIndex,
+            _that.visualIndex, _that.imageBytes, _that.id);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -275,6 +305,8 @@ extension ImageRowPatterns on ImageRow {
     TResult? Function(
             double startY,
             double height,
+            int rendererIndex,
+            int visualIndex,
             @JsonKey(includeFromJson: false, includeToJson: false)
             @Uint8ListConverter()
             Uint8List? imageBytes,
@@ -284,7 +316,8 @@ extension ImageRowPatterns on ImageRow {
     final _that = this;
     switch (_that) {
       case _ImageRow() when $default != null:
-        return $default(_that.startY, _that.height, _that.imageBytes, _that.id);
+        return $default(_that.startY, _that.height, _that.rendererIndex,
+            _that.visualIndex, _that.imageBytes, _that.id);
       case _:
         return null;
     }
@@ -297,6 +330,8 @@ class _ImageRow extends ImageRow {
   const _ImageRow(
       {required this.startY,
       required this.height,
+      this.rendererIndex = 0,
+      this.visualIndex = 1,
       @JsonKey(includeFromJson: false, includeToJson: false)
       @Uint8ListConverter()
       this.imageBytes,
@@ -312,6 +347,18 @@ class _ImageRow extends ImageRow {
   /// The height of the image row region.
   @override
   final double height;
+
+  /// The renderer index - physical position in the image rows list (0-based).
+  /// This is used for internal canvas operations and ordering.
+  @override
+  @JsonKey()
+  final int rendererIndex;
+
+  /// The visual index - user-visible position (1-based).
+  /// This represents the visual order of the image row in the document.
+  @override
+  @JsonKey()
+  final int visualIndex;
 
   /// The image data as bytes (excluded from JSON serialization).
   @override
@@ -345,6 +392,10 @@ class _ImageRow extends ImageRow {
             other is _ImageRow &&
             (identical(other.startY, startY) || other.startY == startY) &&
             (identical(other.height, height) || other.height == height) &&
+            (identical(other.rendererIndex, rendererIndex) ||
+                other.rendererIndex == rendererIndex) &&
+            (identical(other.visualIndex, visualIndex) ||
+                other.visualIndex == visualIndex) &&
             const DeepCollectionEquality()
                 .equals(other.imageBytes, imageBytes) &&
             (identical(other.id, id) || other.id == id));
@@ -352,12 +403,12 @@ class _ImageRow extends ImageRow {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, startY, height,
-      const DeepCollectionEquality().hash(imageBytes), id);
+  int get hashCode => Object.hash(runtimeType, startY, height, rendererIndex,
+      visualIndex, const DeepCollectionEquality().hash(imageBytes), id);
 
   @override
   String toString() {
-    return 'ImageRow(startY: $startY, height: $height, imageBytes: $imageBytes, id: $id)';
+    return 'ImageRow(startY: $startY, height: $height, rendererIndex: $rendererIndex, visualIndex: $visualIndex, imageBytes: $imageBytes, id: $id)';
   }
 }
 
@@ -371,6 +422,8 @@ abstract mixin class _$ImageRowCopyWith<$Res>
   $Res call(
       {double startY,
       double height,
+      int rendererIndex,
+      int visualIndex,
       @JsonKey(includeFromJson: false, includeToJson: false)
       @Uint8ListConverter()
       Uint8List? imageBytes,
@@ -391,6 +444,8 @@ class __$ImageRowCopyWithImpl<$Res> implements _$ImageRowCopyWith<$Res> {
   $Res call({
     Object? startY = null,
     Object? height = null,
+    Object? rendererIndex = null,
+    Object? visualIndex = null,
     Object? imageBytes = freezed,
     Object? id = freezed,
   }) {
@@ -403,6 +458,14 @@ class __$ImageRowCopyWithImpl<$Res> implements _$ImageRowCopyWith<$Res> {
           ? _self.height
           : height // ignore: cast_nullable_to_non_nullable
               as double,
+      rendererIndex: null == rendererIndex
+          ? _self.rendererIndex
+          : rendererIndex // ignore: cast_nullable_to_non_nullable
+              as int,
+      visualIndex: null == visualIndex
+          ? _self.visualIndex
+          : visualIndex // ignore: cast_nullable_to_non_nullable
+              as int,
       imageBytes: freezed == imageBytes
           ? _self.imageBytes
           : imageBytes // ignore: cast_nullable_to_non_nullable
