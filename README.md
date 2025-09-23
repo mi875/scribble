@@ -264,16 +264,12 @@ ImageRow? getImageRowAt(double y)
 
 #### Row Highlighting
 ```dart
-// Single row highlighting
-void highlightRow(int lineNumber)
-void unhighlightRow(int lineNumber)
-void toggleRowHighlight(int lineNumber)
-bool isRowHighlighted(int lineNumber)
-
-// Multiple row highlighting
-void highlightRows(Iterable<int> lineNumbers)
+// Individual color highlighting
+void setHighlightRows(List<RowHighlight> highlights)
 void unhighlightRows(Iterable<int> lineNumbers)
 void clearAllHighlights()
+bool isRowHighlighted(int lineNumber)
+Color? getRowHighlightColor(int lineNumber)
 ```
 
 #### Properties

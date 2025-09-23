@@ -49,16 +49,12 @@ class LineByLineNotifier extends ScribbleNotifier {
 
     /// Initial canvas height.
     double initialCanvasHeight = 400.0,
-
-    /// Custom highlight color for rows. If null, uses theme color.
-    Color? highlightColor,
   })  : _rowLineSpacing = rowLineSpacing,
         _topMargin = topMargin,
         _bottomMargin = bottomMargin,
         _canvasHeight = initialCanvasHeight,
         _freeDrawingSpaces = [],
-        _imageRows = [],
-        _highlightColor = highlightColor {
+        _imageRows = [] {
     // Store initial canvas height as minimum
     _initialCanvasHeight = initialCanvasHeight;
     
@@ -107,11 +103,11 @@ class LineByLineNotifier extends ScribbleNotifier {
   /// Map of loaded ui.Image objects keyed by image row ID.
   final Map<String, ui.Image> _loadedImages = <String, ui.Image>{};
 
-  /// Set of highlighted normal indices (user-visible line numbers).
-  final Set<int> _highlightedRows = <int>{};
+  /// Map of highlighted normal indices to their specific colors.
+  /// Key: user-visible line number (1, 2, 3, etc.)
+  /// Value: color to use for highlighting that specific row
+  final Map<int, Color> _highlightedRows = <int, Color>{};
 
-  /// Custom highlight color for rows. If null, uses theme color.
-  Color? _highlightColor;
 
   /// Gets an immutable list of rows.
   List<NotebookRow> get rows => List.unmodifiable(_rows);
@@ -127,10 +123,8 @@ class LineByLineNotifier extends ScribbleNotifier {
   Map<String, ui.Image> get loadedImages => Map.unmodifiable(_loadedImages);
 
   /// Gets an immutable set of highlighted row indices.
-  Set<int> get highlightedRows => Set.unmodifiable(_highlightedRows);
+  Set<int> get highlightedRows => Set.unmodifiable(_highlightedRows.keys);
 
-  /// Gets the current highlight color. Returns null if using theme color.
-  Color? get highlightColor => _highlightColor;
 
   /// Sets the callback for canvas height changes.
   void setCanvasHeightChangeCallback(
@@ -149,13 +143,6 @@ class LineByLineNotifier extends ScribbleNotifier {
     _sequentialMode = enabled;
   }
 
-  /// Sets the highlight color for rows. Pass null to use theme color.
-  void setHighlightColor(Color? color) {
-    if (_highlightColor != color) {
-      _highlightColor = color;
-      notifyListeners();
-    }
-  }
 
   @override
   void clear() {
@@ -1079,61 +1066,9 @@ class LineByLineNotifier extends ScribbleNotifier {
 
   // Row Highlighting Methods
 
-  /// Highlights the specified line number (1, 2, 3, etc.).
-  /// 
-  /// Line numbers correspond to what users see displayed on the UI.
-  /// Free drawing spaces and image rows are skipped when counting line numbers.
-  void highlightRow(int lineNumber) {
-    if (lineNumber < 1) return; // Line numbers start at 1
-    
-    if (_highlightedRows.add(lineNumber)) {
-      notifyListeners();
-    }
-  }
 
-  /// Removes highlight from the specified line number (1, 2, 3, etc.).
-  /// 
-  /// Line numbers correspond to what users see displayed on the UI.
-  /// Free drawing spaces and image rows are skipped when counting line numbers.
-  void unhighlightRow(int lineNumber) {
-    if (lineNumber < 1) return; // Line numbers start at 1
-    
-    if (_highlightedRows.remove(lineNumber)) {
-      notifyListeners();
-    }
-  }
 
-  /// Toggles the highlight state of the specified line number (1, 2, 3, etc.).
-  /// 
-  /// Line numbers correspond to what users see displayed on the UI.
-  /// Free drawing spaces and image rows are skipped when counting line numbers.
-  void toggleRowHighlight(int lineNumber) {
-    if (lineNumber < 1) return; // Line numbers start at 1
-    
-    if (_highlightedRows.contains(lineNumber)) {
-      unhighlightRow(lineNumber);
-    } else {
-      highlightRow(lineNumber);
-    }
-  }
 
-  /// Highlights multiple line numbers (1, 2, 3, etc.).
-  /// 
-  /// Line numbers correspond to what users see displayed on the UI.
-  /// Free drawing spaces and image rows are skipped when counting line numbers.
-  void highlightRows(Iterable<int> lineNumbers) {
-    var changed = false;
-    for (final lineNumber in lineNumbers) {
-      if (lineNumber >= 1) {
-        if (_highlightedRows.add(lineNumber)) {
-          changed = true;
-        }
-      }
-    }
-    if (changed) {
-      notifyListeners();
-    }
-  }
 
   /// Removes highlights from multiple line numbers (1, 2, 3, etc.).
   /// 
@@ -1143,7 +1078,7 @@ class LineByLineNotifier extends ScribbleNotifier {
     var changed = false;
     for (final lineNumber in lineNumbers) {
       if (lineNumber >= 1) {
-        if (_highlightedRows.remove(lineNumber)) {
+        if (_highlightedRows.remove(lineNumber) != null) {
           changed = true;
         }
       }
@@ -1168,7 +1103,42 @@ class LineByLineNotifier extends ScribbleNotifier {
   bool isRowHighlighted(int lineNumber) {
     if (lineNumber < 1) return false; // Line numbers start at 1
     
-    return _highlightedRows.contains(lineNumber);
+    return _highlightedRows.containsKey(lineNumber);
+  }
+
+  /// Sets highlights for multiple rows with individual colors.
+  /// 
+  /// This allows each row to have its own specific highlight color.
+  /// Line numbers correspond to what users see displayed on the UI.
+  /// Free drawing spaces and image rows are skipped when counting line numbers.
+  void setHighlightRows(List<RowHighlight> highlights) {
+    var changed = false;
+    
+    for (final highlight in highlights) {
+      if (highlight.index >= 1) {
+        final currentColor = _highlightedRows[highlight.index];
+        if (currentColor != highlight.color) {
+          _highlightedRows[highlight.index] = highlight.color;
+          changed = true;
+        }
+      }
+    }
+    
+    if (changed) {
+      notifyListeners();
+    }
+  }
+
+  /// Gets the highlight color for a specific line number.
+  /// 
+  /// Returns the specific color assigned to this row, or null if the row
+  /// is not highlighted. Line numbers correspond to what users see displayed
+  /// on the UI. Free drawing spaces and image rows are skipped when counting
+  /// line numbers.
+  Color? getRowHighlightColor(int lineNumber) {
+    if (lineNumber < 1) return null; // Line numbers start at 1
+    
+    return _highlightedRows[lineNumber];
   }
 
   /// Converts a line number (1, 2, 3...) to the corresponding renderer index (0, 1, 2...).
@@ -1456,14 +1426,12 @@ class LineByLineNotifier extends ScribbleNotifier {
       freeDrawingSpaces: _freeDrawingSpaces,
       imageRows: _imageRows,
       loadedImages: _loadedImages,
-      highlightedRows: _highlightedRows,
       theme: theme,
       canvasWidth: _canvasWidth,
       canvasHeight: _canvasHeight,
       rowLineSpacing: _rowLineSpacing,
       rowLineWidth: 1,
       simulatePressure: simulatePressure,
-      customHighlightColor: _highlightColor,
     );
 
     // Render the row range using the reusable painters

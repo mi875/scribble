@@ -328,7 +328,11 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                     notifier.clearAllHighlights();
                   } else {
                     // Highlight the first few lines to demonstrate
-                    notifier.highlightRows([1, 2, 3]);
+                    notifier.setHighlightRows([
+                      const RowHighlight(index: 1, color: Colors.yellow),
+                      const RowHighlight(index: 2, color: Colors.orange),
+                      const RowHighlight(index: 3, color: Colors.cyan),
+                    ]);
                   }
                 },
               );
@@ -643,7 +647,7 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                               GestureDetector(
                                 onTap: () {
                                   setState(() => selectedHighlightColor = null);
-                                  notifier.setHighlightColor(null);
+                                  // Note: setHighlightColor no longer available - colors set per row
                                 },
                                 child: Container(
                                   width: 28,
@@ -691,7 +695,7 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                                   onTap: () {
                                     setState(
                                         () => selectedHighlightColor = color);
-                                    notifier.setHighlightColor(color);
+                                    // Note: setHighlightColor no longer available - colors set per row
                                   },
                                   child: Container(
                                     width: 28,

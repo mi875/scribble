@@ -488,6 +488,23 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
       // Get the current line number for display (use normal index directly)
       final currentLine =
           normalIndex; // This is already 1-based or null for non-text rows
+      
+      // Check if this line is highlighted
+      final isHighlighted = currentLine != null && 
+          widget.notifier.isRowHighlighted(currentLine);
+      
+      // Get colors based on highlight state
+      final rowHighlightColor = currentLine != null 
+          ? widget.notifier.getRowHighlightColor(currentLine)
+          : null;
+      final highlightColor = rowHighlightColor ?? theme.rowHighlightColor;
+      final textColor = isHighlighted ? Colors.white : theme.lineNumberColor;
+      final borderColor = isHighlighted 
+          ? highlightColor.withValues(alpha: 0.8)
+          : theme.lineNumberColor.withValues(alpha: 0.5);
+      final backgroundColor = isHighlighted 
+          ? highlightColor
+          : Colors.transparent;
 
       // Position the button (left side for all controls)
       const buttonX = leftMargin - 6; // Left side position for all controls
@@ -603,23 +620,23 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: theme.lineNumberColor.withValues(alpha: 0.5),
+                          color: borderColor,
                         ),
-                        color: Colors.transparent,
+                        color: backgroundColor,
                       ),
                       child: Center(
                         child: freeSpace != null
                             ? Icon(
                                 Icons.space_bar,
                                 size: widget.lineNumberFontSize + 2,
-                                color: theme.lineNumberColor,
+                                color: textColor,
                               )
                             : Text(
                                 currentLine?.toString() ?? '',
                                 style: TextStyle(
                                   fontSize: widget.lineNumberFontSize - 1,
                                   fontWeight: FontWeight.w500,
-                                  color: theme.lineNumberColor,
+                                  color: textColor,
                                 ),
                               ),
                       ),
@@ -736,9 +753,6 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
                               freeDrawingSpaces:
                                   widget.notifier.freeDrawingSpaces,
                               imageRows: widget.notifier.imageRows,
-                              highlightedRows: widget.notifier.highlightedRows,
-                              highlightColor: widget.notifier.highlightColor ??
-                                  theme.rowHighlightColor,
                             ),
                           ),
 

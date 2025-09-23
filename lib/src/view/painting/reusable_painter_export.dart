@@ -20,7 +20,6 @@ class ReusablePainterExport {
     required List<FreeDrawingSpace> freeDrawingSpaces,
     required List<ImageRow> imageRows,
     required Map<String, ui.Image> loadedImages,
-    required Set<int> highlightedRows,
     required ScribbleTheme theme,
     required double canvasWidth,
     required double canvasHeight,
@@ -31,7 +30,6 @@ class ReusablePainterExport {
     double topMargin = 30.0,
     double bottomMargin = 30.0,
     bool simulatePressure = true,
-    Color? customHighlightColor,
   }) {
     // Create DynamicRowLinePainter (base layer)
     final rowLinePainter = DynamicRowLinePainter(
@@ -50,8 +48,6 @@ class ReusablePainterExport {
       fadeDistance: 80,
       freeDrawingSpaces: freeDrawingSpaces,
       imageRows: imageRows,
-      highlightedRows: highlightedRows,
-      highlightColor: customHighlightColor ?? theme.rowHighlightColor,
     );
 
     // Create ImageRowPainter (middle layer)
