@@ -70,6 +70,9 @@ class LineByLineCanvas extends StatefulWidget {
 
     /// Font size for the line numbers.
     this.lineNumberFontSize = 12.0,
+    
+    /// Background color behind the paper canvas.
+    this.backgroundColor,
     super.key,
   });
 
@@ -127,6 +130,9 @@ class LineByLineCanvas extends StatefulWidget {
 
   /// Font size for the line numbers.
   final double lineNumberFontSize;
+  
+  /// Background color behind the paper canvas.
+  final Color? backgroundColor;
 
   @override
   State<LineByLineCanvas> createState() => _LineByLineCanvasState();
@@ -660,7 +666,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
         valueListenable: widget.notifier,
         builder: (context, state, _) {
           return ColoredBox(
-            color: theme.paperShadowColor.withValues(alpha: 0.1),
+            color: widget.backgroundColor ?? theme.paperShadowColor.withValues(alpha: 0.1),
             child: ClipRect(
               child: InteractiveViewer(
                 transformationController: _transformationController,
