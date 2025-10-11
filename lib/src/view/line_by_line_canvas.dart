@@ -70,9 +70,19 @@ class LineByLineCanvas extends StatefulWidget {
 
     /// Font size for the line numbers.
     this.lineNumberFontSize = 12.0,
-    
+
     /// Background color behind the paper canvas.
     this.backgroundColor,
+
+    /// Whether to show the right side button on each row.
+    this.showRightSideButton = false,
+
+    /// Custom builder for the popup widget shown when right side button is tapped.
+    /// Receives the build context and row index.
+    this.rightSidePopupBuilder,
+
+    /// Icon to display on the right side button.
+    this.rightSideButtonIcon = Icons.more_vert,
     super.key,
   });
 
@@ -130,9 +140,19 @@ class LineByLineCanvas extends StatefulWidget {
 
   /// Font size for the line numbers.
   final double lineNumberFontSize;
-  
+
   /// Background color behind the paper canvas.
   final Color? backgroundColor;
+
+  /// Whether to show the right side button on each row.
+  final bool showRightSideButton;
+
+  /// Custom builder for the popup widget shown when right side button is tapped.
+  final Widget Function(BuildContext context, int rowIndex)?
+      rightSidePopupBuilder;
+
+  /// Icon to display on the right side button.
+  final IconData rightSideButtonIcon;
 
   @override
   State<LineByLineCanvas> createState() => _LineByLineCanvasState();
@@ -441,6 +461,131 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
         ),
       );
     }
+  }
+
+  /// Shows the custom popup widget for the right side button.
+  void _showRightSidePopup(
+      BuildContext context, int rowIndex, Offset buttonPosition) {
+    if (widget.rightSidePopupBuilder == null) return;
+
+    final RenderBox overlay =
+        Overlay.of(context).context.findRenderObject()! as RenderBox;
+
+    // Calculate popup position (to the left of the button)
+    final RelativeRect position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        buttonPosition,
+        buttonPosition.translate(0, 0),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    showMenu<void>(
+      context: context,
+      position: position,
+      items: [
+        PopupMenuItem<void>(
+          enabled: false,
+          child: widget.rightSidePopupBuilder!(context, rowIndex),
+        ),
+      ],
+      elevation: 8,
+    );
+  }
+
+  /// Builds floating widgets on the right side of each row.
+  List<Widget> _buildRightSideButtons(ScribbleTheme theme) {
+    if (!widget.showRightSideButton) return [];
+
+    final buttons = <Widget>[];
+    final rows = widget.notifier.rows;
+    const rightMargin = 20.0;
+    final canvasWidth = widget.canvasWidth;
+
+    for (var i = 0; i < rows.length; i++) {
+      final row = rows[i];
+      final betweenRowsY = row.startY + (row.height / 2);
+
+      // Check if this position is within a free drawing space or image row
+      final currentRowY = row.startY;
+      final rowCenterY = row.startY + (row.height / 2);
+      final freeSpace = widget.notifier.getFreeDrawingSpaceAt(currentRowY);
+
+      var imageRow = widget.notifier.getImageRowAt(currentRowY);
+      imageRow ??= widget.notifier.getImageRowAt(rowCenterY);
+      imageRow ??= widget.notifier.getImageRowAt(row.startY + row.height);
+
+      // Skip rows that are completely within image rows or free spaces
+      if (imageRow != null) {
+        final imageRowStartRowIndex =
+            widget.notifier.getRowIndexForY(imageRow.startY);
+        if (i != imageRowStartRowIndex) continue;
+      } else if (freeSpace != null) {
+        final spaceStartRowIndex =
+            widget.notifier.getRowIndexForY(freeSpace.startY);
+        if (i != spaceStartRowIndex) continue;
+      }
+
+      final normalIndex = row.normalIndex;
+
+      // Get opacity based on content progress
+      final opacity = freeSpace != null
+          ? 1.0
+          : imageRow != null
+              ? 1.0
+              : normalIndex != null
+                  ? widget.notifier.getLineNumberOpacity(normalIndex)
+                  : 0.0;
+
+      if (opacity < 0.01 && imageRow == null && freeSpace == null) continue;
+
+      // Position the button on the right side
+      final buttonX = canvasWidth - rightMargin - 26;
+      final buttonY = betweenRowsY - 16;
+
+      buttons.add(
+        Positioned(
+          left: buttonX,
+          top: buttonY,
+          width: 32,
+          height: 32,
+          child: Opacity(
+            opacity: opacity,
+            child: Builder(
+              builder: (buttonContext) {
+                return Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: theme.lineNumberColor.withValues(alpha: 0.5),
+                    ),
+                    color: Colors.transparent,
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    iconSize: 16,
+                    icon: Icon(
+                      widget.rightSideButtonIcon,
+                      color: theme.lineNumberColor,
+                    ),
+                    onPressed: () {
+                      final button = buttonContext.findRenderObject()!;
+                      final buttonPosition =
+                          (button as RenderBox).localToGlobal(Offset.zero);
+                      _showRightSidePopup(context, i, buttonPosition);
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    }
+
+    return buttons;
   }
 
   /// Builds line number buttons positioned over the canvas.
@@ -809,6 +954,9 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
 
                           // Line number buttons
                           ..._buildLineNumberButtons(theme),
+
+                          // Right side buttons
+                          ..._buildRightSideButtons(theme),
                         ],
                       ),
                     ),

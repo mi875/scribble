@@ -870,9 +870,88 @@ class _LineByLineDemoState extends State<LineByLineDemo> {
                 themeMode: ScribbleThemeMode.system,
                 sequentialMode: sequentialMode,
                 rowLineWidth: 1.5,
+                showRightSideButton: true,
+                rightSideButtonIcon: Icons.info_outline,
+                rightSidePopupBuilder: (context, rowIndex) {
+                  final row = notifier.getRowByRendererIndex(rowIndex);
+                  final normalIndex = row?.normalIndex;
+
+                  return Container(
+                    constraints: const BoxConstraints(
+                      maxWidth: 250,
+                      minWidth: 200,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Text(
+                            'Row Info',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const Divider(height: 1),
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (normalIndex != null) ...[
+                                _buildInfoRow('Line #', '$normalIndex'),
+                                const SizedBox(height: 4),
+                                _buildInfoRow('Row Index', '$rowIndex'),
+                                const SizedBox(height: 4),
+                                _buildInfoRow(
+                                  'Y Position',
+                                  '${row?.startY.toStringAsFixed(0)}',
+                                ),
+                                const SizedBox(height: 4),
+                                _buildInfoRow(
+                                  'Height',
+                                  '${row?.height.toStringAsFixed(0)}',
+                                ),
+                              ] else ...[
+                                const Text(
+                                  'Special row\n(image/free space)',
+                                  style: TextStyle(
+                                    fontStyle: FontStyle.italic,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Builds an info row for the popup widget.
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w500),
+          ),
+          Text(value),
         ],
       ),
     );
