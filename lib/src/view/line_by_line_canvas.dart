@@ -504,7 +504,7 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
           ? widget.notifier.getRowHighlightColor(currentLine)
           : null;
       final highlightColor = rowHighlightColor ?? theme.rowHighlightColor;
-      final textColor = isHighlighted ? Colors.white : theme.lineNumberColor;
+      final textColor = isHighlighted ? Colors.black : theme.lineNumberColor;
       final borderColor = isHighlighted 
           ? highlightColor.withValues(alpha: 0.8)
           : theme.lineNumberColor.withValues(alpha: 0.5);
