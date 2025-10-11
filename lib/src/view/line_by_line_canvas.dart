@@ -1,6 +1,13 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:scribble/scribble.dart';
+
+/// Signature for a builder that creates a floating widget for a given row.
+typedef FloatingWidgetBuilder = Widget Function(
+  BuildContext context,
+  int rowIndex,
+  void Function() dismiss,
+);
 import 'package:scribble/src/view/painting/dynamic_row_line_painter.dart';
 import 'package:scribble/src/view/painting/image_row_painter.dart';
 import 'package:scribble/src/view/painting/scribble_editing_painter.dart';
@@ -73,6 +80,12 @@ class LineByLineCanvas extends StatefulWidget {
     
     /// Background color behind the paper canvas.
     this.backgroundColor,
+
+    /// A builder for a floating widget to be shown for each row.
+    this.floatingWidgetBuilder,
+
+    /// The icon to show for the floating widget button.
+    this.floatingWidgetIcon,
     super.key,
   });
 
@@ -134,6 +147,12 @@ class LineByLineCanvas extends StatefulWidget {
   /// Background color behind the paper canvas.
   final Color? backgroundColor;
 
+  /// A builder for a floating widget to be shown for each row.
+  final FloatingWidgetBuilder? floatingWidgetBuilder;
+
+  /// The icon to show for the floating widget button.
+  final IconData? floatingWidgetIcon;
+
   @override
   State<LineByLineCanvas> createState() => _LineByLineCanvasState();
 }
@@ -144,6 +163,9 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
       TransformationController();
   double _currentCanvasHeight = 400;
   bool _isDrawingWithPen = true;
+  OverlayEntry? _floatingWidgetOverlay;
+  int? _activeFloatingWidgetRow;
+  bool _isFloatingWidgetVisible = false;
 
   ScribbleTheme _effectiveTheme(BuildContext context) {
     if (widget.theme != null) return widget.theme!;
@@ -182,6 +204,8 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _centerContent();
     });
+
+    _transformationController.addListener(_onTransformChanged);
   }
 
   @override
@@ -197,7 +221,9 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
 
   @override
   void dispose() {
+    _dismissFloatingWidget();
     _scrollController.dispose();
+    _transformationController.removeListener(_onTransformChanged);
     _transformationController.dispose();
     super.dispose();
   }
@@ -441,6 +467,173 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
         ),
       );
     }
+  }
+
+  void _onTransformChanged() {
+    if (_isFloatingWidgetVisible) {
+      _repositionFloatingWidget();
+    }
+  }
+
+  void _repositionFloatingWidget() {
+    if (_floatingWidgetOverlay != null && _activeFloatingWidgetRow != null) {
+      _floatingWidgetOverlay!.markNeedsBuild();
+    }
+  }
+
+  void _toggleFloatingWidget(int rowIndex) {
+    if (_isFloatingWidgetVisible && _activeFloatingWidgetRow == rowIndex) {
+      _dismissFloatingWidget();
+    } else {
+      _showFloatingWidget(rowIndex);
+    }
+  }
+
+  void _showFloatingWidget(int rowIndex) {
+    _dismissFloatingWidget(); // Dismiss any existing overlay
+
+    final row = widget.notifier.getRowByRendererIndex(rowIndex);
+    if (row == null) return;
+
+    final renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    final overlay = Overlay.of(context);
+    if (overlay == null) return;
+
+    const rightMargin = 16.0;
+    const buttonSize = 32.0;
+
+    final betweenRowsY = row.startY + (row.height / 2);
+    final buttonPositionInCanvas = Offset(
+      widget.canvasWidth - rightMargin - buttonSize,
+      betweenRowsY - (buttonSize / 2),
+    );
+
+    _floatingWidgetOverlay = OverlayEntry(
+      builder: (context) {
+        final viewerOffset = renderBox.localToGlobal(Offset.zero);
+        final matrix = _transformationController.value;
+        final globalButtonPosition =
+            viewerOffset + MatrixUtils.transformPoint(matrix, buttonPositionInCanvas);
+
+        return Positioned(
+          left: globalButtonPosition.dx - 220, // widget width
+          top: globalButtonPosition.dy - 50, // center vertically
+          child: Material(
+            elevation: 4,
+            child: widget.floatingWidgetBuilder!(
+              context,
+              rowIndex,
+              _dismissFloatingWidget,
+            ),
+          ),
+        );
+      },
+    );
+
+    overlay.insert(_floatingWidgetOverlay!);
+    setState(() {
+      _activeFloatingWidgetRow = rowIndex;
+      _isFloatingWidgetVisible = true;
+    });
+  }
+
+  void _dismissFloatingWidget() {
+    if (_floatingWidgetOverlay != null) {
+      _floatingWidgetOverlay!.remove();
+      _floatingWidgetOverlay = null;
+    }
+    if (mounted) {
+      setState(() {
+        _isFloatingWidgetVisible = false;
+        _activeFloatingWidgetRow = null;
+      });
+    }
+  }
+
+  List<Widget> _buildRightFloatingButtons(ScribbleTheme theme) {
+    if (widget.floatingWidgetBuilder == null) {
+      return [];
+    }
+
+    final buttons = <Widget>[];
+    final rows = widget.notifier.rows;
+    const rightMargin = 16.0;
+
+    for (var i = 0; i < rows.length; i++) {
+      final row = rows[i];
+      final betweenRowsY = row.startY + (row.height / 2);
+
+      // Check if this position is within a free drawing space or image row
+      final currentRowY = row.startY;
+      final rowCenterY = row.startY + (row.height / 2);
+      final freeSpace = widget.notifier.getFreeDrawingSpaceAt(currentRowY);
+
+      var imageRow = widget.notifier.getImageRowAt(currentRowY);
+      imageRow ??= widget.notifier.getImageRowAt(rowCenterY);
+      imageRow ??= widget.notifier.getImageRowAt(row.startY + row.height);
+
+      // Skip rows that are completely within image rows or free spaces,
+      // except show one button per image row or free space region
+      if (imageRow != null) {
+        final imageRowStartRowIndex =
+            widget.notifier.getRowIndexForY(imageRow.startY);
+        if (i != imageRowStartRowIndex) continue;
+      } else if (freeSpace != null) {
+        final spaceStartRowIndex =
+            widget.notifier.getRowIndexForY(freeSpace.startY);
+        if (i != spaceStartRowIndex) continue;
+      }
+
+      final normalIndex = row.normalIndex;
+      final opacity = freeSpace != null
+          ? 1.0
+          : imageRow != null
+              ? 1.0
+              : normalIndex != null
+                  ? widget.notifier.getLineNumberOpacity(normalIndex)
+                  : 0.0;
+
+      if (opacity < 0.01) continue;
+
+      final buttonY = betweenRowsY - 16;
+      final buttonX = widget.canvasWidth - rightMargin - 32;
+
+      buttons.add(
+        Positioned(
+          left: buttonX,
+          top: buttonY,
+          width: 32,
+          height: 32,
+          child: Opacity(
+            opacity: opacity,
+            child: InkWell(
+              onTap: () {
+                _toggleFloatingWidget(i);
+              },
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.transparent,
+                  border: Border.all(
+                    color: theme.lineNumberColor.withOpacity(0.5),
+                  ),
+                ),
+                child: Icon(
+                  widget.floatingWidgetIcon ?? Icons.more_horiz,
+                  size: 16,
+                  color: theme.lineNumberColor,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    return buttons;
   }
 
   /// Builds line number buttons positioned over the canvas.
@@ -809,6 +1002,9 @@ class _LineByLineCanvasState extends State<LineByLineCanvas> {
 
                           // Line number buttons
                           ..._buildLineNumberButtons(theme),
+
+                          // Right floating buttons
+                          ..._buildRightFloatingButtons(theme),
                         ],
                       ),
                     ),
